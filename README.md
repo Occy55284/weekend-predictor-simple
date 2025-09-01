@@ -1,0 +1,1 @@
+# weekend-predictor-simple
