@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Make Predictions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px auto; max-width: 900px; padding: 16px; color:#111; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-top:1px solid #eee; }
+    .box { border:1px solid #ddd; border-radius: 12px; overflow:hidden; }
+    .top { display:flex; align-items:center; justify-content:space-between; padding:12px; }
+    input[type="number"] { width: 60px; padding: 8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
+    .btn { padding:8px 12px; border:1px solid #333; border-radius:8px; background:#111; color:#fff; cursor:pointer; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .muted { color:#666; font-size:12px; }
+    .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
+    a { color:#111; }
+  </style>
+</head>
+<body>
+  <a href="index.html">← Back</a>
+  <h1>Make Predictions</h1>
+  <p class="muted">This practice version saves on your device only (localStorage). We’ll add sharing later.</p>
+
+  <div id="wrap" class="box">
+    <div class="top">
+      <div><b>This weekend</b> <span id="weekLabel" class="pill"></span></div>
+      <button id="clearBtn" class="btn" style="background:#fff; color:#111;">Clear my picks</button>
+    </div>
+    <div id="list"></div>
+  </div>
+
+  <script>
+    // --- Helpers: next Saturday/Sunday & mock fixtures
+    function getWeekend() {
+      const now = new Date();
+      const sat = new Date(now);
+      sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7)); // next Saturday
+      const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
+      const fmt = (d) => d.toLocaleDateString(undefined, { weekday:'short', day:'2-digit', month:'short' });
+      return { sat, sun, label: `${fmt(sat)} & ${fmt(sun)}` };
+    }
+    function at(day, h, m) { const d = new Date(day); d.setHours(h, m, 0, 0); return d.toISOString(); }
+    function fixtures() {
+      const { sat, sun } = getWeekend();
+      const weekId = `${sat.getFullYear()}-demo`;
+      return [
+        { id: `${weekId}-1`, kickoff: at(sat,12,30), home:'Arsenal',  away:'Newcastle' },
+        { id: `${weekId}-2`, kickoff: at(sat,15,0),  home:'Man City', away:'Everton'   },
+        { id: `${weekId}-3`, kickoff: at(sun,16,30), home:'Chelsea',  away:'Spurs'     },
+      ];
+    }
+    const LOCKED = iso => new Date() >= new Date(iso);
+
+    // --- Storage
+    const KEY = 'wknd-preds';
+    function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
+    function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
+
+    // --- Render
+    const fxs = fixtures();
+    const preds = loadPreds();
+    document.getElementById('weekLabel').textContent = getWeekend().label;
+
+    const list = document.getElementById('list');
+    fxs.forEach(f => {
+      const p = preds[f.id] || { home:'', away:'' };
+      const row = document.createElement('div');
+      row.className = 'row';
+      const time = new Date(f.kickoff).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+      row.innerHTML = `
+        <div>
+          <div style="font-weight:600">${f.home} vs ${f.away}</div>
+          <div class="muted">${new Date(f.kickoff).toLocaleDateString(undefined,{weekday:'short'})} ${time} ${LOCKED(f.kickoff) ? '• LOCKED' : ''}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <input type="number" min="0" ${LOCKED(f.kickoff) ? 'disabled' : ''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
+          <span class="muted">–</span>
+          <input type="number" min="0" ${LOCKED(f.kickoff) ? 'disabled' : ''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
+          <button class="btn" ${LOCKED(f.kickoff) ? 'disabled' : ''} data-save="${f.id}">${LOCKED(f.kickoff) ? 'Closed' : 'Save'}</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+
+    // Input handlers
+    list.addEventListener('input', (e) => {
+      const el = e.target;
+      if (el.tagName !== 'INPUT') return;
+      const id = el.getAttribute('data-id');
+      const side = el.getAttribute('data-side');
+      preds[id] = preds[id] || { home:'', away:'' };
+      preds[id][side] = el.value;
+    });
+    list.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-save]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-save');
+      if (!preds[id] || preds[id].home === '' || preds[id].away === '') { alert('Please enter both scores'); return; }
+      savePreds(preds);
+      alert('Saved on this device!');
+    });
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (confirm('Clear all your saved picks on this device?')) {
+        localStorage.removeItem(KEY);
+        location.reload();
+      }
+    });
+  </script>
+</body>
+</html>
