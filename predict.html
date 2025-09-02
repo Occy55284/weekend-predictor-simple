@@ -26,7 +26,7 @@
 
   <div id="wrap" class="box">
     <div class="top">
-      <div><b>This weekend</b> <span id="weekLabel" class="pill"></span></div>
+      <div><b>This weekend</b> <span id="weekLabel" class="pill">Demo weekend</span></div>
       <div style="display:flex; align-items:center; gap:8px">
         <label for="who">Your name:</label>
         <input id="who" type="text" placeholder="e.g. Mark" />
@@ -45,56 +45,101 @@
     const SUPABASE_URL = "https://xxqykjiuowunwdiskhnk.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I";
 
-    // Create a Supabase client from the CDN global "supabase"
     function getClient() {
       return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
-    // --- Helpers: next Saturday/Sunday & mock fixtures
-    function getWeekend() {
-      const now = new Date();
-      const sat = new Date(now);
-      sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7)); // next Saturday
-      const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
-      const fmt = (d) => d.toLocaleDateString(undefined, { weekday:'short', day:'2-digit', month:'short' });
-      return { sat, sun, label: `${fmt(sat)} & ${fmt(sun)}` };
-    }
-    function at(day, h, m) { const d = new Date(day); d.setHours(h, m, 0, 0); return d.toISOString(); }
-    function fixtures() {
-      const { sat, sun } = getWeekend();
-      const weekId = `${sat.getFullYear()}-demo`;
-      return [
-        { id: `${weekId}-1`, kickoff: at(sat,12,30), home:'Arsenal',  away:'Newcastle' },
-        { id: `${weekId}-2`, kickoff: at(sat,15,0),  home:'Man City', away:'Everton'   },
-        { id: `${weekId}-3`, kickoff: at(sun,16,30), home:'Chelsea',  away:'Spurs'     },
-      ];
-    }
+    // ✅ Hard-coded demo fixtures (so they always render)
+    const fxs = [
+      { id: "demo-1", kickoff: "2099-09-01T12:30:00Z", home: "Arsenal",  away: "Newcastle" },
+      { id: "demo-2", kickoff: "2099-09-01T15:00:00Z", home: "Man City", away: "Everton"   },
+      { id: "demo-3", kickoff: "2099-09-02T16:30:00Z", home: "Chelsea",  away: "Spurs"     },
+    ];
     const LOCKED = iso => new Date() >= new Date(iso);
 
-    // --- Local storage helpers
+    // Local storage helpers
     const KEY = 'wknd-preds';
     function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
     function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
 
-    // Elements (with guards)
-    const weekLabelEl = document.getElementById('weekLabel');
+    // Elements
     const list = document.getElementById('list');
     const whoEl = document.getElementById('who');
     const clearBtn = document.getElementById('clearBtn');
     const saveCloudBtn = document.getElementById('saveCloud');
 
-    if (!weekLabelEl || !list || !whoEl || !clearBtn || !saveCloudBtn) {
-      console.error('One or more elements not found. Check IDs in HTML.');
-      return;
-    }
+    // Restore last used name
+    try { const last = localStorage.getItem('wknd-name'); if (last) whoEl.value = last; } catch {}
 
-    const fxs = fixtures();
     const preds = loadPreds();
-    weekLabelEl.textContent = getWeekend().label;
 
-    // Remember the last name used locally
-    const NAME_KEY = 'wknd-name';
-    try { const last = localStorage.getItem(NAME_KEY); if_
+    // Build rows
+    fxs.forEach(f => {
+      const p = preds[f.id] || { home:'', away:'' };
+      const row = document.createElement('div');
+      row.className = 'row';
+      const time = new Date(f.kickoff).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+      row.innerHTML = `
+        <div>
+          <div style="font-weight:600">${f.home} vs ${f.away}</div>
+          <div class="muted">${new Date(f.kickoff).toLocaleDateString(undefined,{weekday:'short'})} ${time} ${LOCKED(f.kickoff) ? '• LOCKED' : ''}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <input type="number" min="0" ${LOCKED(f.kickoff) ? 'disabled' : ''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
+          <span class="muted">–</span>
+          <input type="number" min="0" ${LOCKED(f.kickoff) ? 'disabled' : ''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
+          <button class="btn" ${LOCKED(f.kickoff) ? 'disabled' : ''} data-save="${f.id}">${LOCKED(f.kickoff) ? 'Closed' : 'Save'}</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+
+    // Save to device
+    list.addEventListener('input', (e) => {
+      const el = e.target;
+      if (el.tagName !== 'INPUT') return;
+      const id = el.getAttribute('data-id');
+      const side = el.getAttribute('data-side');
+      preds[id] = preds[id] || { home:'', away:'' };
+      preds[id][side] = el.value;
+    });
+
+    list.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-save]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-save');
+      if (!preds[id] || preds[id].home === '' || preds[id].away === '') { alert('Please enter both scores'); return; }
+      savePreds(preds);
+      alert('Saved on this device!');
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Clear all your saved picks on this device?')) {
+        localStorage.removeItem(KEY);
+        location.reload();
+      }
+    });
+
+    // Cloud save (no-auth)
+    async function saveAllToCloud() {
+      const name = whoEl.value.trim();
+      if (!name) { alert('Please type your name first'); whoEl.focus(); return; }
+      localStorage.setItem('wknd-name', name);
+
+      const client = getClient();
+
+      // Build rows to insert for each entered score (and not locked)
+      const rows = fxs
+        .filter(f => !LOCKED(f.kickoff) && preds[f.id] && preds[f.id].home !== '' && preds[f.id].away !== '')
+        .map(f => ({
+          name,
+          fixture_id: f.id,
+          home_goals: Number(preds[f.id].home),
+          away_goals: Number(preds[f.id].away),
+        }));
+
+      if (rows.length === 0) { alert('Nothing to save. Enter scores first.');
+
 
 
 
