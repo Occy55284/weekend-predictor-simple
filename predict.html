@@ -138,7 +138,23 @@
           away_goals: Number(preds[f.id].away),
         }));
 
-      if (rows.length === 0) { alert('Nothing to save. Enter scores first.');
+      if (rows.length === 0) { alert('Nothing to save. Enter scores first.'); return; }
+
+      for (const r of rows) {
+        await client.from('predictions').delete().eq('name', r.name).eq('fixture_id', r.fixture_id);
+        const { error } = await client.from('predictions').insert(r);
+        if (error) { console.error(error); alert('Error saving some picks.'); return; }
+      }
+
+      alert('Saved to cloud! 🎉');
+    }
+
+    saveCloudBtn.addEventListener('click', saveAllToCloud);
+  });
+  </script>
+</body>
+</html>
+
 
 
 
