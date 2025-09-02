@@ -10,8 +10,10 @@
     input[type="email"] { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; }
     button { padding:10px 14px; border:1px solid #333; border-radius:10px; background:#111; color:#fff; cursor:pointer; }
     .muted { color:#666; font-size:14px; }
-    a { color:#111; }
+    .ok { color:#065f46; }
+    .err { color:#b91c1c; }
     pre { background:#f7f7f7; padding:10px; border-radius:8px; overflow:auto; }
+    a { color:#111; }
   </style>
 </head>
 <body>
@@ -19,7 +21,16 @@
   <h1>Sign in</h1>
   <p class="muted">Enter your email and we’ll send you a magic link. No passwords.</p>
 
-  <div class="card">
+  <div class="card" id="status">
+    <div><b>Auth status</b></div>
+    <p class="muted" id="who">Checking…</p>
+    <div id="actions" style="display:none">
+      <a href="predict.html">Go to Predict →</a>
+      <button id="signOutBtn" style="margin-left:8px; background:#fff; color:#111">Sign out</button>
+    </div>
+  </div>
+
+  <div class="card" id="formWrap">
     <form id="form">
       <label for="email">Email</label>
       <input id="email" type="email" required placeholder="you@example.com" />
@@ -30,67 +41,79 @@
     <p id="msg" class="muted" style="margin-top:10px"></p>
   </div>
 
-  <div class="card">
-    <h3>Status</h3>
-    <p id="who" class="muted">Not signed in</p>
-    <button id="signOutBtn" style="display:none; background:#fff; color:#111">Sign out</button>
-  </div>
-
-  <!-- Supabase browser SDK (CDN) -->
+  <!-- Supabase browser SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Your project keys -->
   <script src="supabase-config.js"></script>
   <script>
-    // Guard: show helpful message if config missing
-    if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
-      document.body.innerHTML = "<p style='padding:16px'>Supabase config missing. Edit <b>supabase-config.js</b> with your URL and ANON key.</p>";
-    } else {
-      const supabase = supabasejs.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    (function () {
       const who = document.getElementById('who');
       const msg = document.getElementById('msg');
-      const form = document.getElementById('form');
-      const email = document.getElementById('email');
-      const sendBtn = document.getElementById('sendBtn');
+      const formWrap = document.getElementById('formWrap');
+      const actions = document.getElementById('actions');
       const signOutBtn = document.getElementById('signOutBtn');
+      const emailInput = document.getElementById('email');
+      const sendBtn = document.getElementById('sendBtn');
 
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+        who.textContent = 'Supabase config missing. Edit supabase-config.js';
+        return;
+      }
+
+      const supa = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+      // Update UI for current user
       async function refreshUser() {
-        const { data } = await supabase.auth.getUser();
+        const { data } = await supa.auth.getUser();
         if (data?.user?.email) {
-          who.textContent = "Signed in as " + data.user.email;
-          signOutBtn.style.display = "inline-block";
+          who.innerHTML = 'Signed in as <b>' + data.user.email + '</b>';
+          formWrap.style.display = 'none';
+          actions.style.display = 'block';
         } else {
-          who.textContent = "Not signed in";
-          signOutBtn.style.display = "none";
+          who.textContent = 'Not signed in';
+          formWrap.style.display = 'block';
+          actions.style.display = 'none';
         }
       }
 
-      form.addEventListener('submit', async (e) => {
+      // Handle auth state changes (e.g., after magic link redirect)
+      supa.auth.onAuthStateChange((_event, session) => {
+        refreshUser();
+      });
+
+      // On first load, Supabase will parse the URL hash (if returning from email) and store the session
+      refreshUser();
+
+      // Send magic link
+      document.getElementById('form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        msg.textContent = "Sending magic link…";
+        msg.textContent = 'Sending magic link…';
+        msg.className = 'muted';
         sendBtn.disabled = true;
 
-        const redirectTo = window.location.origin + "/login.html";
-        const { error } = await supabase.auth.signInWithOtp({
-          email: email.value,
+        const redirectTo = window.location.origin + '/login.html';
+        const { error } = await supa.auth.signInWithOtp({
+          email: emailInput.value,
           options: { emailRedirectTo: redirectTo },
         });
 
         if (error) {
-          msg.textContent = "Error: " + error.message;
+          msg.textContent = 'Error: ' + error.message;
+          msg.className = 'err';
           sendBtn.disabled = false;
         } else {
-          msg.textContent = "Link sent! Check your email (and spam), then click it.";
+          msg.textContent = 'Link sent! Check your email (and spam) and click it.';
+          msg.className = 'ok';
         }
       });
 
+      // Sign out
       signOutBtn.addEventListener('click', async () => {
-        await supabase.auth.signOut();
+        await supa.auth.signOut();
         await refreshUser();
       });
-
-      // When returning from the magic link, Supabase completes the session automatically
-      refreshUser();
-    }
+    })();
   </script>
 </body>
 </html>
+
