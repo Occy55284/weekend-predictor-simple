@@ -12,7 +12,6 @@
     .muted { color:#666; font-size:14px; }
     .ok { color:#065f46; }
     .err { color:#b91c1c; }
-    pre { background:#f7f7f7; padding:10px; border-radius:8px; overflow:auto; }
     a { color:#111; }
   </style>
 </head>
@@ -62,7 +61,10 @@
 
       const supa = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-      // Update UI for current user
+      // Always redirect to the PRODUCTION domain (avoids “deployment not found”)
+      const PROD_ORIGIN = 'https://weekend-predictor-simple.vercel.app';
+      const REDIRECT_URL = PROD_ORIGIN + '/login.html';
+
       async function refreshUser() {
         const { data } = await supa.auth.getUser();
         if (data?.user?.email) {
@@ -76,25 +78,21 @@
         }
       }
 
-      // Handle auth state changes (e.g., after magic link redirect)
       supa.auth.onAuthStateChange((_event, session) => {
         refreshUser();
       });
 
-      // On first load, Supabase will parse the URL hash (if returning from email) and store the session
       refreshUser();
 
-      // Send magic link
       document.getElementById('form').addEventListener('submit', async (e) => {
         e.preventDefault();
         msg.textContent = 'Sending magic link…';
         msg.className = 'muted';
         sendBtn.disabled = true;
 
-        const redirectTo = window.location.origin + '/login.html';
         const { error } = await supa.auth.signInWithOtp({
           email: emailInput.value,
-          options: { emailRedirectTo: redirectTo },
+          options: { emailRedirectTo: REDIRECT_URL },
         });
 
         if (error) {
@@ -107,7 +105,6 @@
         }
       });
 
-      // Sign out
       signOutBtn.addEventListener('click', async () => {
         await supa.auth.signOut();
         await refreshUser();
@@ -116,4 +113,5 @@
   </script>
 </body>
 </html>
+
 
