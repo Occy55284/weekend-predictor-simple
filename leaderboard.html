@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Leaderboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 40px auto; max-width: 900px; padding: 16px; color:#111; }
+    h1 { margin-bottom: 0; }
+    .muted { color:#666; font-size:14px; }
+    table { border-collapse: collapse; width:100%; margin-top:16px; }
+    th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+    th { background:#f3f4f6; }
+    .right { text-align:right; }
+  </style>
+</head>
+<body>
+  <a href="index.html">← Back</a>
+  <h1>Leaderboard</h1>
+  <p class="muted">Totals based on demo results (change these later when we add a results page).</p>
+
+  <p id="msg" class="muted">Loading…</p>
+
+  <table id="lb" style="display:none">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Points</th>
+        <th>Played</th>
+        <th>Exact</th>
+        <th>GD</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Supabase SDK + your project keys -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    // 🔧 DEMO RESULTS — edit these for your week (fixture_id : score)
+    const RESULTS = {
+      "demo-1": { home: 2, away: 1 }, // Arsenal 2–1 Newcastle
+      "demo-2": { home: 3, away: 0 }, // Man City 3–0 Everton
+      "demo-3": { home: 1, away: 1 }, // Chelsea 1–1 Spurs
+    };
+
+    // Scoring: 3 for correct result (W/D/L), +1 correct goal diff, +1 exact score (cap 5)
+    function pointsFor(pred, actual) {
+      if (!actual) return { pts: 0, exact:0, gd:0, res:0, played:0 };
+      const ph = Number(pred.home_goals), pa = Number(pred.away_goals);
+      const ah = Number(actual.home),    aa = Number(actual.away);
+      const pRes = ph === pa ? 'D' : ph > pa ? 'H' : 'A';
+      const aRes = ah === aa ? 'D' : ah > aa ? 'H' : 'A';
+      const correctRes = pRes === aRes ? 1 : 0;
+      const correctGD  = (ph - pa) === (ah - aa) ? 1 : 0;
+      const exact      = (ph === ah && pa === aa) ? 1 : 0;
+
+      let pts = 0;
+      if (correctRes) pts += 3;
+      if (correctGD)  pts += 1;
+      if (exact)      pts += 1;
+      if (pts > 5)    pts = 5; // cap
+
+      return { pts, exact, gd: correctGD, res: correctRes, played:1 };
+    }
+
+    async function loadLeaderboard() {
+      const msg = document.getElementById('msg');
+      const table = document.getElementById('lb');
+      const tbody = table.querySelector('tbody');
+
+      const url = window.SUPABASE_URL;
+      const key = window.SUPABASE_ANON_KEY;
+      if (!url || !key) {
+        msg.textContent = 'Supabase config missing. Check supabase-config.js';
+        return;
+      }
+      const client = supabase.createClient(url, key);
+
+      // Grab all predictions
+      const { data, error } = await client
+        .from('predictions')
+        .select('name, fixture_id, home_goals, away_goals');
+
+      if (error) {
+        console.error(error);
+        msg.textContent = 'Error loading predictions: ' + (error.message || 'unknown');
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        msg.textContent = 'No predictions saved yet.';
+        return;
+      }
+
+      // Aggregate per person
+      const byName = {};
+      for (const row of data) {
+        if (!row.name) continue;
+        const score = pointsFor(row, RESULTS[row.fixture_id]);
+        if (!byName[row.name]) {
+          byName[row.name] = { name: row.name, pts:0, played:0, exact:0, gd:0, res:0 };
+        }
+        byName[row.name].pts    += score.pts;
+        byName[row.name].played += score.played;
+        byName[row.name].exact  += score.exact;
+        byName[row.name].gd     += score.gd;
+        byName[row.name].res    += score.res;
+      }
+
+      // Sort by points desc, then name
+      const rows = Object.values(byName).sort((a,b) => b.pts - a.pts || a.name.localeCompare(b.name));
+      if (rows.length === 0) {
+        msg.textContent = 'No scored predictions yet (update the DEMO RESULTS if needed).';
+        return;
+      }
+
+      // Render
+      tbody.innerHTML = '';
+      rows.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${r.name}</td>
+          <td><b>${r.pts}</b></td>
+          <td>${r.played}</td>
+          <td>${r.exact}</td>
+          <td>${r.gd}</td>
+          <td>${r.res}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      msg.textContent = `Loaded ${data.length} predictions from ${rows.length} player(s).`;
+      table.style.display = '';
+    }
+
+    loadLeaderboard();
+    // auto-refresh every 10s (optional)
+    setInterval(loadLeaderboard, 10000);
+  </script>
+</body>
+</html>
