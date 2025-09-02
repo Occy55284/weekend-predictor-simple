@@ -11,6 +11,7 @@
     th { background:#f3f4f6; }
     h1 { margin-bottom: 0; }
     .muted { color:#666; font-size:14px; }
+    #msg { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -18,7 +19,9 @@
   <h1>Predictions Wall</h1>
   <p class="muted">Everyone’s latest saved picks</p>
 
-  <table id="predTable">
+  <p id="msg" class="muted">Loading…</p>
+
+  <table id="predTable" style="display:none">
     <thead>
       <tr>
         <th>Name</th>
@@ -30,34 +33,63 @@
     <tbody></tbody>
   </table>
 
-  <!-- Supabase SDK -->
+  <!-- Supabase SDK + your project keys -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script>
-    const SUPABASE_URL = "https://xxqykjiuowunwdiskhnk.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInRlZiI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I";
-    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     async function loadPredictions() {
-      const { data, error } = await client.from("predictions").select("*").order("created_at", { ascending: false });
-      if (error) {
-        console.error(error);
+      const msg = document.getElementById('msg');
+      const table = document.getElementById('predTable');
+      const tbody = table.querySelector('tbody');
+
+      // Use the same config file as the rest of the site
+      const url = window.SUPABASE_URL;
+      const key = window.SUPABASE_ANON_KEY;
+
+      if (!url || !key) {
+        msg.textContent = 'Supabase config missing. Check supabase-config.js';
         return;
       }
-      const tbody = document.querySelector("#predTable tbody");
-      tbody.innerHTML = "";
+
+      const client = supabase.createClient(url, key);
+
+      // Fetch rows (no fragile order-by). If you have many rows, limit to 200.
+      const { data, error } = await client
+        .from('predictions')
+        .select('name, fixture_id, home_goals, away_goals'); // add created_at here if your table has it
+
+      if (error) {
+        console.error(error);
+        msg.textContent = 'Error loading predictions: ' + (error.message || 'unknown');
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        msg.textContent = 'No picks saved yet.';
+        table.style.display = 'none';
+        return;
+      }
+
+      // Show table
+      msg.textContent = `Loaded ${data.length} row(s).`;
+      tbody.innerHTML = '';
       data.forEach(row => {
-        const tr = document.createElement("tr");
+        const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${row.name || ""}</td>
+          <td>${row.name ?? ''}</td>
           <td>${row.fixture_id}</td>
           <td>${row.home_goals}</td>
           <td>${row.away_goals}</td>
         `;
         tbody.appendChild(tr);
       });
+      table.style.display = '';
     }
 
+    // auto-refresh every 10s (optional). Comment out if you don’t want it.
     loadPredictions();
+    setInterval(loadPredictions, 10000);
   </script>
 </body>
 </html>
+
