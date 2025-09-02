@@ -40,7 +40,8 @@
   <!-- Supabase browser SDK (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // 🔑 Your Supabase project settings (from Supabase → Settings → API)
+  window.addEventListener('DOMContentLoaded', () => {
+    // 🔑 Your Supabase project settings
     const SUPABASE_URL = "https://xxqykjiuowunwdiskhnk.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I";
 
@@ -70,102 +71,31 @@
     }
     const LOCKED = iso => new Date() >= new Date(iso);
 
-    // --- Local storage
+    // --- Local storage helpers
     const KEY = 'wknd-preds';
     function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
     function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
 
+    // Elements (with guards)
+    const weekLabelEl = document.getElementById('weekLabel');
+    const list = document.getElementById('list');
+    const whoEl = document.getElementById('who');
+    const clearBtn = document.getElementById('clearBtn');
+    const saveCloudBtn = document.getElementById('saveCloud');
+
+    if (!weekLabelEl || !list || !whoEl || !clearBtn || !saveCloudBtn) {
+      console.error('One or more elements not found. Check IDs in HTML.');
+      return;
+    }
+
     const fxs = fixtures();
     const preds = loadPreds();
-    document.getElementById('weekLabel').textContent = getWeekend().label;
+    weekLabelEl.textContent = getWeekend().label;
 
     // Remember the last name used locally
     const NAME_KEY = 'wknd-name';
-    const whoEl = document.getElementById('who');
-    try { const last = localStorage.getItem(NAME_KEY); if (last) whoEl.value = last; } catch {}
+    try { const last = localStorage.getItem(NAME_KEY); if_
 
-    const list = document.getElementById('list');
-    fxs.forEach(f => {
-      const p = preds[f.id] || { home:'', away:'' };
-      const row = document.createElement('div');
-      row.className = 'row';
-      const time = new Date(f.kickoff).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
-      row.innerHTML = `
-        <div>
-          <div style="font-weight:600">${f.home} vs ${f.away}</div>
-          <div class="muted">${new Date(f.kickoff).toLocaleDateString(undefined,{weekday:'short'})} ${time} ${LOCKED(f.kickoff) ? '• LOCKED' : ''}</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px">
-          <input type="number" min="0" ${LOCKED(f.kickoff) ? 'disabled' : ''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
-          <span class="muted">–</span>
-          <input type="number" min="0" ${LOCKED(f.kickoff) ? 'disabled' : ''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
-          <button class="btn" ${LOCKED(f.kickoff) ? 'disabled' : ''} data-save="${f.id}">${LOCKED(f.kickoff) ? 'Closed' : 'Save'}</button>
-        </div>
-      `;
-      list.appendChild(row);
-    });
-
-    // Input handlers (device save)
-    list.addEventListener('input', (e) => {
-      const el = e.target;
-      if (el.tagName !== 'INPUT') return;
-      const id = el.getAttribute('data-id');
-      const side = el.getAttribute('data-side');
-      preds[id] = preds[id] || { home:'', away:'' };
-      preds[id][side] = el.value;
-    });
-    list.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-save]');
-      if (!btn) return;
-      const id = btn.getAttribute('data-save');
-      if (!preds[id] || preds[id].home === '' || preds[id].away === '') { alert('Please enter both scores'); return; }
-      savePreds(preds);
-      alert('Saved on this device!');
-    });
-
-    document.getElementById('clearBtn').addEventListener('click', () => {
-      if (confirm('Clear all your saved picks on this device?')) {
-        localStorage.removeItem(KEY);
-        location.reload();
-      }
-    });
-
-    // --- Cloud save (no-auth) using Supabase anon key
-    const saveCloudBtn = document.getElementById('saveCloud');
-
-    async function saveAllToCloud() {
-      const name = whoEl.value.trim();
-      if (!name) { alert('Please type your name first'); whoEl.focus(); return; }
-      localStorage.setItem(NAME_KEY, name);
-
-      const client = getClient();
-
-      // Build rows to insert for each entered score (and not locked)
-      const rows = fxs
-        .filter(f => !LOCKED(f.kickoff) && preds[f.id] && preds[f.id].home !== '' && preds[f.id].away !== '')
-        .map(f => ({
-          name,
-          fixture_id: f.id,
-          home_goals: Number(preds[f.id].home),
-          away_goals: Number(preds[f.id].away),
-        }));
-
-      if (rows.length === 0) { alert('Nothing to save. Enter scores first.'); return; }
-
-      // Simple strategy: delete old row for (name, fixture) then insert fresh one
-      for (const r of rows) {
-        await client.from('predictions').delete().eq('name', r.name).eq('fixture_id', r.fixture_id);
-        const { error } = await client.from('predictions').insert(r);
-        if (error) { console.error(error); alert('Error saving some picks.'); return; }
-      }
-
-      alert('Saved to cloud! 🎉');
-    }
-
-    saveCloudBtn.addEventListener('click', saveAllToCloud);
-  </script>
-</body>
-</html>
 
 
 
