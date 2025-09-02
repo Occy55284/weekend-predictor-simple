@@ -1,47 +1,14 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Make Predictions</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px auto; max-width: 900px; padding: 16px; color:#111; }
-    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-top:1px solid #eee; }
-    .box { border:1px solid #ddd; border-radius: 12px; overflow:hidden; }
-    .top { display:flex; align-items:center; justify-content:space-between; padding:12px; gap:12px; flex-wrap: wrap; }
-    input[type="number"] { width: 60px; padding: 8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
-    input[type="text"], input[type="email"] { padding: 8px; border:1px solid #ccc; border-radius:8px; }
-    .btn { padding:8px 12px; border:1px solid #333; border-radius:8px; background:#111; color:#fff; cursor:pointer; }
-    .btn.ghost { background:#fff; color:#111; }
-    .btn:disabled { opacity:0.5; cursor:not-allowed; }
-    .muted { color:#666; font-size:12px; }
-    .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
-    a { color:#111; }
-  </style>
-</head>
-<body>
-  <a href="index.html">← Back</a>
-  <h1>Make Predictions</h1>
-  <p class="muted">This version saves on your device, and (optionally) to the cloud if you enter your name.</p>
-
-  <div id="wrap" class="box">
-    <div class="top">
-      <div><b>This weekend</b> <span id="weekLabel" class="pill"></span></div>
-      <div style="display:flex; align-items:center; gap:8px">
-        <label for="who">Your name:</label>
-        <input id="who" type="text" placeholder="e.g. Mark" />
-        <button id="saveCloud" class="btn">Save all to cloud</button>
-        <button id="clearBtn" class="btn ghost">Clear my device</button>
-      </div>
-    </div>
-    <div id="list"></div>
-  </div>
-
-  <!-- Supabase browser SDK (CDN) & your project keys -->
+  <!-- Supabase browser SDK (CDN) & config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-
   <script>
+    // 🔑 Your Supabase project settings
+    const SUPABASE_URL = "https://xxqykjiuowunwdiskhnk.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I";
+
+    function getClient() {
+      return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
     // --- Helpers: next Saturday/Sunday & mock fixtures
     function getWeekend() {
       const now = new Date();
@@ -126,20 +93,14 @@
     // --- Cloud save (no-auth) using Supabase anon key
     const saveCloudBtn = document.getElementById('saveCloud');
 
-    function getClient() {
-      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
-      return supabasejs.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    }
-
     async function saveAllToCloud() {
       const name = whoEl.value.trim();
       if (!name) { alert('Please type your name first'); whoEl.focus(); return; }
       localStorage.setItem(NAME_KEY, name);
 
       const client = getClient();
-      if (!client) { alert('Supabase config missing. Edit supabase-config.js'); return; }
 
-      // Make a list of rows to write for fixtures that have both scores and are not locked
+      // Collect rows with scores
       const rows = fxs
         .filter(f => !LOCKED(f.kickoff) && preds[f.id] && preds[f.id].home !== '' && preds[f.id].away !== '')
         .map(f => ({
@@ -151,20 +112,20 @@
 
       if (rows.length === 0) { alert('Nothing to save. Enter scores first.'); return; }
 
-      // Simple approach: delete any existing rows for (name, fixture_id), then insert fresh
       for (const r of rows) {
+        // Delete old row for same person + fixture
         await client.from('predictions').delete().eq('name', r.name).eq('fixture_id', r.fixture_id);
+        // Insert fresh
         const { error } = await client.from('predictions').insert(r);
-        if (error) { console.error(error); alert('Error saving some picks. See console.'); return; }
+        if (error) { console.error(error); alert('Error saving some picks.'); return; }
       }
 
-      alert('Saved to cloud! (Public test table)');
+      alert('Saved to cloud! 🎉');
     }
 
     saveCloudBtn.addEventListener('click', saveAllToCloud);
   </script>
-</body>
-</html>
+
 
 
 
