@@ -43,10 +43,21 @@
   window.addEventListener('DOMContentLoaded', () => {
     // 🔑 Your Supabase project settings
     const SUPABASE_URL = "https://xxqykjiuowunwdiskhnk.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInRlZiI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I".replace("InRlZiI6","InR5cCI6"); // small fix if copy got mangled
 
+    // Create a Supabase client from the CDN global "supabase"
     function getClient() {
       return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    // Simple UUID v4 (uses crypto if available)
+    function uuidv4() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15) >> 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
     }
 
     // ✅ Hard-coded demo fixtures (so they always render)
@@ -132,6 +143,7 @@
       const rows = fxs
         .filter(f => !LOCKED(f.kickoff) && preds[f.id] && preds[f.id].home !== '' && preds[f.id].away !== '')
         .map(f => ({
+          id: uuidv4(),                // <- generate id in the browser (avoids DB default issues)
           name,
           fixture_id: f.id,
           home_goals: Number(preds[f.id].home),
@@ -140,13 +152,21 @@
 
       if (rows.length === 0) { alert('Nothing to save. Enter scores first.'); return; }
 
-      for (const r of rows) {
-        await client.from('predictions').delete().eq('name', r.name).eq('fixture_id', r.fixture_id);
-        const { error } = await client.from('predictions').insert(r);
-        if (error) { console.error(error); alert('Error saving some picks.'); return; }
-      }
+      try {
+        for (const r of rows) {
+          // Delete old row for same person + fixture
+          const del = await client.from('predictions').delete().match({ name: r.name, fixture_id: r.fixture_id });
+          if (del.error) throw del.error;
 
-      alert('Saved to cloud! 🎉');
+          // Insert fresh
+          const ins = await client.from('predictions').insert(r);
+          if (ins.error) throw ins.error;
+        }
+        alert('Saved to cloud! 🎉');
+      } catch (err) {
+        console.error('Supabase error:', err);
+        alert('Supabase error: ' + (err?.message || 'unknown'));
+      }
     }
 
     saveCloudBtn.addEventListener('click', saveAllToCloud);
@@ -154,6 +174,7 @@
   </script>
 </body>
 </html>
+
 
 
 
