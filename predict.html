@@ -17,6 +17,8 @@
     .muted { color:#666; font-size:12px; }
     .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
     a { color:#111; }
+    .status { font-size:12px; color:#444; }
+    .status b { font-weight:600; }
   </style>
 </head>
 <body>
@@ -26,7 +28,10 @@
 
   <div id="wrap" class="box">
     <div class="top">
-      <div><b>This weekend</b> <span id="weekLabel" class="pill">Demo weekend</span></div>
+      <div>
+        <div><b>This weekend</b> <span id="weekLabel" class="pill">Demo weekend</span></div>
+        <div id="authStatus" class="status"></div>
+      </div>
       <div style="display:flex; align-items:center; gap:8px">
         <label for="who">Your name:</label>
         <input id="who" type="text" placeholder="e.g. Mark" />
@@ -39,28 +44,22 @@
 
   <!-- Supabase browser SDK (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Shared project keys -->
+  <script src="supabase-config.js"></script>
+
   <script>
   window.addEventListener('DOMContentLoaded', () => {
-    // 🔑 Your Supabase project settings
-    const SUPABASE_URL = "https://xxqykjiuowunwdiskhnk.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInRlZiI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I".replace("InRlZiI6","InR5cCI6"); // small fix if copy got mangled
+    // 🔑 Supabase settings
+    const SUPABASE_URL = window.SUPABASE_URL || "https://xxqykjiuowunwdiskhnk.supabase.co";
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "YOUR-KEY";
+    const PROD_ORIGIN = 'https://weekend-predictor-simple.vercel.app';
+    const LOGIN_URL = PROD_ORIGIN + '/login.html';
 
-    // Create a Supabase client from the CDN global "supabase"
     function getClient() {
       return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
-    // Simple UUID v4 (uses crypto if available)
-    function uuidv4() {
-      if (crypto && crypto.randomUUID) return crypto.randomUUID();
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15) >> 0;
-        const v = c === 'x' ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      });
-    }
-
-    // ✅ Hard-coded demo fixtures (so they always render)
+    // ✅ Hard-coded demo fixtures (always render)
     const fxs = [
       { id: "demo-1", kickoff: "2099-09-01T12:30:00Z", home: "Arsenal",  away: "Newcastle" },
       { id: "demo-2", kickoff: "2099-09-01T15:00:00Z", home: "Man City", away: "Everton"   },
@@ -74,10 +73,12 @@
     function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
 
     // Elements
+    const weekLabelEl = document.getElementById('weekLabel');
     const list = document.getElementById('list');
     const whoEl = document.getElementById('who');
     const clearBtn = document.getElementById('clearBtn');
     const saveCloudBtn = document.getElementById('saveCloud');
+    const authStatus = document.getElementById('authStatus');
 
     // Restore last used name
     try { const last = localStorage.getItem('wknd-name'); if (last) whoEl.value = last; } catch {}
@@ -131,7 +132,45 @@
       }
     });
 
-    // Cloud save (no-auth)
+    // 🔐 Nice-to-have: show login status & auto-fill name if signed in
+    (async function enhanceWithAuth() {
+      try {
+        // Only if keys present
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+          authStatus.innerHTML = `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
+          return;
+        }
+        const supa = getClient();
+
+        // Read current user
+        const { data } = await supa.auth.getUser();
+        const email = data?.user?.email;
+
+        if (email) {
+          const nickname = email.split('@')[0]; // e.g., "mark" from "mark@gmail.com"
+          if (!whoEl.value) {
+            whoEl.value = nickname;
+            localStorage.setItem('wknd-name', nickname);
+          }
+          authStatus.innerHTML = `Signed in as <b>${email}</b> · <a href="${LOGIN_URL}">Manage</a>`;
+        } else {
+          authStatus.innerHTML = `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
+        }
+      } catch (e) {
+        authStatus.textContent = 'Sign-in status unavailable';
+      }
+    })();
+
+    // Cloud save (no-auth) → uses whatever is in the "Your name" box
+    function uuidv4() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15) >> 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    }
+
     async function saveAllToCloud() {
       const name = whoEl.value.trim();
       if (!name) { alert('Please type your name first'); whoEl.focus(); return; }
@@ -139,11 +178,10 @@
 
       const client = getClient();
 
-      // Build rows to insert for each entered score (and not locked)
       const rows = fxs
         .filter(f => !LOCKED(f.kickoff) && preds[f.id] && preds[f.id].home !== '' && preds[f.id].away !== '')
         .map(f => ({
-          id: uuidv4(),                // <- generate id in the browser (avoids DB default issues)
+          id: uuidv4(),
           name,
           fixture_id: f.id,
           home_goals: Number(preds[f.id].home),
@@ -154,11 +192,9 @@
 
       try {
         for (const r of rows) {
-          // Delete old row for same person + fixture
           const del = await client.from('predictions').delete().match({ name: r.name, fixture_id: r.fixture_id });
           if (del.error) throw del.error;
 
-          // Insert fresh
           const ins = await client.from('predictions').insert(r);
           if (ins.error) throw ins.error;
         }
@@ -174,6 +210,7 @@
   </script>
 </body>
 </html>
+
 
 
 
