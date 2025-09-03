@@ -49,7 +49,7 @@
     const LOGIN_URL = PROD_ORIGIN + '/login.html';
     const PROFILE_URL = PROD_ORIGIN + '/profile.html';
 
-    // Demo fixtures
+    // Demo fixtures (always visible)
     const fxs = [
       { id: "demo-1", kickoff: "2099-09-01T12:30:00Z", home: "Arsenal",  away: "Newcastle" },
       { id: "demo-2", kickoff: "2099-09-01T15:00:00Z", home: "Man City", away: "Everton"   },
@@ -61,7 +61,6 @@
     function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
     function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
 
-    const weekLabelEl = document.getElementById('weekLabel');
     const list = document.getElementById('list');
     const clearBtn = document.getElementById('clearBtn');
     const saveCloudBtn = document.getElementById('saveCloud');
@@ -103,7 +102,7 @@
       const btn = e.target.closest('button[data-save]');
       if (!btn) return;
       const id = btn.getAttribute('data-save');
-      if (!preds[id] || preds[id].home === '' || preds[id].away === '') { alert('Please enter both scores'); return; }
+      if (preds[id]?.home === '' || preds[id]?.away === '') { alert('Please enter both scores'); return; }
       savePreds(preds);
       alert('Saved on this device!');
     });
@@ -115,7 +114,6 @@
       }
     });
 
-    // Auth status + save with user_id
     async function getUser() {
       const { data } = await client.auth.getUser();
       return data?.user || null;
@@ -133,15 +131,30 @@
     function uuidv4() {
       if (crypto && crypto.randomUUID) return crypto.randomUUID();
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15) >> 0;
+        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15);
         const v = c === 'x' ? r : (r & 0x3) | 0x8;
         return v.toString(16);
       });
     }
 
+    // Ensure the user has a profile with a display_name; if not, set email prefix
+    async function ensureProfile(user) {
+      const email = user.email || '';
+      const nickname = email.split('@')[0] || 'Player';
+      const { data: prof, error } = await client
+        .from('profiles').select('id, display_name').eq('id', user.id).maybeSingle();
+      if (error) return; // ignore softly
+      if (!prof || !prof.display_name) {
+        await client.from('profiles').upsert({ id: user.id, display_name: nickname });
+      }
+    }
+
     async function saveAllToCloud() {
       const user = await getUser();
       if (!user) { alert('Please sign in first.'); location.href = LOGIN_URL; return; }
+
+      // Make sure they have a display name (so leaderboard/wall won’t show “(no name set)”)
+      await ensureProfile(user);
 
       const rows = fxs
         .filter(f => !LOCKED(f.kickoff) && preds[f.id] && preds[f.id].home !== '' && preds[f.id].away !== '')
@@ -153,13 +166,12 @@
           away_goals: Number(preds[f.id].away),
         }));
 
-      if (rows.length === 0) { alert('Nothing to save. Enter scores first.'); return; }
+      if (!rows.length) { alert('Nothing to save. Enter scores first.'); return; }
 
       try {
         for (const r of rows) {
           const del = await client.from('predictions').delete().match({ user_id: r.user_id, fixture_id: r.fixture_id });
           if (del.error) throw del.error;
-
           const ins = await client.from('predictions').insert(r);
           if (ins.error) throw ins.error;
         }
@@ -170,11 +182,12 @@
       }
     }
 
-    saveCloudBtn.addEventListener('click', saveAllToCloud);
+    document.getElementById('saveCloud').addEventListener('click', saveAllToCloud);
   });
   </script>
 </body>
 </html>
+
 
 
 
