@@ -10,7 +10,6 @@
     .box { border:1px solid #ddd; border-radius: 12px; overflow:hidden; }
     .top { display:flex; align-items:center; justify-content:space-between; padding:12px; gap:12px; flex-wrap: wrap; }
     input[type="number"] { width: 60px; padding: 8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
-    input[type="text"] { padding: 8px; border:1px solid #ccc; border-radius:8px; }
     .btn { padding:8px 12px; border:1px solid #333; border-radius:8px; background:#111; color:#fff; cursor:pointer; }
     .btn.ghost { background:#fff; color:#111; }
     .btn:disabled { opacity:0.5; cursor:not-allowed; }
@@ -24,7 +23,7 @@
 <body>
   <a href="index.html">← Back</a>
   <h1>Make Predictions</h1>
-  <p class="muted">This version saves on your device, and (optionally) to the cloud if you enter your name.</p>
+  <p class="muted">You must be signed in to save to the cloud.</p>
 
   <div id="wrap" class="box">
     <div class="top">
@@ -33,8 +32,6 @@
         <div id="authStatus" class="status"></div>
       </div>
       <div style="display:flex; align-items:center; gap:8px">
-        <label for="who">Your name:</label>
-        <input id="who" type="text" placeholder="e.g. Mark" />
         <button id="saveCloud" class="btn">Save all to cloud</button>
         <button id="clearBtn" class="btn ghost">Clear my device</button>
       </div>
@@ -42,24 +39,17 @@
     <div id="list"></div>
   </div>
 
-  <!-- Supabase browser SDK (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Shared project keys -->
   <script src="supabase-config.js"></script>
-
   <script>
   window.addEventListener('DOMContentLoaded', () => {
-    // 🔑 Supabase settings
-    const SUPABASE_URL = window.SUPABASE_URL || "https://xxqykjiuowunwdiskhnk.supabase.co";
-    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "YOUR-KEY";
+    const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+    const client = supabase.createClient(url, key);
     const PROD_ORIGIN = 'https://weekend-predictor-simple.vercel.app';
     const LOGIN_URL = PROD_ORIGIN + '/login.html';
+    const PROFILE_URL = PROD_ORIGIN + '/profile.html';
 
-    function getClient() {
-      return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
-
-    // ✅ Hard-coded demo fixtures (always render)
+    // Demo fixtures
     const fxs = [
       { id: "demo-1", kickoff: "2099-09-01T12:30:00Z", home: "Arsenal",  away: "Newcastle" },
       { id: "demo-2", kickoff: "2099-09-01T15:00:00Z", home: "Man City", away: "Everton"   },
@@ -67,21 +57,15 @@
     ];
     const LOCKED = iso => new Date() >= new Date(iso);
 
-    // Local storage helpers
     const KEY = 'wknd-preds';
     function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
     function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
 
-    // Elements
     const weekLabelEl = document.getElementById('weekLabel');
     const list = document.getElementById('list');
-    const whoEl = document.getElementById('who');
     const clearBtn = document.getElementById('clearBtn');
     const saveCloudBtn = document.getElementById('saveCloud');
     const authStatus = document.getElementById('authStatus');
-
-    // Restore last used name
-    try { const last = localStorage.getItem('wknd-name'); if (last) whoEl.value = last; } catch {}
 
     const preds = loadPreds();
 
@@ -106,7 +90,6 @@
       list.appendChild(row);
     });
 
-    // Save to device
     list.addEventListener('input', (e) => {
       const el = e.target;
       if (el.tagName !== 'INPUT') return;
@@ -132,36 +115,21 @@
       }
     });
 
-    // 🔐 Nice-to-have: show login status & auto-fill name if signed in
-    (async function enhanceWithAuth() {
-      try {
-        // Only if keys present
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-          authStatus.innerHTML = `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
-          return;
-        }
-        const supa = getClient();
+    // Auth status + save with user_id
+    async function getUser() {
+      const { data } = await client.auth.getUser();
+      return data?.user || null;
+    }
 
-        // Read current user
-        const { data } = await supa.auth.getUser();
-        const email = data?.user?.email;
-
-        if (email) {
-          const nickname = email.split('@')[0]; // e.g., "mark" from "mark@gmail.com"
-          if (!whoEl.value) {
-            whoEl.value = nickname;
-            localStorage.setItem('wknd-name', nickname);
-          }
-          authStatus.innerHTML = `Signed in as <b>${email}</b> · <a href="${LOGIN_URL}">Manage</a>`;
-        } else {
-          authStatus.innerHTML = `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
-        }
-      } catch (e) {
-        authStatus.textContent = 'Sign-in status unavailable';
+    (async function showAuth() {
+      const user = await getUser();
+      if (user?.email) {
+        authStatus.innerHTML = `Signed in as <b>${user.email}</b> · <a href="${PROFILE_URL}">Profile</a>`;
+      } else {
+        authStatus.innerHTML = `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
       }
     })();
 
-    // Cloud save (no-auth) → uses whatever is in the "Your name" box
     function uuidv4() {
       if (crypto && crypto.randomUUID) return crypto.randomUUID();
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -172,17 +140,14 @@
     }
 
     async function saveAllToCloud() {
-      const name = whoEl.value.trim();
-      if (!name) { alert('Please type your name first'); whoEl.focus(); return; }
-      localStorage.setItem('wknd-name', name);
-
-      const client = getClient();
+      const user = await getUser();
+      if (!user) { alert('Please sign in first.'); location.href = LOGIN_URL; return; }
 
       const rows = fxs
         .filter(f => !LOCKED(f.kickoff) && preds[f.id] && preds[f.id].home !== '' && preds[f.id].away !== '')
         .map(f => ({
           id: uuidv4(),
-          name,
+          user_id: user.id,
           fixture_id: f.id,
           home_goals: Number(preds[f.id].home),
           away_goals: Number(preds[f.id].away),
@@ -192,7 +157,7 @@
 
       try {
         for (const r of rows) {
-          const del = await client.from('predictions').delete().match({ name: r.name, fixture_id: r.fixture_id });
+          const del = await client.from('predictions').delete().match({ user_id: r.user_id, fixture_id: r.fixture_id });
           if (del.error) throw del.error;
 
           const ins = await client.from('predictions').insert(r);
@@ -210,6 +175,7 @@
   </script>
 </body>
 </html>
+
 
 
 
