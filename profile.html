@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>My Profile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 40px auto; max-width: 600px; padding: 16px; color:#111; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:16px; margin-top:16px; }
+    input { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; }
+    button { padding:10px 14px; border:1px solid #333; border-radius:10px; background:#111; color:#fff; cursor:pointer; }
+    .muted { color:#666; }
+    a { color:#111; }
+  </style>
+</head>
+<body>
+  <a href="index.html">← Back</a>
+  <h1>My Profile</h1>
+  <p class="muted">Set the name that appears on the Leaderboard & Wall.</p>
+
+  <div class="card">
+    <p id="status" class="muted">Checking sign-in…</p>
+    <div id="formWrap" style="display:none">
+      <label>Display name</label>
+      <input id="displayName" type="text" placeholder="e.g. Mark" />
+      <div style="margin-top:12px">
+        <button id="saveBtn">Save</button>
+      </div>
+      <p id="msg" class="muted" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    (async function () {
+      const status = document.getElementById('status');
+      const formWrap = document.getElementById('formWrap');
+      const displayName = document.getElementById('displayName');
+      const saveBtn = document.getElementById('saveBtn');
+      const msg = document.getElementById('msg');
+
+      const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+      if (!url || !key) { status.textContent = 'Missing Supabase config.'; return; }
+      const client = supabase.createClient(url, key);
+
+      const { data: userData } = await client.auth.getUser();
+      const user = userData?.user;
+      if (!user) {
+        status.innerHTML = 'Not signed in. <a href="login.html">Sign in</a>';
+        return;
+      }
+      status.innerHTML = 'Signed in as <b>' + user.email + '</b>';
+
+      // Load existing profile (if any)
+      const { data: prof } = await client.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      if (prof?.display_name) displayName.value = prof.display_name;
+
+      formWrap.style.display = 'block';
+
+      saveBtn.addEventListener('click', async () => {
+        msg.textContent = 'Saving…';
+        const dn = displayName.value.trim();
+        if (!dn) { msg.textContent = 'Please enter a name.'; return; }
+
+        // Upsert the profile row
+        const { error } = await client.from('profiles').upsert({ id: user.id, display_name: dn });
+        if (error) { msg.textContent = 'Error: ' + error.message; return; }
+        msg.textContent = 'Saved!';
+      });
+    })();
+  </script>
+</body>
+</html>
