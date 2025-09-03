@@ -16,7 +16,7 @@
 <body>
   <a href="index.html">← Back</a>
   <h1>Leaderboard</h1>
-  <p class="muted">Totals based on demo results.</p>
+  <p class="muted">Auto-updates as results finish.</p>
   <p id="msg" class="muted">Loading…</p>
 
   <table id="lb" style="display:none">
@@ -37,12 +37,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    const RESULTS = {
-      "demo-1": { home: 2, away: 1 },
-      "demo-2": { home: 3, away: 0 },
-      "demo-3": { home: 1, away: 1 },
-    };
-
     function pointsFor(pred, actual) {
       if (!actual) return { pts: 0, exact:0, gd:0, res:0, played:0 };
       const ph = Number(pred.home_goals), pa = Number(pred.away_goals);
@@ -66,39 +60,48 @@
       if (!url || !key) { msg.textContent = 'Missing Supabase config.'; return; }
       const client = supabase.createClient(url, key);
 
-      const { data: preds, error } = await client
+      // 1) load predictions (new secure rows use user_id; legacy rows may have name)
+      const { data: preds, error: e1 } = await client
         .from('predictions')
         .select('user_id, name, fixture_id, home_goals, away_goals');
+      if (e1) { msg.textContent = 'Error: ' + e1.message; return; }
+      if (!preds?.length) { msg.textContent = 'No predictions yet.'; return; }
 
-      if (error) { msg.textContent = 'Error: ' + error.message; return; }
-      if (!preds || preds.length === 0) { msg.textContent = 'No predictions yet.'; return; }
+      // 2) load finished fixtures only (actual results)
+      const { data: fixes, error: e2 } = await client
+        .from('fixtures')
+        .select('id, home_score, away_score, status')
+        .eq('status','FINISHED');
+      if (e2) { msg.textContent = 'Error: ' + e2.message; return; }
 
-      // Map user_id -> totals
+      const results = {};
+      (fixes||[]).forEach(f => results[f.id] = { home: f.home_score, away: f.away_score });
+
+      // 3) aggregate points
       const totals = {};
       const userIds = new Set();
 
       for (const row of preds) {
-        const who = row.user_id || row.name || '(anon)';
+        const whoKey = row.user_id || row.name || '(anon)';
         if (row.user_id) userIds.add(row.user_id);
-        if (!totals[who]) totals[who] = { who, pts:0, played:0, exact:0, gd:0, res:0, user_id: row.user_id || null, legacy: row.user_id ? 0 : 1 };
-        const s = pointsFor(row, RESULTS[row.fixture_id]);
-        totals[who].pts    += s.pts;
-        totals[who].played += s.played;
-        totals[who].exact  += s.exact;
-        totals[who].gd     += s.gd;
-        totals[who].res    += s.res;
+        const s = pointsFor(row, results[row.fixture_id]);
+        if (!totals[whoKey]) totals[whoKey] = { whoKey, pts:0, played:0, exact:0, gd:0, res:0, user_id: row.user_id || null, legacy: row.user_id ? 0 : 1 };
+        totals[whoKey].pts    += s.pts;
+        totals[whoKey].played += s.played;
+        totals[whoKey].exact  += s.exact;
+        totals[whoKey].gd     += s.gd;
+        totals[whoKey].res    += s.res;
       }
 
-      // Load profiles for user IDs
+      // 4) resolve display names from profiles
       let namesById = {};
       if (userIds.size) {
         const { data: profiles } = await client.from('profiles').select('id, display_name').in('id', Array.from(userIds));
         (profiles||[]).forEach(p => { namesById[p.id] = p.display_name || ''; });
       }
 
-      // Build final rows
       const rows = Object.values(totals).map(r => {
-        const label = r.user_id ? (namesById[r.user_id] || '(no name set)') : r.who; // legacy rows show 'name'
+        const label = r.user_id ? (namesById[r.user_id] || '(no name set)') : r.whoKey;
         return { label, ...r };
       }).sort((a,b) => b.pts - a.pts || a.label.localeCompare(b.label));
 
@@ -119,13 +122,14 @@
         tbody.appendChild(tr);
       });
 
-      msg.textContent = `Loaded ${preds.length} predictions from ${rows.length} player(s).`;
+      msg.textContent = 'Live from fixtures + results.';
       table.style.display = '';
     }
 
     loadLeaderboard();
-    setInterval(loadLeaderboard, 10000);
+    setInterval(loadLeaderboard, 20000); // refresh every 20s
   </script>
 </body>
 </html>
+
 
