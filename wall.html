@@ -11,7 +11,6 @@
     th { background:#f3f4f6; }
     h1 { margin-bottom: 0; }
     .muted { color:#666; font-size:14px; }
-    #msg { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -26,14 +25,13 @@
       <tr>
         <th>Name</th>
         <th>Fixture</th>
-        <th>Home Goals</th>
-        <th>Away Goals</th>
+        <th>Home</th>
+        <th>Away</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
-  <!-- Supabase SDK + your project keys -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
@@ -42,54 +40,54 @@
       const table = document.getElementById('predTable');
       const tbody = table.querySelector('tbody');
 
-      // Use the same config file as the rest of the site
-      const url = window.SUPABASE_URL;
-      const key = window.SUPABASE_ANON_KEY;
-
-      if (!url || !key) {
-        msg.textContent = 'Supabase config missing. Check supabase-config.js';
-        return;
-      }
-
+      const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+      if (!url || !key) { msg.textContent = 'Missing Supabase config.'; return; }
       const client = supabase.createClient(url, key);
 
-      // Fetch rows (no fragile order-by). If you have many rows, limit to 200.
-      const { data, error } = await client
+      // 1) get predictions (new: user_id; old rows may have name)
+      const { data: preds, error } = await client
         .from('predictions')
-        .select('name, fixture_id, home_goals, away_goals'); // add created_at here if your table has it
+        .select('user_id, name, fixture_id, home_goals, away_goals');
 
-      if (error) {
-        console.error(error);
-        msg.textContent = 'Error loading predictions: ' + (error.message || 'unknown');
-        return;
+      if (error) { msg.textContent = 'Error: ' + error.message; return; }
+      if (!preds || preds.length === 0) { msg.textContent = 'No picks yet.'; return; }
+
+      // 2) collect user_ids that exist
+      const userIds = [...new Set(preds.map(r => r.user_id).filter(Boolean))];
+
+      // 3) load profiles for names
+      let namesById = {};
+      if (userIds.length) {
+        const { data: profiles } = await client
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds);
+        (profiles || []).forEach(p => { namesById[p.id] = p.display_name || ''; });
       }
 
-      if (!data || data.length === 0) {
-        msg.textContent = 'No picks saved yet.';
-        table.style.display = 'none';
-        return;
-      }
-
-      // Show table
-      msg.textContent = `Loaded ${data.length} row(s).`;
+      // 4) render
       tbody.innerHTML = '';
-      data.forEach(row => {
+      preds.forEach(r => {
+        const label = r.user_id ? (namesById[r.user_id] || '(no name set)') : (r.name || '(anon)');
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${row.name ?? ''}</td>
-          <td>${row.fixture_id}</td>
-          <td>${row.home_goals}</td>
-          <td>${row.away_goals}</td>
+          <td>${label}</td>
+          <td>${r.fixture_id}</td>
+          <td>${r.home_goals}</td>
+          <td>${r.away_goals}</td>
         `;
         tbody.appendChild(tr);
       });
+
+      msg.textContent = `Loaded ${preds.length} row(s).`;
       table.style.display = '';
     }
 
-    // auto-refresh every 10s (optional). Comment out if you don’t want it.
     loadPredictions();
     setInterval(loadPredictions, 10000);
   </script>
 </body>
 </html>
+
 
