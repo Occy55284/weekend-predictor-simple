@@ -11,14 +11,12 @@
     table { border-collapse: collapse; width:100%; margin-top:16px; }
     th, td { border:1px solid #ddd; padding:8px; text-align:center; }
     th { background:#f3f4f6; }
-    .right { text-align:right; }
   </style>
 </head>
 <body>
   <a href="index.html">← Back</a>
   <h1>Leaderboard</h1>
-  <p class="muted">Totals based on demo results (change these later when we add a results page).</p>
-
+  <p class="muted">Totals based on demo results.</p>
   <p id="msg" class="muted">Loading…</p>
 
   <table id="lb" style="display:none">
@@ -36,18 +34,15 @@
     <tbody></tbody>
   </table>
 
-  <!-- Supabase SDK + your project keys -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // 🔧 DEMO RESULTS — edit these for your week (fixture_id : score)
     const RESULTS = {
-      "demo-1": { home: 2, away: 1 }, // Arsenal 2–1 Newcastle
-      "demo-2": { home: 3, away: 0 }, // Man City 3–0 Everton
-      "demo-3": { home: 1, away: 1 }, // Chelsea 1–1 Spurs
+      "demo-1": { home: 2, away: 1 },
+      "demo-2": { home: 3, away: 0 },
+      "demo-3": { home: 1, away: 1 },
     };
 
-    // Scoring: 3 for correct result (W/D/L), +1 correct goal diff, +1 exact score (cap 5)
     function pointsFor(pred, actual) {
       if (!actual) return { pts: 0, exact:0, gd:0, res:0, played:0 };
       const ph = Number(pred.home_goals), pa = Number(pred.away_goals);
@@ -57,13 +52,8 @@
       const correctRes = pRes === aRes ? 1 : 0;
       const correctGD  = (ph - pa) === (ah - aa) ? 1 : 0;
       const exact      = (ph === ah && pa === aa) ? 1 : 0;
-
-      let pts = 0;
-      if (correctRes) pts += 3;
-      if (correctGD)  pts += 1;
-      if (exact)      pts += 1;
-      if (pts > 5)    pts = 5; // cap
-
+      let pts = (correctRes ? 3 : 0) + (correctGD ? 1 : 0) + (exact ? 1 : 0);
+      if (pts > 5) pts = 5;
       return { pts, exact, gd: correctGD, res: correctRes, played:1 };
     }
 
@@ -72,59 +62,54 @@
       const table = document.getElementById('lb');
       const tbody = table.querySelector('tbody');
 
-      const url = window.SUPABASE_URL;
-      const key = window.SUPABASE_ANON_KEY;
-      if (!url || !key) {
-        msg.textContent = 'Supabase config missing. Check supabase-config.js';
-        return;
-      }
+      const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+      if (!url || !key) { msg.textContent = 'Missing Supabase config.'; return; }
       const client = supabase.createClient(url, key);
 
-      // Grab all predictions
-      const { data, error } = await client
+      const { data: preds, error } = await client
         .from('predictions')
-        .select('name, fixture_id, home_goals, away_goals');
+        .select('user_id, name, fixture_id, home_goals, away_goals');
 
-      if (error) {
-        console.error(error);
-        msg.textContent = 'Error loading predictions: ' + (error.message || 'unknown');
-        return;
+      if (error) { msg.textContent = 'Error: ' + error.message; return; }
+      if (!preds || preds.length === 0) { msg.textContent = 'No predictions yet.'; return; }
+
+      // Map user_id -> totals
+      const totals = {};
+      const userIds = new Set();
+
+      for (const row of preds) {
+        const who = row.user_id || row.name || '(anon)';
+        if (row.user_id) userIds.add(row.user_id);
+        if (!totals[who]) totals[who] = { who, pts:0, played:0, exact:0, gd:0, res:0, user_id: row.user_id || null, legacy: row.user_id ? 0 : 1 };
+        const s = pointsFor(row, RESULTS[row.fixture_id]);
+        totals[who].pts    += s.pts;
+        totals[who].played += s.played;
+        totals[who].exact  += s.exact;
+        totals[who].gd     += s.gd;
+        totals[who].res    += s.res;
       }
 
-      if (!data || data.length === 0) {
-        msg.textContent = 'No predictions saved yet.';
-        return;
+      // Load profiles for user IDs
+      let namesById = {};
+      if (userIds.size) {
+        const { data: profiles } = await client.from('profiles').select('id, display_name').in('id', Array.from(userIds));
+        (profiles||[]).forEach(p => { namesById[p.id] = p.display_name || ''; });
       }
 
-      // Aggregate per person
-      const byName = {};
-      for (const row of data) {
-        if (!row.name) continue;
-        const score = pointsFor(row, RESULTS[row.fixture_id]);
-        if (!byName[row.name]) {
-          byName[row.name] = { name: row.name, pts:0, played:0, exact:0, gd:0, res:0 };
-        }
-        byName[row.name].pts    += score.pts;
-        byName[row.name].played += score.played;
-        byName[row.name].exact  += score.exact;
-        byName[row.name].gd     += score.gd;
-        byName[row.name].res    += score.res;
-      }
+      // Build final rows
+      const rows = Object.values(totals).map(r => {
+        const label = r.user_id ? (namesById[r.user_id] || '(no name set)') : r.who; // legacy rows show 'name'
+        return { label, ...r };
+      }).sort((a,b) => b.pts - a.pts || a.label.localeCompare(b.label));
 
-      // Sort by points desc, then name
-      const rows = Object.values(byName).sort((a,b) => b.pts - a.pts || a.name.localeCompare(b.name));
-      if (rows.length === 0) {
-        msg.textContent = 'No scored predictions yet (update the DEMO RESULTS if needed).';
-        return;
-      }
+      if (!rows.length) { msg.textContent = 'No scored predictions yet.'; return; }
 
-      // Render
       tbody.innerHTML = '';
       rows.forEach((r, i) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${i+1}</td>
-          <td>${r.name}</td>
+          <td>${r.label}</td>
           <td><b>${r.pts}</b></td>
           <td>${r.played}</td>
           <td>${r.exact}</td>
@@ -134,13 +119,13 @@
         tbody.appendChild(tr);
       });
 
-      msg.textContent = `Loaded ${data.length} predictions from ${rows.length} player(s).`;
+      msg.textContent = `Loaded ${preds.length} predictions from ${rows.length} player(s).`;
       table.style.display = '';
     }
 
     loadLeaderboard();
-    // auto-refresh every 10s (optional)
     setInterval(loadLeaderboard, 10000);
   </script>
 </body>
 </html>
+
