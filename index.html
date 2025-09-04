@@ -16,78 +16,25 @@
       flex-direction: column;
       align-items: center;
     }
-
-    header {
-      text-align: center;
-      margin: 40px 0 24px 0;
-    }
-
-    header img {
-      width: 90px;
-    }
-
-    header h1 {
-      margin-top: 12px;
-      color: #facc15;
-      font-size: 2rem;
-    }
-
-    header p {
-      color: #ddd;
-      margin-top: 6px;
-    }
-
+    header { text-align: center; margin: 40px 0 24px 0; }
+    header img { width: 90px; }
+    header h1 { margin-top: 12px; color: #facc15; font-size: 2rem; }
+    header p { color: #ddd; margin-top: 6px; }
     .card {
       background: rgba(255, 255, 255, 0.9);
-      color: #111;
-      border-radius: 16px;
-      padding: 20px;
-      margin: 16px auto;
-      max-width: 800px;
+      color: #111; border-radius: 16px; padding: 20px;
+      margin: 16px auto; max-width: 800px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-
-    .btn {
-      display: inline-block;
-      padding: 12px 16px;
-      border-radius: 12px;
-      text-decoration: none;
-      color: #111;
-      background: #facc15;
-      font-weight: bold;
-      margin: 6px;
-      transition: transform 0.15s ease;
-    }
-
-    .btn:hover {
-      transform: scale(1.05);
-    }
-
-    .btn-ghost {
-      background: #fff;
-      color: #111;
-    }
-
-    .btn-row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-      justify-content: center;
-    }
-
-    h2 {
-      margin-bottom: 8px;
-    }
-
-    ul {
-      margin: 0;
-      padding-left: 20px;
-    }
-
-    .muted {
-      color: #555;
-    }
+    .btn { display: inline-block; padding: 12px 16px; border-radius: 12px;
+      text-decoration: none; color: #111; background: #facc15; font-weight: bold;
+      margin: 6px; transition: transform 0.15s ease; }
+    .btn:hover { transform: scale(1.05); }
+    .btn-ghost { background: #fff; color: #111; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
+    .muted { color: #555; }
+    /* Hide content until we know auth status (prevents flicker) */
+    #app { display:none; }
   </style>
 </head>
 <body>
@@ -95,16 +42,64 @@
   <header>
     <img src="https://cdn-icons-png.flaticon.com/512/1975/1975116.png" alt="Football Icon" />
     <h1>Weekend Predictor</h1>
-    <p>Pick scores • Beat your mates • Claim bragging rights</p>
+    <p class="muted">Pick scores • Beat your mates • Claim bragging rights</p>
   </header>
 
-  <div class="card">
-    <h2>Get started</h2>
-    <p>This version saves on your device, and you can also save to the cloud to share with mates.</p>
-    <div class="btn-row">
-      <a class="btn" href="predict.html">Make Predictions →</a>
-      <a class="btn" href="leaderboard.html">View Leaderboard →</a>
-      <a class="btn btn-ghost" href="wall.html">View Predictions Wall
+  <div id="app">
+    <div class="card">
+      <h2>Get started</h2>
+      <p>This version saves on your device, and you can also save to the cloud to share with mates.</p>
+      <div class="btn-row">
+        <a class="btn" href="predict.html">Make Predictions →</a>
+        <a class="btn" href="leaderboard.html">View Leaderboard →</a>
+        <a class="btn btn-ghost" href="wall.html">View Predictions Wall →</a>
+        <a class="btn btn-ghost" href="profile.html">My Profile →</a>
+        <a class="btn btn-ghost" href="login.html">Sign in →</a>
+        <a class="btn btn-ghost" href="admin.html">Admin →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Scoring</h2>
+      <ul>
+        <li>3 points for correct result (win/draw/loss)</li>
+        <li>+1 for correct goal difference</li>
+        <li>+1 for exact score (max 5 per match)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Supabase: check auth and redirect if needed -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    (async function () {
+      const PROD_ORIGIN = 'https://weekend-predictor-simple.vercel.app';
+      const LOGIN_URL = PROD_ORIGIN + '/login.html';
+
+      const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+      if (!url || !key) {
+        // If config is missing, just show the page (so you can fix config)
+        document.getElementById('app').style.display = 'block';
+        return;
+      }
+
+      const supa = supabase.createClient(url, key);
+      const { data } = await supa.auth.getUser();
+
+      if (!data?.user) {
+        // Not signed in: send straight to login
+        window.location.href = LOGIN_URL;
+        return;
+      }
+
+      // Signed in: show the normal homepage
+      document.getElementById('app').style.display = 'block';
+    })();
+  </script>
+</body>
+</html>
+
 
 
 
