@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin – Featured Fixtures</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px auto; max-width: 900px; padding: 16px; color:#111; }
+    .muted { color:#666; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid #eee; }
+    .btn { padding:8px 12px; border:1px solid #333; border-radius:8px; background:#111; color:#fff; cursor:pointer; }
+    .btn.ghost { background:#fff; color:#111; }
+    .bar { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+    input[type="checkbox"] { transform: scale(1.2); }
+    .tag { background:#f3f4f6; border-radius:12px; padding:2px 8px; font-size:12px; color:#374151; }
+  </style>
+</head>
+<body>
+  <a href="index.html">← Back</a>
+  <h1>Admin · Featured Fixtures</h1>
+  <p class="muted">Select exactly the fixtures you want players to see on the Predict page.</p>
+
+  <p id="auth" class="muted">Checking sign-in…</p>
+
+  <div id="controls" style="display:none">
+    <div class="bar">
+      <button id="btnEarliest5" class="btn">Pick earliest 5 upcoming</button>
+      <button id="btnClear" class="btn ghost">Clear featured</button>
+      <button id="btnSave" class="btn">Save selected as featured</button>
+    </div>
+    <p id="msg" class="muted"></p>
+    <div id="list"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    // 👇 Set your admin email (must match the RLS policy)
+    const ADMIN_EMAIL = 'you@example.com'; // <-- CHANGE THIS
+
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+    const authEl = document.getElementById('auth');
+    const controls = document.getElementById('controls');
+    const list = document.getElementById('list');
+    const msg = document.getElementById('msg');
+    const btnEarliest5 = document.getElementById('btnEarliest5');
+    const btnClear = document.getElementById('btnClear');
+    const btnSave = document.getElementById('btnSave');
+
+    async function getUser() {
+      const { data } = await client.auth.getUser();
+      return data?.user || null;
+    }
+
+    async function requireAdmin() {
+      const user = await getUser();
+      if (!user?.email) {
+        authEl.innerHTML = 'Not signed in. <a href="login.html">Sign in</a>';
+        return null;
+      }
+      if (user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        authEl.textContent = `Signed in as ${user.email} · You are not authorized for admin actions.`;
+        return null;
+      }
+      authEl.innerHTML = `Signed in as <b>${user.email}</b> · Admin`;
+      controls.style.display = 'block';
+      return user;
+    }
+
+    function render(fixtures) {
+      list.innerHTML = '';
+      if (!fixtures.length) {
+        list.innerHTML = '<p class="muted">No fixtures in database. Run the sync function, then refresh.</p>';
+        return;
+      }
+      fixtures.forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const dt = new Date(f.utc_date).toLocaleString(undefined, { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+        row.innerHTML = `
+          <div>
+            <div><b>${f.home_team}</b> vs <b>${f.away_team}</b></div>
+            <div class="muted">${dt} • <span class="tag">${f.status}</span></div>
+          </div>
+          <label style="display:flex; align-items:center; gap:8px">
+            <input type="checkbox" data-id="${f.id}" ${f.featured ? 'checked' : ''} />
+            <span>Featured</span>
+          </label>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    async function loadAllFixtures() {
+      msg.textContent = 'Loading fixtures…';
+      const { data, error } = await client
+        .from('fixtures')
+        .select('id, utc_date, status, home_team, away_team, featured')
+        .order('utc_date', { ascending: true })
+        .limit(200);
+      if (error) { msg.textContent = 'Error: ' + error.message; return []; }
+      msg.textContent = `Loaded ${data.length} fixtures.`;
+      return data || [];
+    }
+
+    // Actions
+    btnEarliest5.addEventListener('click', async () => {
+      msg.textContent = 'Selecting earliest 5 upcoming…';
+      // Clear all
+      let { error: e1 } = await client.from('fixtures').update({ featured: false }).neq('featured', false);
+      if (e1) { msg.textContent = 'Error: ' + e1.message; return; }
+
+      // Find earliest 5 upcoming in the DB
+      const nowIso = new Date().toISOString();
+      const { data: picks, error: e2 } = await client
+        .from('fixtures')
+        .select('id')
+        .in('status', ['SCHEDULED','TIMED'])
+        .gte('utc_date', nowIso)
+        .order('utc_date', { ascending: true })
+        .limit(5);
+      if (e2) { msg.textContent = 'Error: ' + e2.message; return; }
+
+      if (!picks?.length) { msg.textContent = 'No upcoming fixtures found.'; return; }
+
+      const ids = picks.map(r => r.id);
+      const { error: e3 } = await client.from('fixtures').update({ featured: true }).in('id', ids);
+      if (e3) { msg.textContent = 'Error: ' + e3.message; return; }
+
+      msg.textContent = `Marked ${ids.length} fixture(s) as featured. Refreshing…`;
+      const all = await loadAllFixtures();
+      render(all);
+    });
+
+    btnClear.addEventListener('click', async () => {
+      if (!confirm('Clear featured on all fixtures?')) return;
+      const { error } = await client.from('fixtures').update({ featured: false }).neq('featured', false);
+      if (error) { msg.textContent = 'Error: ' + error.message; return; }
+      msg.textContent = 'Cleared featured.';
+      const all = await loadAllFixtures();
+      render(all);
+    });
+
+    btnSave.addEventListener('click', async () => {
+      msg.textContent = 'Saving selections…';
+      const checks = Array.from(document.querySelectorAll('input[type="checkbox"][data-id]'));
+      const selected = checks.filter(c => c.checked).map(c => c.getAttribute('data-id'));
+      // First clear all, then set selected true
+      let { error: e1 } = await client.from('fixtures').update({ featured: false }).neq('featured', false);
+      if (e1) { msg.textContent = 'Error: ' + e1.message; return; }
+      if (selected.length) {
+        let { error: e2 } = await client.from('fixtures').update({ featured: true }).in('id', selected);
+        if (e2) { msg.textContent = 'Error: ' + e2.message; return; }
+      }
+      msg.textContent = `Saved ${selected.length} featured fixture(s).`;
+      const all = await loadAllFixtures();
+      render(all);
+    });
+
+    (async function init(){
+      const user = await requireAdmin();
+      if (!user) return;
+      const all = await loadAllFixtures();
+      render(all);
+    })();
+  </script>
+</body>
+</html>
