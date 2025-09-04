@@ -5,18 +5,98 @@
   <title>Weekend Football Predictor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px auto; max-width: 800px; padding: 16px; color:#111; }
-    .card { border:1px solid #ddd; border-radius: 12px; padding:16px; margin-top:16px; }
-    .btn { display:inline-block; padding:12px 16px; border:1px solid #333; border-radius:10px; text-decoration:none; color:#fff; background:#111; }
-    .btn-ghost { background:#fff; color:#111; }
-    .btn-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; }
-    h1 { margin-bottom: 6px; }
-    .muted { color:#666; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      margin: 0;
+      padding: 0 16px;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      text-align: center;
+      margin: 40px 0 24px 0;
+    }
+
+    header img {
+      width: 90px;
+    }
+
+    header h1 {
+      margin-top: 12px;
+      color: #facc15;
+      font-size: 2rem;
+    }
+
+    header p {
+      color: #ddd;
+      margin-top: 6px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      color: #111;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 16px auto;
+      max-width: 800px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 16px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: #111;
+      background: #facc15;
+      font-weight: bold;
+      margin: 6px;
+      transition: transform 0.15s ease;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+    }
+
+    .btn-ghost {
+      background: #fff;
+      color: #111;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      justify-content: center;
+    }
+
+    h2 {
+      margin-bottom: 8px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .muted {
+      color: #555;
+    }
   </style>
 </head>
 <body>
-  <h1>Weekend Football Predictor</h1>
-  <p class="muted">Pick scores before kickoff, then check who did best.</p>
+
+  <header>
+    <img src="https://cdn-icons-png.flaticon.com/512/1975/1975116.png" alt="Football Icon" />
+    <h1>Weekend Predictor</h1>
+    <p>Pick scores • Beat your mates • Claim bragging rights</p>
+  </header>
 
   <div class="card">
     <h2>Get started</h2>
@@ -24,21 +104,7 @@
     <div class="btn-row">
       <a class="btn" href="predict.html">Make Predictions →</a>
       <a class="btn" href="leaderboard.html">View Leaderboard →</a>
-      <a class="btn btn-ghost" href="wall.html">View Predictions Wall →</a>
-      <a class="btn btn-ghost" href="profile.html">My Profile →</a>
-      <a class="btn btn-ghost" href="login.html">Sign in →</a>
-    </div>
-  </div>
+      <a class="btn btn-ghost" href="wall.html">View Predictions Wall
 
-  <div class="card">
-    <h2>Scoring</h2>
-    <ul>
-      <li>3 points for correct result (win/draw/loss)</li>
-      <li>+1 for correct goal difference</li>
-      <li>+1 for exact score (max 5 per match)</li>
-    </ul>
-  </div>
-</body>
-</html>
 
 
