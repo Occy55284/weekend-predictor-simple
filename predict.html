@@ -42,13 +42,13 @@
 <body>
   <header>
     <h1>Make Predictions</h1>
-    <p class="muted">Only the 5 featured fixtures are shown below</p>
+    <p class="muted">Shows featured fixtures, or next 5 upcoming if none set</p>
   </header>
 
   <div class="card">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
       <div>
-        <div><b>This weekend</b> <span id="weekLabel" class="pill">Featured fixtures</span></div>
+        <div><b>This weekend</b> <span id="weekLabel" class="pill">Fixtures</span></div>
         <div id="authStatus" class="muted"></div>
       </div>
       <div style="display:flex; gap:8px;">
@@ -63,11 +63,170 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // same JS you already had (with featured filter)
-    // ...
+  window.addEventListener('DOMContentLoaded', () => {
+    const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+    const client = supabase.createClient(url, key);
+    const PROD = 'https://weekend-predictor-simple.vercel.app';
+    const LOGIN_URL = PROD + '/login.html';
+
+    const KEY = 'wknd-preds';
+    function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
+    function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
+
+    const list = document.getElementById('list');
+    const clearBtn = document.getElementById('clearBtn');
+    const saveCloudBtn = document.getElementById('saveCloud');
+    const authStatus = document.getElementById('authStatus');
+    const preds = loadPreds();
+
+    function LOCKED(iso){ return new Date() >= new Date(iso); }
+
+    async function getUser() {
+      const { data } = await client.auth.getUser();
+      return data?.user || null;
+    }
+
+    (async function showAuth() {
+      const user = await getUser();
+      authStatus.innerHTML = user?.email
+        ? `Signed in as <b>${user.email}</b>`
+        : `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
+    })();
+
+    // 👉 Load featured first; fallback to upcoming 5 if none
+    async function loadFixtures() {
+      // Try featured
+      let { data, error } = await client
+        .from('fixtures')
+        .select('id, utc_date, status, home_team, away_team')
+        .eq('featured', true)
+        .order('utc_date', { ascending: true });
+
+      if (error) { list.innerHTML = '<p class="muted">Error loading fixtures.</p>'; return []; }
+      if (data && data.length) return data;
+
+      // Fallback: next 5 upcoming
+      const nowIso = new Date().toISOString();
+      const { data: fallback } = await client
+        .from('fixtures')
+        .select('id, utc_date, status, home_team, away_team')
+        .in('status', ['SCHEDULED','TIMED'])
+        .gte('utc_date', nowIso)
+        .order('utc_date', { ascending: true })
+        .limit(5);
+
+      return fallback || [];
+    }
+
+    function render(fixtures) {
+      list.innerHTML = '';
+      if (!fixtures.length) {
+        list.innerHTML = '<p class="muted">No fixtures yet. Try running sync.</p>';
+        return;
+      }
+      fixtures.forEach(f => {
+        const p = preds[f.id] || { home:'', away:'' };
+        const time = new Date(f.utc_date).toLocaleString(undefined, { weekday:'short', hour:'2-digit', minute:'2-digit' });
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:600">${f.home_team} vs ${f.away_team}</div>
+            <div class="muted">${time} • ${f.status}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px">
+            <input type="number" min="0" ${LOCKED(f.utc_date) ? 'disabled' : ''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
+            <span class="muted">–</span>
+            <input type="number" min="0" ${LOCKED(f.utc_date) ? 'disabled' : ''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
+            <button class="btn" ${LOCKED(f.utc_date) ? 'disabled' : ''} data-save="${f.id}">${LOCKED(f.utc_date) ? 'Closed' : 'Save'}</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    // Local save handlers
+    list.addEventListener('input', (e) => {
+      const el = e.target;
+      if (el.tagName !== 'INPUT') return;
+      const id = el.getAttribute('data-id');
+      const side = el.getAttribute('data-side');
+      const predsAll = loadPreds();
+      predsAll[id] = predsAll[id] || { home:'', away:'' };
+      predsAll[id][side] = el.value;
+      savePreds(predsAll);
+    });
+
+    list.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-save]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-save');
+      const predsAll = loadPreds();
+      if (!predsAll[id] || predsAll[id].home === '' || predsAll[id].away === '') { alert('Please enter both scores'); return; }
+      alert('Saved on this device!');
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Clear all your saved picks on this device?')) {
+        localStorage.removeItem(KEY);
+        location.reload();
+      }
+    });
+
+    function uuidv4(){ return crypto.randomUUID ? crypto.randomUUID() :
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15);
+        const v = c === 'x' ? r : (r & 0x3) | 0x8; return v.toString(16);
+      });
+    }
+
+    async function saveAllToCloud() {
+      const user = await getUser();
+      if (!user) { alert('Please sign in first.'); location.href = LOGIN_URL; return; }
+
+      const inputs = list.querySelectorAll('input[data-id]');
+      const ids = new Set(Array.from(inputs).map(i => i.getAttribute('data-id')));
+
+      const predsAll = loadPreds();
+      const rows = Array.from(ids).map(id => {
+        const p = predsAll[id];
+        if (!p || p.home === '' || p.away === '') return null;
+        return {
+          id: uuidv4(),
+          user_id: user.id,
+          fixture_id: id,
+          home_goals: Number(p.home),
+          away_goals: Number(p.away),
+        };
+      }).filter(Boolean);
+
+      if (!rows.length) { alert('Nothing to save. Enter scores first.'); return; }
+
+      try {
+        for (const r of rows) {
+          const del = await client.from('predictions').delete().match({ user_id: r.user_id, fixture_id: r.fixture_id });
+          if (del.error) throw del.error;
+          const ins = await client.from('predictions').insert(r);
+          if (ins.error) throw ins.error;
+        }
+        alert('Saved to cloud! 🎉');
+      } catch (err) {
+        console.error('Supabase error:', err);
+        alert('Supabase error: ' + (err?.message || 'unknown'));
+      }
+    }
+
+    saveCloudBtn.addEventListener('click', saveAllToCloud);
+
+    (async function init(){
+      const fixtures = await loadFixtures();
+      render(fixtures);
+    })();
+  });
   </script>
 </body>
 </html>
+
 
 
 
