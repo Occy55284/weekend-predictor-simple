@@ -23,12 +23,12 @@
 <body>
   <a href="index.html">← Back</a>
   <h1>Make Predictions</h1>
-  <p class="muted">You must be signed in to save to the cloud.</p>
+  <p class="muted">Only the 5 games you’ve marked as “featured” will appear here.</p>
 
   <div class="box">
     <div class="top">
       <div>
-        <div><b>This weekend</b> <span id="weekLabel" class="pill">Live fixtures</span></div>
+        <div><b>This weekend</b> <span id="weekLabel" class="pill">Featured fixtures</span></div>
         <div id="authStatus" class="status"></div>
       </div>
       <div style="display:flex; align-items:center; gap:8px">
@@ -72,14 +72,13 @@
         : `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
     })();
 
-    // Load fixtures from Supabase (this weekend = we just load anything that's SCHEDULED/TIMED from fixtures)
+    // 👉 Load only featured fixtures
     async function loadFixtures() {
       const { data, error } = await client
         .from('fixtures')
         .select('id, utc_date, status, home_team, away_team')
-        .in('status', ['SCHEDULED','TIMED','IN_PLAY','PAUSED','FINISHED'])
-        .order('utc_date', { ascending: true })
-        .limit(50);
+        .eq('featured', true)
+        .order('utc_date', { ascending: true });
 
       if (error) { list.innerHTML = '<p class="muted">Error loading fixtures.</p>'; return []; }
       return data || [];
@@ -88,7 +87,7 @@
     function render(fixtures) {
       list.innerHTML = '';
       if (!fixtures.length) {
-        list.innerHTML = '<p class="muted">No fixtures yet. The server will fetch them shortly — check back in a minute.</p>';
+        list.innerHTML = '<p class="muted">No featured fixtures yet. Mark 5 in Supabase and refresh.</p>';
         return;
       }
       fixtures.forEach(f => {
@@ -118,16 +117,18 @@
       if (el.tagName !== 'INPUT') return;
       const id = el.getAttribute('data-id');
       const side = el.getAttribute('data-side');
-      preds[id] = preds[id] || { home:'', away:'' };
-      preds[id][side] = el.value;
+      const predsAll = loadPreds();
+      predsAll[id] = predsAll[id] || { home:'', away:'' };
+      predsAll[id][side] = el.value;
+      savePreds(predsAll);
     });
 
     list.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-save]');
       if (!btn) return;
       const id = btn.getAttribute('data-save');
-      if (!preds[id] || preds[id].home === '' || preds[id].away === '') { alert('Please enter both scores'); return; }
-      savePreds(preds);
+      const predsAll = loadPreds();
+      if (!predsAll[id] || predsAll[id].home === '' || predsAll[id].away === '') { alert('Please enter both scores'); return; }
       alert('Saved on this device!');
     });
 
@@ -149,12 +150,12 @@
       const user = await getUser();
       if (!user) { alert('Please sign in first.'); location.href = LOGIN_URL; return; }
 
-      // Read the fixtures currently shown
       const inputs = list.querySelectorAll('input[data-id]');
       const ids = new Set(Array.from(inputs).map(i => i.getAttribute('data-id')));
 
+      const predsAll = loadPreds();
       const rows = Array.from(ids).map(id => {
-        const p = preds[id];
+        const p = predsAll[id];
         if (!p || p.home === '' || p.away === '') return null;
         return {
           id: uuidv4(),
@@ -191,6 +192,7 @@
   </script>
 </body>
 </html>
+
 
 
 
