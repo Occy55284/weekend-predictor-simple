@@ -7,28 +7,24 @@
   <style>
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0;
-      padding: 0 16px;
-      min-height: 100vh;
+      margin: 0; padding: 0 16px; min-height: 100vh;
       background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
       color: #fff;
     }
-
     header { text-align: center; margin: 40px 0 24px 0; }
     header h1 { margin-top: 12px; color: #facc15; }
     header p { color: #ddd; }
-
     .card {
       background: rgba(255,255,255,0.95);
-      color: #111;
-      border-radius: 16px;
-      padding: 20px;
-      margin: 16px auto;
-      max-width: 900px;
+      color: #111; border-radius: 16px; padding: 20px;
+      margin: 16px auto; max-width: 900px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-
     .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-top:1px solid #eee; }
+    .teams { display:flex; align-items:center; gap:10px; }
+    .pair { display:flex; align-items:center; gap:12px; }
+    .team { display:flex; align-items:center; gap:8px; min-width: 180px; }
+    .crest { width: 24px; height: 24px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
     input[type="number"] { width: 60px; padding: 8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
     .btn { padding:10px 14px; border-radius:12px; background:#facc15; color:#111; font-weight:bold; border:none; cursor:pointer; transition:transform 0.15s ease; }
     .btn:hover { transform: scale(1.05); }
@@ -37,6 +33,10 @@
     .muted { color:#555; font-size:12px; }
     .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
     a { color:#facc15; }
+    @media (max-width: 640px){
+      .team { min-width: auto; }
+      .pair { flex-wrap: wrap; gap: 6px; }
+    }
   </style>
 </head>
 <body>
@@ -69,6 +69,67 @@
     const PROD = 'https://weekend-predictor-simple.vercel.app';
     const LOGIN_URL = PROD + '/login.html';
 
+    // --- Simple crest map (Premier League) ---
+    // We map common names & aliases to a crest URL.
+    // If a name isn’t found, we fall back to a simple emoji ball.
+    const CRESTS = {
+      // Arsenal / Villa / Bournemouth / Brentford
+      'Arsenal': 'https://resources.premierleague.com/premierleague/badges/70/t3.png',
+      'Arsenal FC': 'https://resources.premierleague.com/premierleague/badges/70/t3.png',
+      'Aston Villa': 'https://resources.premierleague.com/premierleague/badges/70/t7.png',
+      'Aston Villa FC': 'https://resources.premierleague.com/premierleague/badges/70/t7.png',
+      'Bournemouth': 'https://resources.premierleague.com/premierleague/badges/70/t91.png',
+      'AFC Bournemouth': 'https://resources.premierleague.com/premierleague/badges/70/t91.png',
+      'Brentford': 'https://resources.premierleague.com/premierleague/badges/70/t94.png',
+      'Brentford FC': 'https://resources.premierleague.com/premierleague/badges/70/t94.png',
+      // Brighton / Chelsea / Palace / Everton
+      'Brighton & Hove Albion': 'https://resources.premierleague.com/premierleague/badges/70/t36.png',
+      'Brighton and Hove Albion FC': 'https://resources.premierleague.com/premierleague/badges/70/t36.png',
+      'Chelsea': 'https://resources.premierleague.com/premierleague/badges/70/t8.png',
+      'Chelsea FC': 'https://resources.premierleague.com/premierleague/badges/70/t8.png',
+      'Crystal Palace': 'https://resources.premierleague.com/premierleague/badges/70/t31.png',
+      'Crystal Palace FC': 'https://resources.premierleague.com/premierleague/badges/70/t31.png',
+      'Everton': 'https://resources.premierleague.com/premierleague/badges/70/t11.png',
+      'Everton FC': 'https://resources.premierleague.com/premierleague/badges/70/t11.png',
+      // Fulham / Ipswich / Leicester / Liverpool
+      'Fulham': 'https://resources.premierleague.com/premierleague/badges/70/t54.png',
+      'Fulham FC': 'https://resources.premierleague.com/premierleague/badges/70/t54.png',
+      'Ipswich Town': 'https://resources.premierleague.com/premierleague/badges/70/t40.png',
+      'Ipswich Town FC': 'https://resources.premierleague.com/premierleague/badges/70/t40.png',
+      'Leicester City': 'https://resources.premierleague.com/premierleague/badges/70/t13.png',
+      'Leicester City FC': 'https://resources.premierleague.com/premierleague/badges/70/t13.png',
+      'Liverpool': 'https://resources.premierleague.com/premierleague/badges/70/t14.png',
+      'Liverpool FC': 'https://resources.premierleague.com/premierleague/badges/70/t14.png',
+      // Man City / Man United / Newcastle / Forest
+      'Manchester City': 'https://resources.premierleague.com/premierleague/badges/70/t43.png',
+      'Manchester City FC': 'https://resources.premierleague.com/premierleague/badges/70/t43.png',
+      'Manchester United': 'https://resources.premierleague.com/premierleague/badges/70/t1.png',
+      'Manchester United FC': 'https://resources.premierleague.com/premierleague/badges/70/t1.png',
+      'Newcastle United': 'https://resources.premierleague.com/premierleague/badges/70/t4.png',
+      'Newcastle United FC': 'https://resources.premierleague.com/premierleague/badges/70/t4.png',
+      'Nottingham Forest': 'https://resources.premierleague.com/premierleague/badges/70/t17.png',
+      'Nottingham Forest FC': 'https://resources.premierleague.com/premierleague/badges/70/t17.png',
+      // Southampton / Spurs / West Ham / Wolves
+      'Southampton': 'https://resources.premierleague.com/premierleague/badges/70/t20.png',
+      'Southampton FC': 'https://resources.premierleague.com/premierleague/badges/70/t20.png',
+      'Tottenham Hotspur': 'https://resources.premierleague.com/premierleague/badges/70/t6.png',
+      'Tottenham Hotspur FC': 'https://resources.premierleague.com/premierleague/badges/70/t6.png',
+      'West Ham United': 'https://resources.premierleague.com/premierleague/badges/70/t21.png',
+      'West Ham United FC': 'https://resources.premierleague.com/premierleague/badges/70/t21.png',
+      'Wolverhampton Wanderers': 'https://resources.premierleague.com/premierleague/badges/70/t39.png',
+      'Wolverhampton Wanderers FC': 'https://resources.premierleague.com/premierleague/badges/70/t39.png',
+      // Add more if your league changes
+    };
+    function crestFor(name){
+      // Try direct match; otherwise attempt some gentle normalization fallbacks.
+      if (CRESTS[name]) return CRESTS[name];
+      const clean = name.replace(/ Football Club| FC| AFC/gi,'').trim();
+      for (const key of Object.keys(CRESTS)) {
+        if (key.replace(/ Football Club| FC| AFC/gi,'').trim() === clean) return CRESTS[key];
+      }
+      return ''; // no crest found
+    }
+
     const KEY = 'wknd-preds';
     function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
     function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
@@ -93,7 +154,7 @@
         : `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
     })();
 
-    // 👉 Load featured first; fallback to upcoming 5 if none
+    // Load featured first; fallback to next 5 upcoming
     async function loadFixtures() {
       // Try featured
       let { data, error } = await client
@@ -127,11 +188,23 @@
       fixtures.forEach(f => {
         const p = preds[f.id] || { home:'', away:'' };
         const time = new Date(f.utc_date).toLocaleString(undefined, { weekday:'short', hour:'2-digit', minute:'2-digit' });
+
+        const homeCrest = crestFor(f.home_team);
+        const awayCrest = crestFor(f.away_team);
+
         const row = document.createElement('div');
         row.className = 'row';
         row.innerHTML = `
-          <div>
-            <div style="font-weight:600">${f.home_team} vs ${f.away_team}</div>
+          <div class="pair">
+            <div class="team">
+              ${homeCrest ? `<img class="crest" src="${homeCrest}" alt="${f.home_team} crest" />` : `⚽`}
+              <span style="font-weight:600">${f.home_team}</span>
+            </div>
+            <span class="muted">vs</span>
+            <div class="team">
+              ${awayCrest ? `<img class="crest" src="${awayCrest}" alt="${f.away_team} crest" />` : `⚽`}
+              <span style="font-weight:600">${f.away_team}</span>
+            </div>
             <div class="muted">${time} • ${f.status}</div>
           </div>
           <div style="display:flex; align-items:center; gap:8px">
@@ -226,6 +299,7 @@
   </script>
 </body>
 </html>
+
 
 
 
