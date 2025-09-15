@@ -2,116 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Sign in</title>
+  <title>Occy Weekend Football — Sign in</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <meta name="theme-color" content="#0f172a" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px auto; max-width: 520px; padding: 16px; color:#111; }
-    .card { border:1px solid #ddd; border-radius: 12px; padding:16px; margin-top:16px; }
-    input[type="email"] { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; }
-    button { padding:10px 14px; border:1px solid #333; border-radius:10px; background:#111; color:#fff; cursor:pointer; }
-    .muted { color:#666; font-size:14px; }
-    .ok { color:#065f46; }
-    .err { color:#b91c1c; }
-    a { color:#111; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      margin: 0;
+      padding: 0 16px;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a, #1e3a8a, #0f172a);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .card {
+      background: rgba(255,255,255,0.95);
+      color: #111;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    h1 {
+      margin-top: 0;
+      color: #facc15;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 12px;
+    }
+    button {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: #facc15;
+      color: #111;
+      font-weight: bold;
+      width: 100%;
+      cursor: pointer;
+    }
+    .muted { color: #555; font-size: 14px; }
   </style>
 </head>
 <body>
-  <a href="index.html">← Back</a>
-  <h1>Sign in</h1>
-  <p class="muted">Enter your email and we’ll send you a magic link. No passwords.</p>
-
-  <div class="card" id="status">
-    <div><b>Auth status</b></div>
-    <p class="muted" id="who">Checking…</p>
-    <div id="actions" style="display:none">
-      <a href="predict.html">Go to Predict →</a>
-      <button id="signOutBtn" style="margin-left:8px; background:#fff; color:#111">Sign out</button>
-    </div>
+  <div class="card">
+    <h1>⚽ Occy Weekend Football · Sign in</h1>
+    <p class="muted">Enter your email and we’ll send you a magic link</p>
+    <input id="email" type="email" placeholder="you@example.com" />
+    <button id="sendLink">Send Magic Link</button>
+    <p id="msg" class="muted"></p>
   </div>
 
-  <div class="card" id="formWrap">
-    <form id="form">
-      <label for="email">Email</label>
-      <input id="email" type="email" required placeholder="you@example.com" />
-      <div style="margin-top:12px">
-        <button id="sendBtn" type="submit">Send magic link</button>
-      </div>
-    </form>
-    <p id="msg" class="muted" style="margin-top:10px"></p>
-  </div>
-
-  <!-- Supabase browser SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Your project keys -->
   <script src="supabase-config.js"></script>
   <script>
-    (function () {
-      const who = document.getElementById('who');
-      const msg = document.getElementById('msg');
-      const formWrap = document.getElementById('formWrap');
-      const actions = document.getElementById('actions');
-      const signOutBtn = document.getElementById('signOutBtn');
-      const emailInput = document.getElementById('email');
-      const sendBtn = document.getElementById('sendBtn');
-
-      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
-        who.textContent = 'Supabase config missing. Edit supabase-config.js';
-        return;
-      }
-
-      const supa = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-      // Always redirect to the PRODUCTION domain (avoids “deployment not found”)
-      const PROD_ORIGIN = 'https://weekend-predictor-simple.vercel.app';
-      const REDIRECT_URL = PROD_ORIGIN + '/login.html';
-
-      async function refreshUser() {
-        const { data } = await supa.auth.getUser();
-        if (data?.user?.email) {
-          who.innerHTML = 'Signed in as <b>' + data.user.email + '</b>';
-          formWrap.style.display = 'none';
-          actions.style.display = 'block';
-        } else {
-          who.textContent = 'Not signed in';
-          formWrap.style.display = 'block';
-          actions.style.display = 'none';
-        }
-      }
-
-      supa.auth.onAuthStateChange((_event, session) => {
-        refreshUser();
-      });
-
-      refreshUser();
-
-      document.getElementById('form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        msg.textContent = 'Sending magic link…';
-        msg.className = 'muted';
-        sendBtn.disabled = true;
-
-        const { error } = await supa.auth.signInWithOtp({
-          email: emailInput.value,
-          options: { emailRedirectTo: REDIRECT_URL },
-        });
-
-        if (error) {
-          msg.textContent = 'Error: ' + error.message;
-          msg.className = 'err';
-          sendBtn.disabled = false;
-        } else {
-          msg.textContent = 'Link sent! Check your email (and spam) and click it.';
-          msg.className = 'ok';
-        }
-      });
-
-      signOutBtn.addEventListener('click', async () => {
-        await supa.auth.signOut();
-        await refreshUser();
-      });
-    })();
+    const btn = document.getElementById('sendLink');
+    const emailInput = document.getElementById('email');
+    const msg = document.getElementById('msg');
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    btn.addEventListener('click', async () => {
+      const email = emailInput.value;
+      if (!email) { msg.textContent = "Please enter an email"; return; }
+      const { error } = await client.auth.signInWithOtp({ email });
+      msg.textContent = error ? "Error: " + error.message : "Check your email for the magic link!";
+    });
   </script>
 </body>
 </html>
+
 
 
