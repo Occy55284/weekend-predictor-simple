@@ -2,73 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>My Profile</title>
+  <title>Occy Weekend Football — My Profile</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <meta name="theme-color" content="#0f172a" />
   <style>
-    body { font-family: system-ui, sans-serif; margin: 40px auto; max-width: 600px; padding: 16px; color:#111; }
-    .card { border:1px solid #ddd; border-radius:12px; padding:16px; margin-top:16px; }
-    input { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; }
-    button { padding:10px 14px; border:1px solid #333; border-radius:10px; background:#111; color:#fff; cursor:pointer; }
-    .muted { color:#666; }
-    a { color:#111; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #0f172a, #1e3a8a, #0f172a);
+      color: #fff;
+    }
+    .card {
+      background: rgba(255,255,255,0.95);
+      color: #111;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 600px;
+      margin: 40px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    h1 { color: #facc15; }
+    label { display: block; margin-top: 12px; }
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 6px;
+    }
+    button {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: #facc15;
+      color: #111;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .muted { color:#555; }
   </style>
 </head>
 <body>
-  <a href="index.html">← Back</a>
-  <h1>My Profile</h1>
-  <p class="muted">Set the name that appears on the Leaderboard & Wall.</p>
-
   <div class="card">
-    <p id="status" class="muted">Checking sign-in…</p>
-    <div id="formWrap" style="display:none">
-      <label>Display name</label>
-      <input id="displayName" type="text" placeholder="e.g. Mark" />
-      <div style="margin-top:12px">
-        <button id="saveBtn">Save</button>
-      </div>
-      <p id="msg" class="muted" style="margin-top:10px"></p>
-    </div>
+    <h1>⚽ Occy Weekend Football · My Profile</h1>
+    <p class="muted">Update your display name (shown on leaderboard)</p>
+    <label for="name">Display Name:</label>
+    <input id="name" type="text" />
+    <button id="save">Save</button>
+    <p id="msg" class="muted"></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    (async function () {
-      const status = document.getElementById('status');
-      const formWrap = document.getElementById('formWrap');
-      const displayName = document.getElementById('displayName');
-      const saveBtn = document.getElementById('saveBtn');
-      const msg = document.getElementById('msg');
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const nameInput = document.getElementById('name');
+    const msg = document.getElementById('msg');
+    const saveBtn = document.getElementById('save');
 
-      const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
-      if (!url || !key) { status.textContent = 'Missing Supabase config.'; return; }
-      const client = supabase.createClient(url, key);
-
-      const { data: userData } = await client.auth.getUser();
-      const user = userData?.user;
-      if (!user) {
-        status.innerHTML = 'Not signed in. <a href="login.html">Sign in</a>';
-        return;
-      }
-      status.innerHTML = 'Signed in as <b>' + user.email + '</b>';
-
-      // Load existing profile (if any)
-      const { data: prof } = await client.from('profiles').select('*').eq('id', user.id).maybeSingle();
-      if (prof?.display_name) displayName.value = prof.display_name;
-
-      formWrap.style.display = 'block';
-
-      saveBtn.addEventListener('click', async () => {
-        msg.textContent = 'Saving…';
-        const dn = displayName.value.trim();
-        if (!dn) { msg.textContent = 'Please enter a name.'; return; }
-
-        // Upsert the profile row
-        const { error } = await client.from('profiles').upsert({ id: user.id, display_name: dn });
-        if (error) { msg.textContent = 'Error: ' + error.message; return; }
-        msg.textContent = 'Saved!';
-      });
-    })();
+    async function loadProfile() {
+      const { data } = await client.auth.getUser();
+      if (!data?.user) { msg.textContent = "Please sign in first."; return; }
+      const { data: prof } = await client.from('profiles').select().eq('id', data.user.id).single();
+      if (prof) nameInput.value = prof.display_name || '';
+    }
+    saveBtn.addEventListener('click', async () => {
+      const { data } = await client.auth.getUser();
+      if (!data?.user) { msg.textContent = "Please sign in first."; return; }
+      const { error } = await client.from('profiles').upsert({ id: data.user.id, display_name: nameInput.value });
+      msg.textContent = error ? "Error: " + error.message : "Saved!";
+    });
+    loadProfile();
   </script>
 </body>
 </html>
+
