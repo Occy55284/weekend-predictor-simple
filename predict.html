@@ -16,7 +16,7 @@
     .card { background:rgba(255,255,255,0.95); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:900px;
       box-shadow:0 4px 12px rgba(0,0,0,0.3); }
     .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-top:1px solid #eee; }
-    .pair { display:flex; align-items:center; gap:12px; }
+    .pair { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
     .team { display:flex; align-items:center; gap:8px; min-width:180px; }
     .crest { width:24px; height:24px; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
     input[type="number"] { width:60px; padding:8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
@@ -26,8 +26,9 @@
     .btn:disabled { opacity:.5; cursor:not-allowed; }
     .muted { color:#555; font-size:12px; }
     .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
+    .pill.locked { background:#fee2e2; color:#991b1b; } /* 🔒 look */
     a { color:#0f172a; }
-    @media (max-width:640px){ .team{min-width:auto;} .pair{flex-wrap:wrap; gap:6px;} }
+    @media (max-width:640px){ .team{min-width:auto;} }
   </style>
 </head>
 <body>
@@ -130,7 +131,10 @@
 
       fixtures.forEach(f=>{
         const p=preds[f.id]||{home:'',away:''};
-        const time=new Date(f.utc_date).toLocaleString(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'});
+        const kickoff=new Date(f.utc_date);
+        const time=kickoff.toLocaleString(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'});
+        const isLocked=LOCKED(f.utc_date);
+
         const homeC=crestFor(f.home_team), awayC=crestFor(f.away_team);
 
         const row=document.createElement('div'); row.className='row';
@@ -140,12 +144,13 @@
             <span class="muted">vs</span>
             <div class="team">${awayC?`<img class="crest" src="${awayC}" alt="${f.away_team} crest">`:'⚽'}<span style="font-weight:600">${f.away_team}</span></div>
             <div class="muted">${time} • ${f.status}</div>
+            ${isLocked ? `<span class="pill locked" title="Kickoff passed">Locked 🔒</span>` : ''}
           </div>
           <div style="display:flex; align-items:center; gap:8px">
-            <input type="number" min="0" ${LOCKED(f.utc_date)?'disabled':''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
+            <input type="number" min="0" ${isLocked?'disabled':''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
             <span class="muted">–</span>
-            <input type="number" min="0" ${LOCKED(f.utc_date)?'disabled':''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
-            <button class="btn" ${LOCKED(f.utc_date)?'disabled':''} data-save="${f.id}">${LOCKED(f.utc_date)?'Closed':'Save'}</button>
+            <input type="number" min="0" ${isLocked?'disabled':''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
+            <button class="btn" ${isLocked?'disabled':''} data-save="${f.id}">${isLocked?'Closed':'Save'}</button>
           </div>`;
         list.appendChild(row);
       });
@@ -170,7 +175,6 @@
     });
 
     // Secure cloud save using UPSERT (blocked after kickoff by RLS)
-    function uuidv4(){ return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=(crypto.getRandomValues(new Uint8Array(1))[0]&15);const v=c==='x'?r:(r&0x3)|0x8;return v.toString(16);}); }
     async function saveAllToCloud(){
       const user=await getUser(); if(!user){ alert('Please sign in first.'); location.href=LOGIN_URL; return; }
 
@@ -188,10 +192,9 @@
       try{
         const { error } = await client
           .from('predictions')
-          .upsert(rows, { onConflict: 'user_id,fixture_id' }); // respects unique index + RLS
+          .upsert(rows, { onConflict: 'user_id,fixture_id' });
 
         if (error) {
-          // If kickoff passed, RLS blocks writes — show a nice message.
           if (/row-level security|violates|permission/i.test(error.message)) {
             alert('Some fixtures are locked (kickoff passed) so those picks could not be changed.');
           } else {
@@ -212,6 +215,7 @@
   </script>
 </body>
 </html>
+
 
 
 
