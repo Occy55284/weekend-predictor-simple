@@ -2,46 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Make Predictions</title>
+  <title>Occy Weekend Football — Make Predictions</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <meta name="theme-color" content="#0f172a" />
   <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0; padding: 0 16px; min-height: 100vh;
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
-      color: #fff;
-    }
-    header { text-align: center; margin: 40px 0 24px 0; }
-    header h1 { margin-top: 12px; color: #facc15; }
-    header p { color: #ddd; }
-    .card {
-      background: rgba(255,255,255,0.95);
-      color: #111; border-radius: 16px; padding: 20px;
-      margin: 16px auto; max-width: 900px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
+      background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
+    header { text-align:center; margin:40px 0 24px; }
+    header h1 { margin-top:12px; color:#facc15; }
+    header p { color:#ddd; }
+    .card { background:rgba(255,255,255,0.95); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:900px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3); }
     .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-top:1px solid #eee; }
-    .teams { display:flex; align-items:center; gap:10px; }
     .pair { display:flex; align-items:center; gap:12px; }
-    .team { display:flex; align-items:center; gap:8px; min-width: 180px; }
-    .crest { width: 24px; height: 24px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
-    input[type="number"] { width: 60px; padding: 8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
-    .btn { padding:10px 14px; border-radius:12px; background:#facc15; color:#111; font-weight:bold; border:none; cursor:pointer; transition:transform 0.15s ease; }
-    .btn:hover { transform: scale(1.05); }
+    .team { display:flex; align-items:center; gap:8px; min-width:180px; }
+    .crest { width:24px; height:24px; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
+    input[type="number"] { width:60px; padding:8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
+    .btn { padding:10px 14px; border-radius:12px; background:#facc15; color:#111; font-weight:bold; border:none; cursor:pointer; transition:transform .15s ease; }
+    .btn:hover { transform:scale(1.05); }
     .btn.ghost { background:#fff; color:#111; }
-    .btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
     .muted { color:#555; font-size:12px; }
     .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
-    a { color:#facc15; }
-    @media (max-width: 640px){
-      .team { min-width: auto; }
-      .pair { flex-wrap: wrap; gap: 6px; }
-    }
+    a { color:#0f172a; }
+    @media (max-width:640px){ .team{min-width:auto;} .pair{flex-wrap:wrap; gap:6px;} }
   </style>
 </head>
 <body>
   <header>
-    <h1>Make Predictions</h1>
+    <h1>⚽ Occy Weekend Football · Make Predictions</h1>
     <p class="muted">Shows featured fixtures, or next 5 upcoming if none set</p>
   </header>
 
@@ -59,246 +50,169 @@
     <div id="list"></div>
   </div>
 
-  <!-- Supabase scripts -->
+  <!-- Supabase SDK + your config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
   window.addEventListener('DOMContentLoaded', () => {
-    const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
-    const client = supabase.createClient(url, key);
-    const PROD = 'https://weekend-predictor-simple.vercel.app';
-    const LOGIN_URL = PROD + '/login.html';
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const LOGIN_URL = 'login.html';
 
-    // --- Simple crest map (Premier League) ---
-    // We map common names & aliases to a crest URL.
-    // If a name isn’t found, we fall back to a simple emoji ball.
+    // Premier League crest map (extend as needed)
     const CRESTS = {
-      // Arsenal / Villa / Bournemouth / Brentford
-      'Arsenal': 'https://resources.premierleague.com/premierleague/badges/70/t3.png',
-      'Arsenal FC': 'https://resources.premierleague.com/premierleague/badges/70/t3.png',
-      'Aston Villa': 'https://resources.premierleague.com/premierleague/badges/70/t7.png',
-      'Aston Villa FC': 'https://resources.premierleague.com/premierleague/badges/70/t7.png',
-      'Bournemouth': 'https://resources.premierleague.com/premierleague/badges/70/t91.png',
-      'AFC Bournemouth': 'https://resources.premierleague.com/premierleague/badges/70/t91.png',
-      'Brentford': 'https://resources.premierleague.com/premierleague/badges/70/t94.png',
-      'Brentford FC': 'https://resources.premierleague.com/premierleague/badges/70/t94.png',
-      // Brighton / Chelsea / Palace / Everton
-      'Brighton & Hove Albion': 'https://resources.premierleague.com/premierleague/badges/70/t36.png',
-      'Brighton and Hove Albion FC': 'https://resources.premierleague.com/premierleague/badges/70/t36.png',
-      'Chelsea': 'https://resources.premierleague.com/premierleague/badges/70/t8.png',
-      'Chelsea FC': 'https://resources.premierleague.com/premierleague/badges/70/t8.png',
-      'Crystal Palace': 'https://resources.premierleague.com/premierleague/badges/70/t31.png',
-      'Crystal Palace FC': 'https://resources.premierleague.com/premierleague/badges/70/t31.png',
-      'Everton': 'https://resources.premierleague.com/premierleague/badges/70/t11.png',
-      'Everton FC': 'https://resources.premierleague.com/premierleague/badges/70/t11.png',
-      // Fulham / Ipswich / Leicester / Liverpool
-      'Fulham': 'https://resources.premierleague.com/premierleague/badges/70/t54.png',
-      'Fulham FC': 'https://resources.premierleague.com/premierleague/badges/70/t54.png',
-      'Ipswich Town': 'https://resources.premierleague.com/premierleague/badges/70/t40.png',
-      'Ipswich Town FC': 'https://resources.premierleague.com/premierleague/badges/70/t40.png',
-      'Leicester City': 'https://resources.premierleague.com/premierleague/badges/70/t13.png',
-      'Leicester City FC': 'https://resources.premierleague.com/premierleague/badges/70/t13.png',
-      'Liverpool': 'https://resources.premierleague.com/premierleague/badges/70/t14.png',
-      'Liverpool FC': 'https://resources.premierleague.com/premierleague/badges/70/t14.png',
-      // Man City / Man United / Newcastle / Forest
-      'Manchester City': 'https://resources.premierleague.com/premierleague/badges/70/t43.png',
-      'Manchester City FC': 'https://resources.premierleague.com/premierleague/badges/70/t43.png',
-      'Manchester United': 'https://resources.premierleague.com/premierleague/badges/70/t1.png',
-      'Manchester United FC': 'https://resources.premierleague.com/premierleague/badges/70/t1.png',
-      'Newcastle United': 'https://resources.premierleague.com/premierleague/badges/70/t4.png',
-      'Newcastle United FC': 'https://resources.premierleague.com/premierleague/badges/70/t4.png',
-      'Nottingham Forest': 'https://resources.premierleague.com/premierleague/badges/70/t17.png',
-      'Nottingham Forest FC': 'https://resources.premierleague.com/premierleague/badges/70/t17.png',
-      // Southampton / Spurs / West Ham / Wolves
-      'Southampton': 'https://resources.premierleague.com/premierleague/badges/70/t20.png',
-      'Southampton FC': 'https://resources.premierleague.com/premierleague/badges/70/t20.png',
-      'Tottenham Hotspur': 'https://resources.premierleague.com/premierleague/badges/70/t6.png',
-      'Tottenham Hotspur FC': 'https://resources.premierleague.com/premierleague/badges/70/t6.png',
-      'West Ham United': 'https://resources.premierleague.com/premierleague/badges/70/t21.png',
-      'West Ham United FC': 'https://resources.premierleague.com/premierleague/badges/70/t21.png',
-      'Wolverhampton Wanderers': 'https://resources.premierleague.com/premierleague/badges/70/t39.png',
-      'Wolverhampton Wanderers FC': 'https://resources.premierleague.com/premierleague/badges/70/t39.png',
-      // Add more if your league changes
+      'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
+      'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
+      'AFC Bournemouth':'https://resources.premierleague.com/premierleague/badges/70/t91.png',
+      'Brentford':'https://resources.premierleague.com/premierleague/badges/70/t94.png',
+      'Brighton & Hove Albion':'https://resources.premierleague.com/premierleague/badges/70/t36.png',
+      'Chelsea':'https://resources.premierleague.com/premierleague/badges/70/t8.png',
+      'Crystal Palace':'https://resources.premierleague.com/premierleague/badges/70/t31.png',
+      'Everton':'https://resources.premierleague.com/premierleague/badges/70/t11.png',
+      'Fulham':'https://resources.premierleague.com/premierleague/badges/70/t54.png',
+      'Ipswich Town':'https://resources.premierleague.com/premierleague/badges/70/t40.png',
+      'Leicester City':'https://resources.premierleague.com/premierleague/badges/70/t13.png',
+      'Liverpool':'https://resources.premierleague.com/premierleague/badges/70/t14.png',
+      'Manchester City':'https://resources.premierleague.com/premierleague/badges/70/t43.png',
+      'Manchester United':'https://resources.premierleague.com/premierleague/badges/70/t1.png',
+      'Newcastle United':'https://resources.premierleague.com/premierleague/badges/70/t4.png',
+      'Nottingham Forest':'https://resources.premierleague.com/premierleague/badges/70/t17.png',
+      'Southampton':'https://resources.premierleague.com/premierleague/badges/70/t20.png',
+      'Tottenham Hotspur':'https://resources.premierleague.com/premierleague/badges/70/t6.png',
+      'West Ham United':'https://resources.premierleague.com/premierleague/badges/70/t21.png',
+      'Wolverhampton Wanderers':'https://resources.premierleague.com/premierleague/badges/70/t39.png',
     };
     function crestFor(name){
-      // Try direct match; otherwise attempt some gentle normalization fallbacks.
       if (CRESTS[name]) return CRESTS[name];
       const clean = name.replace(/ Football Club| FC| AFC/gi,'').trim();
-      for (const key of Object.keys(CRESTS)) {
-        if (key.replace(/ Football Club| FC| AFC/gi,'').trim() === clean) return CRESTS[key];
+      for (const k of Object.keys(CRESTS)) {
+        if (k.replace(/ Football Club| FC| AFC/gi,'').trim() === clean) return CRESTS[k];
       }
-      return ''; // no crest found
+      return '';
     }
 
-    const KEY = 'wknd-preds';
-    function loadPreds(){ try{ return JSON.parse(localStorage.getItem(KEY) || '{}'); }catch{ return {}; } }
+    const KEY='wknd-preds';
+    function loadPreds(){ try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return{}} }
     function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
 
-    const list = document.getElementById('list');
-    const clearBtn = document.getElementById('clearBtn');
-    const saveCloudBtn = document.getElementById('saveCloud');
-    const authStatus = document.getElementById('authStatus');
-    const preds = loadPreds();
+    const list=document.getElementById('list');
+    const clearBtn=document.getElementById('clearBtn');
+    const saveCloudBtn=document.getElementById('saveCloud');
+    const authStatus=document.getElementById('authStatus');
 
-    function LOCKED(iso){ return new Date() >= new Date(iso); }
+    function LOCKED(iso){ return new Date()>=new Date(iso); }
 
-    async function getUser() {
-      const { data } = await client.auth.getUser();
-      return data?.user || null;
-    }
+    async function getUser(){ const {data}=await client.auth.getUser(); return data?.user||null; }
+    (async()=>{ const u=await getUser(); authStatus.innerHTML = u?.email?`Signed in as <b>${u.email}</b>`:`Not signed in · <a href="${LOGIN_URL}">Sign in</a>`; })();
 
-    (async function showAuth() {
-      const user = await getUser();
-      authStatus.innerHTML = user?.email
-        ? `Signed in as <b>${user.email}</b>`
-        : `Not signed in · <a href="${LOGIN_URL}">Sign in</a>`;
-    })();
-
-    // Load featured first; fallback to next 5 upcoming
-    async function loadFixtures() {
-      // Try featured
-      let { data, error } = await client
-        .from('fixtures')
+    // 1) Try featured; 2) fallback to next 5 upcoming
+    async function loadFixtures(){
+      let {data,error}=await client.from('fixtures')
         .select('id, utc_date, status, home_team, away_team')
         .eq('featured', true)
         .order('utc_date', { ascending: true });
+      if(error){ list.innerHTML='<p class="muted">Error loading fixtures.</p>'; return[]; }
+      if(data?.length) return data;
 
-      if (error) { list.innerHTML = '<p class="muted">Error loading fixtures.</p>'; return []; }
-      if (data && data.length) return data;
-
-      // Fallback: next 5 upcoming
-      const nowIso = new Date().toISOString();
-      const { data: fallback } = await client
-        .from('fixtures')
+      const nowIso=new Date().toISOString();
+      const {data:fallback}=await client.from('fixtures')
         .select('id, utc_date, status, home_team, away_team')
         .in('status', ['SCHEDULED','TIMED'])
         .gte('utc_date', nowIso)
         .order('utc_date', { ascending: true })
         .limit(5);
-
-      return fallback || [];
+      return fallback||[];
     }
 
-    function render(fixtures) {
-      list.innerHTML = '';
-      if (!fixtures.length) {
-        list.innerHTML = '<p class="muted">No fixtures yet. Try running sync.</p>';
-        return;
-      }
-      fixtures.forEach(f => {
-        const p = preds[f.id] || { home:'', away:'' };
-        const time = new Date(f.utc_date).toLocaleString(undefined, { weekday:'short', hour:'2-digit', minute:'2-digit' });
+    function render(fixtures){
+      const preds=loadPreds();
+      list.innerHTML='';
+      if(!fixtures.length){ list.innerHTML='<p class="muted">No fixtures yet. Try running sync.</p>'; return; }
 
-        const homeCrest = crestFor(f.home_team);
-        const awayCrest = crestFor(f.away_team);
+      fixtures.forEach(f=>{
+        const p=preds[f.id]||{home:'',away:''};
+        const time=new Date(f.utc_date).toLocaleString(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'});
+        const homeC=crestFor(f.home_team), awayC=crestFor(f.away_team);
 
-        const row = document.createElement('div');
-        row.className = 'row';
-        row.innerHTML = `
+        const row=document.createElement('div'); row.className='row';
+        row.innerHTML=`
           <div class="pair">
-            <div class="team">
-              ${homeCrest ? `<img class="crest" src="${homeCrest}" alt="${f.home_team} crest" />` : `⚽`}
-              <span style="font-weight:600">${f.home_team}</span>
-            </div>
+            <div class="team">${homeC?`<img class="crest" src="${homeC}" alt="${f.home_team} crest">`:'⚽'}<span style="font-weight:600">${f.home_team}</span></div>
             <span class="muted">vs</span>
-            <div class="team">
-              ${awayCrest ? `<img class="crest" src="${awayCrest}" alt="${f.away_team} crest" />` : `⚽`}
-              <span style="font-weight:600">${f.away_team}</span>
-            </div>
+            <div class="team">${awayC?`<img class="crest" src="${awayC}" alt="${f.away_team} crest">`:'⚽'}<span style="font-weight:600">${f.away_team}</span></div>
             <div class="muted">${time} • ${f.status}</div>
           </div>
           <div style="display:flex; align-items:center; gap:8px">
-            <input type="number" min="0" ${LOCKED(f.utc_date) ? 'disabled' : ''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
+            <input type="number" min="0" ${LOCKED(f.utc_date)?'disabled':''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
             <span class="muted">–</span>
-            <input type="number" min="0" ${LOCKED(f.utc_date) ? 'disabled' : ''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
-            <button class="btn" ${LOCKED(f.utc_date) ? 'disabled' : ''} data-save="${f.id}">${LOCKED(f.utc_date) ? 'Closed' : 'Save'}</button>
-          </div>
-        `;
+            <input type="number" min="0" ${LOCKED(f.utc_date)?'disabled':''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
+            <button class="btn" ${LOCKED(f.utc_date)?'disabled':''} data-save="${f.id}">${LOCKED(f.utc_date)?'Closed':'Save'}</button>
+          </div>`;
         list.appendChild(row);
       });
     }
 
-    // Local save handlers
-    list.addEventListener('input', (e) => {
-      const el = e.target;
-      if (el.tagName !== 'INPUT') return;
-      const id = el.getAttribute('data-id');
-      const side = el.getAttribute('data-side');
-      const predsAll = loadPreds();
-      predsAll[id] = predsAll[id] || { home:'', away:'' };
-      predsAll[id][side] = el.value;
-      savePreds(predsAll);
+    // Local save to device
+    list.addEventListener('input',(e)=>{
+      const el=e.target; if(el.tagName!=='INPUT') return;
+      const id=el.getAttribute('data-id'), side=el.getAttribute('data-side');
+      const all=loadPreds(); all[id]=all[id]||{home:'',away:''}; all[id][side]=el.value; savePreds(all);
     });
-
-    list.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-save]');
-      if (!btn) return;
-      const id = btn.getAttribute('data-save');
-      const predsAll = loadPreds();
-      if (!predsAll[id] || predsAll[id].home === '' || predsAll[id].away === '') { alert('Please enter both scores'); return; }
+    list.addEventListener('click',(e)=>{
+      const btn=e.target.closest('button[data-save]'); if(!btn) return;
+      const id=btn.getAttribute('data-save');
+      const all=loadPreds();
+      if(!all[id]||all[id].home===''||all[id].away===''){ alert('Please enter both scores'); return; }
       alert('Saved on this device!');
     });
 
-    clearBtn.addEventListener('click', () => {
-      if (confirm('Clear all your saved picks on this device?')) {
-        localStorage.removeItem(KEY);
-        location.reload();
-      }
+    clearBtn.addEventListener('click',()=>{
+      if(confirm('Clear all your saved picks on this device?')){ localStorage.removeItem(KEY); location.reload(); }
     });
 
-    function uuidv4(){ return crypto.randomUUID ? crypto.randomUUID() :
-      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15);
-        const v = c === 'x' ? r : (r & 0x3) | 0x8; return v.toString(16);
-      });
-    }
+    // Secure cloud save using UPSERT (blocked after kickoff by RLS)
+    function uuidv4(){ return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=(crypto.getRandomValues(new Uint8Array(1))[0]&15);const v=c==='x'?r:(r&0x3)|0x8;return v.toString(16);}); }
+    async function saveAllToCloud(){
+      const user=await getUser(); if(!user){ alert('Please sign in first.'); location.href=LOGIN_URL; return; }
 
-    async function saveAllToCloud() {
-      const user = await getUser();
-      if (!user) { alert('Please sign in first.'); location.href = LOGIN_URL; return; }
+      const inputs=list.querySelectorAll('input[data-id]');
+      const ids=new Set(Array.from(inputs).map(i=>i.getAttribute('data-id')));
 
-      const inputs = list.querySelectorAll('input[data-id]');
-      const ids = new Set(Array.from(inputs).map(i => i.getAttribute('data-id')));
-
-      const predsAll = loadPreds();
-      const rows = Array.from(ids).map(id => {
-        const p = predsAll[id];
-        if (!p || p.home === '' || p.away === '') return null;
-        return {
-          id: uuidv4(),
-          user_id: user.id,
-          fixture_id: id,
-          home_goals: Number(p.home),
-          away_goals: Number(p.away),
-        };
+      const all=loadPreds();
+      const rows=Array.from(ids).map(id=>{
+        const p=all[id]; if(!p||p.home===''||p.away==='') return null;
+        return { user_id:user.id, fixture_id:id, home_goals:Number(p.home), away_goals:Number(p.away) };
       }).filter(Boolean);
 
-      if (!rows.length) { alert('Nothing to save. Enter scores first.'); return; }
+      if(!rows.length){ alert('Nothing to save. Enter scores first.'); return; }
 
-      try {
-        for (const r of rows) {
-          const del = await client.from('predictions').delete().match({ user_id: r.user_id, fixture_id: r.fixture_id });
-          if (del.error) throw del.error;
-          const ins = await client.from('predictions').insert(r);
-          if (ins.error) throw ins.error;
+      try{
+        const { error } = await client
+          .from('predictions')
+          .upsert(rows, { onConflict: 'user_id,fixture_id' }); // respects unique index + RLS
+
+        if (error) {
+          // If kickoff passed, RLS blocks writes — show a nice message.
+          if (/row-level security|violates|permission/i.test(error.message)) {
+            alert('Some fixtures are locked (kickoff passed) so those picks could not be changed.');
+          } else {
+            alert('Supabase error: ' + error.message);
+          }
+          return;
         }
         alert('Saved to cloud! 🎉');
-      } catch (err) {
+      }catch(err){
         console.error('Supabase error:', err);
-        alert('Supabase error: ' + (err?.message || 'unknown'));
+        alert('Unexpected error saving. Please try again.');
       }
     }
+    document.getElementById('saveCloud').addEventListener('click', saveAllToCloud);
 
-    saveCloudBtn.addEventListener('click', saveAllToCloud);
-
-    (async function init(){
-      const fixtures = await loadFixtures();
-      render(fixtures);
-    })();
+    (async function init(){ const fixtures=await loadFixtures(); render(fixtures); })();
   });
   </script>
 </body>
 </html>
+
 
 
 
