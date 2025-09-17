@@ -24,14 +24,15 @@
       margin: 40px auto;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    h1 { color: #facc15; }
-    label { display: block; margin-top: 12px; }
-    input {
+    h1 { color: #facc15; margin-top: 0; }
+    label { display: block; margin-top: 14px; font-weight: 600; }
+    input, select {
       width: 100%;
       padding: 10px;
       border-radius: 8px;
       border: 1px solid #ccc;
       margin-top: 6px;
+      background: #fff;
     }
     button {
       margin-top: 16px;
@@ -49,11 +50,39 @@
 <body>
   <div class="card">
     <h1>⚽ Occy Weekend Football · My Profile</h1>
-    <p class="muted">Update your display name (shown on leaderboard)</p>
-    <label for="name">Display Name:</label>
-    <input id="name" type="text" />
+    <p class="muted">Set your display name and favourite team (shown on the leaderboard)</p>
+
+    <label for="name">Display Name</label>
+    <input id="name" type="text" placeholder="e.g., Mark O." />
+
+    <label for="team">Favourite Team</label>
+    <select id="team">
+      <option value="">— Select team —</option>
+      <option>Arsenal</option>
+      <option>Aston Villa</option>
+      <option>AFC Bournemouth</option>
+      <option>Brentford</option>
+      <option>Brighton & Hove Albion</option>
+      <option>Chelsea</option>
+      <option>Crystal Palace</option>
+      <option>Everton</option>
+      <option>Fulham</option>
+      <option>Ipswich Town</option>
+      <option>Leicester City</option>
+      <option>Liverpool</option>
+      <option>Manchester City</option>
+      <option>Manchester United</option>
+      <option>Newcastle United</option>
+      <option>Nottingham Forest</option>
+      <option>Southampton</option>
+      <option>Tottenham Hotspur</option>
+      <option>West Ham United</option>
+      <option>Wolverhampton Wanderers</option>
+    </select>
+
     <button id="save">Save</button>
     <p id="msg" class="muted"></p>
+    <p class="muted" style="margin-top:8px"><a href="index.html">← Back to home</a></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -61,23 +90,36 @@
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
     const nameInput = document.getElementById('name');
+    const teamSelect = document.getElementById('team');
     const msg = document.getElementById('msg');
     const saveBtn = document.getElementById('save');
 
     async function loadProfile() {
       const { data } = await client.auth.getUser();
       if (!data?.user) { msg.textContent = "Please sign in first."; return; }
-      const { data: prof } = await client.from('profiles').select().eq('id', data.user.id).single();
-      if (prof) nameInput.value = prof.display_name || '';
+      const { data: prof, error } = await client.from('profiles').select().eq('id', data.user.id).single();
+      if (error && error.code !== 'PGRST116') { msg.textContent = "Error loading profile: " + error.message; return; }
+      if (prof) {
+        nameInput.value = prof.display_name || '';
+        if (prof.favorite_team) teamSelect.value = prof.favorite_team;
+      }
     }
+
     saveBtn.addEventListener('click', async () => {
       const { data } = await client.auth.getUser();
       if (!data?.user) { msg.textContent = "Please sign in first."; return; }
-      const { error } = await client.from('profiles').upsert({ id: data.user.id, display_name: nameInput.value });
-      msg.textContent = error ? "Error: " + error.message : "Saved!";
+      const payload = {
+        id: data.user.id,
+        display_name: nameInput.value || null,
+        favorite_team: teamSelect.value || null
+      };
+      const { error } = await client.from('profiles').upsert(payload);
+      msg.textContent = error ? ("Error: " + error.message) : "Saved!";
     });
+
     loadProfile();
   </script>
 </body>
 </html>
+
 
