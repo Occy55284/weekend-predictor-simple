@@ -10,31 +10,19 @@
   <style>
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0;
-      padding: 20px;
+      margin: 0; padding: 20px;
       background: linear-gradient(135deg, #0f172a, #1e3a8a, #0f172a);
       color: #fff;
     }
     .card {
-      background: rgba(255,255,255,0.95);
-      color: #111;
-      border-radius: 16px;
-      padding: 24px;
-      max-width: 900px;
-      margin: 40px auto;
+      background: rgba(255,255,255,0.95); color: #111;
+      border-radius: 16px; padding: 24px; max-width: 900px; margin: 40px auto;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     h1 { color: #facc15; }
     button {
-      margin-top: 8px;
-      margin-right: 6px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: none;
-      background: #facc15;
-      color: #111;
-      font-weight: bold;
-      cursor: pointer;
+      margin-top: 8px; margin-right: 6px; padding: 8px 12px;
+      border-radius: 8px; border: none; background: #facc15; color: #111; font-weight: bold; cursor: pointer;
     }
     .muted { color:#555; font-size: 14px; }
     table { border-collapse: collapse; width:100%; margin-top:16px; }
@@ -45,7 +33,7 @@
 <body>
   <div class="card">
     <h1>⚽ Occy Weekend Football · Admin</h1>
-    <p class="muted">Pick featured fixtures for the weekend</p>
+    <p class="muted">Pick featured fixtures (only upcoming shown)</p>
     <button id="earliest">Pick earliest 5 upcoming</button>
     <button id="save">Save selected as featured</button>
     <table>
@@ -65,9 +53,22 @@
     const msg = document.getElementById('msg');
 
     async function load() {
-      const { data, error } = await client.from('fixtures').select().order('utc_date',{ascending:true});
+      const nowIso = new Date().toISOString();
+      const { data, error } = await client
+        .from('fixtures')
+        .select('id, utc_date, home_team, away_team, status, featured')
+        .in('status', ['SCHEDULED', 'TIMED'])
+        .gte('utc_date', nowIso)
+        .order('utc_date', { ascending: true });
+
       if (error) { msg.textContent = error.message; return; }
+
       rows.innerHTML = '';
+      if (!data?.length) {
+        msg.textContent = 'No upcoming fixtures found.';
+        return;
+      }
+
       data.forEach(f => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -79,21 +80,28 @@
         `;
         rows.appendChild(tr);
       });
+      msg.textContent = `Loaded ${data.length} upcoming fixture(s).`;
     }
+
     document.getElementById('earliest').addEventListener('click', () => {
       const checks = rows.querySelectorAll('input[type=checkbox]');
       let count = 0;
       checks.forEach(c => { if (count < 5) { c.checked = true; count++; } else { c.checked = false; } });
     });
+
     document.getElementById('save').addEventListener('click', async () => {
       const checks = rows.querySelectorAll('input[type=checkbox]');
       const updates = Array.from(checks).map(c => ({ id: c.dataset.id, featured: c.checked }));
       const { error } = await client.from('fixtures').upsert(updates);
       msg.textContent = error ? "Error: " + error.message : "Saved!";
     });
+
     load();
+    // Optional auto-refresh every minute (keeps list clean if matches roll over)
+    setInterval(load, 60000);
   </script>
 </body>
 </html>
+
 
 
