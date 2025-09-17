@@ -2,146 +2,143 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Leaderboard</title>
+  <title>Occy Weekend Football — Leaderboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <meta name="theme-color" content="#0f172a" />
   <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0;
-      padding: 0 16px;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
-      color: #fff;
-    }
-    header { text-align: center; margin: 40px 0 24px 0; }
-    header h1 { margin-top: 12px; color: #facc15; }
-    header p { color: #ddd; }
-    .card {
-      background: rgba(255,255,255,0.95);
-      color: #111;
-      border-radius: 16px;
-      padding: 20px;
-      margin: 16px auto;
-      max-width: 900px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    table { border-collapse: collapse; width:100%; margin-top:16px; }
-    th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
+      background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
+    header { text-align:center; margin:40px 0 24px; }
+    header h1 { margin-top:12px; color:#facc15; }
+    header p { color:#ddd; }
+    .card { background:rgba(255,255,255,0.95); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:900px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3); }
+    table { border-collapse:collapse; width:100%; margin-top:16px; }
+    th,td { border:1px solid #ddd; padding:8px; text-align:center; }
     th { background:#facc15; color:#111; }
     .muted { color:#555; font-size:14px; }
+    .pname { display:flex; align-items:center; gap:8px; justify-content:center; }
+    .crest { width:18px; height:18px; object-fit:contain; }
     a { color:#0f172a; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Leaderboard</h1>
+    <h1>⚽ Occy Weekend Football · Leaderboard</h1>
     <p class="muted">Auto-updates as results finish</p>
   </header>
 
   <div class="card">
     <p id="msg" class="muted">Loading…</p>
-
     <table id="lb" style="display:none">
       <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Points</th>
-          <th>Played</th>
-          <th>Exact</th>
-          <th>GD</th>
-          <th>Result</th>
-        </tr>
+        <tr><th>#</th><th>Name</th><th>Points</th><th>Played</th><th>Exact</th><th>GD</th><th>Result</th></tr>
       </thead>
       <tbody></tbody>
     </table>
-
     <p class="muted" style="margin-top:10px"><a href="index.html">← Back to home</a></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    function pointsFor(pred, actual) {
-      if (!actual) return { pts: 0, exact:0, gd:0, res:0, played:0 };
-      const ph = Number(pred.home_goals), pa = Number(pred.away_goals);
-      const ah = Number(actual.home),    aa = Number(actual.away);
-      const pRes = ph === pa ? 'D' : ph > pa ? 'H' : 'A';
-      const aRes = ah === aa ? 'D' : ah > aa ? 'H' : 'A';
-      const correctRes = pRes === aRes ? 1 : 0;
-      const correctGD  = (ph - pa) === (ah - aa) ? 1 : 0;
-      const exact      = (ph === ah && pa === aa) ? 1 : 0;
-      let pts = (correctRes ? 3 : 0) + (correctGD ? 1 : 0) + (exact ? 1 : 0);
-      if (pts > 5) pts = 5;
-      return { pts, exact, gd: correctGD, res: correctRes, played:1 };
+    // Reuse the crest map (same as Predict)
+    const CRESTS = {
+      'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
+      'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
+      'AFC Bournemouth':'https://resources.premierleague.com/premierleague/badges/70/t91.png',
+      'Brentford':'https://resources.premierleague.com/premierleague/badges/70/t94.png',
+      'Brighton & Hove Albion':'https://resources.premierleague.com/premierleague/badges/70/t36.png',
+      'Chelsea':'https://resources.premierleague.com/premierleague/badges/70/t8.png',
+      'Crystal Palace':'https://resources.premierleague.com/premierleague/badges/70/t31.png',
+      'Everton':'https://resources.premierleague.com/premierleague/badges/70/t11.png',
+      'Fulham':'https://resources.premierleague.com/premierleague/badges/70/t54.png',
+      'Ipswich Town':'https://resources.premierleague.com/premierleague/badges/70/t40.png',
+      'Leicester City':'https://resources.premierleague.com/premierleague/badges/70/t13.png',
+      'Liverpool':'https://resources.premierleague.com/premierleague/badges/70/t14.png',
+      'Manchester City':'https://resources.premierleague.com/premierleague/badges/70/t43.png',
+      'Manchester United':'https://resources.premierleague.com/premierleague/badges/70/t1.png',
+      'Newcastle United':'https://resources.premierleague.com/premierleague/badges/70/t4.png',
+      'Nottingham Forest':'https://resources.premierleague.com/premierleague/badges/70/t17.png',
+      'Southampton':'https://resources.premierleague.com/premierleague/badges/70/t20.png',
+      'Tottenham Hotspur':'https://resources.premierleague.com/premierleague/badges/70/t6.png',
+      'West Ham United':'https://resources.premierleague.com/premierleague/badges/70/t21.png',
+      'Wolverhampton Wanderers':'https://resources.premierleague.com/premierleague/badges/70/t39.png',
+    };
+    function crestFor(name){
+      if (!name) return '';
+      if (CRESTS[name]) return CRESTS[name];
+      const clean = name.replace(/ Football Club| FC| AFC/gi,'').trim();
+      for (const k of Object.keys(CRESTS)) {
+        if (k.replace(/ Football Club| FC| AFC/gi,'').trim() === clean) return CRESTS[k];
+      }
+      return '';
     }
 
-    async function loadLeaderboard() {
-      const msg = document.getElementById('msg');
-      const table = document.getElementById('lb');
-      const tbody = table.querySelector('tbody');
+    function pointsFor(pred, actual){
+      if(!actual) return { pts:0, exact:0, gd:0, res:0, played:0 };
+      const ph=+pred.home_goals, pa=+pred.away_goals, ah=+actual.home, aa=+actual.away;
+      const pRes = ph===pa?'D':ph>pa?'H':'A'; const aRes = ah===aa?'D':ah>aa?'H':'A';
+      const correctRes = pRes===aRes?1:0; const correctGD = (ph-pa)===(ah-aa)?1:0; const exact=(ph===ah&&pa===aa)?1:0;
+      let pts = (correctRes?3:0)+(correctGD?1:0)+(exact?1:0); if(pts>5) pts=5;
+      return { pts, exact, gd:correctGD, res:correctRes, played:1 };
+    }
 
-      const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
-      if (!url || !key) { msg.textContent = 'Missing Supabase config.'; return; }
-      const client = supabase.createClient(url, key);
+    async function loadLeaderboard(){
+      const msg=document.getElementById('msg'); const table=document.getElementById('lb'); const tbody=table.querySelector('tbody');
+      const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-      // 1) predictions (secure rows use user_id; legacy may have name)
-      const { data: preds, error: e1 } = await client
-        .from('predictions')
-        .select('user_id, name, fixture_id, home_goals, away_goals');
-      if (e1) { msg.textContent = 'Error loading predictions: ' + e1.message; return; }
-      if (!preds?.length) { msg.textContent = 'No predictions yet.'; return; }
+      const { data: preds, error:e1 } = await client.from('predictions').select('user_id,name,fixture_id,home_goals,away_goals');
+      if(e1){ msg.textContent = 'Error loading predictions: '+e1.message; return; }
+      if(!preds?.length){ msg.textContent='No predictions yet.'; return; }
 
-      // 2) finished fixtures only (actual results)
-      const { data: fixes, error: e2 } = await client
-        .from('fixtures')
-        .select('id, home_score, away_score, status')
-        .eq('status', 'FINISHED');
-      if (e2) { msg.textContent = 'Error loading fixtures: ' + e2.message; return; }
-      if (!fixes?.length) { msg.textContent = 'No finished results yet – check back soon.'; return; }
+      const { data: fixes, error:e2 } = await client.from('fixtures').select('id,home_score,away_score,status').eq('status','FINISHED');
+      if(e2){ msg.textContent='Error loading fixtures: '+e2.message; return; }
+      if(!fixes?.length){ msg.textContent='No finished results yet – check back soon.'; return; }
 
-      const results = {};
-      fixes.forEach(f => { results[f.id] = { home: f.home_score, away: f.away_score }; });
+      const results={}; fixes.forEach(f=>{ results[f.id]={home:f.home_score, away:f.away_score}; });
 
-      // 3) score predictions
-      const totals = {};
-      const userIds = new Set();
-
-      preds.forEach(row => {
-        const whoKey = row.user_id || row.name || '(anon)';
-        if (row.user_id) userIds.add(row.user_id);
-        const s = pointsFor(row, results[row.fixture_id]);
-        if (!totals[whoKey]) totals[whoKey] = { whoKey, pts:0, played:0, exact:0, gd:0, res:0, user_id: row.user_id || null };
-        totals[whoKey].pts    += s.pts;
-        totals[whoKey].played += s.played;
-        totals[whoKey].exact  += s.exact;
-        totals[whoKey].gd     += s.gd;
-        totals[whoKey].res    += s.res;
+      const totals={}, userIds=new Set();
+      preds.forEach(r=>{
+        const who=r.user_id||r.name||'(anon)'; if(r.user_id) userIds.add(r.user_id);
+        const s=pointsFor(r, results[r.fixture_id]);
+        if(!totals[who]) totals[who]={who, pts:0, played:0, exact:0, gd:0, res:0, user_id:r.user_id||null};
+        totals[who].pts+=s.pts; totals[who].played+=s.played; totals[who].exact+=s.exact; totals[who].gd+=s.gd; totals[who].res+=s.res;
       });
 
-      // 4) names from profiles
-      let namesById = {};
-      if (userIds.size) {
+      // Pull display_name + favorite_team
+      let profileById={};
+      if(userIds.size){
         const { data: profiles } = await client
           .from('profiles')
-          .select('id, display_name')
+          .select('id,display_name,favorite_team')
           .in('id', Array.from(userIds));
-        (profiles || []).forEach(p => { namesById[p.id] = p.display_name || ''; });
+        (profiles||[]).forEach(p=>{ profileById[p.id]=p; });
       }
 
-      const rows = Object.values(totals).map(r => {
-        const label = r.user_id ? (namesById[r.user_id] || '(no name set)') : r.whoKey;
-        return { label, ...r };
-      }).sort((a,b) => b.pts - a.pts || a.label.localeCompare(b.label));
+      const rows = Object.values(totals).map(r=>{
+        const prof = r.user_id ? profileById[r.user_id] : null;
+        const label = r.user_id ? (prof?.display_name || '(no name set)') : r.who;
+        const team = prof?.favorite_team || '';
+        const crest = crestFor(team);
+        return { label, team, crest, ...r };
+      }).sort((a,b)=> b.pts-a.pts || a.label.localeCompare(b.label));
 
-      if (!rows.length) { msg.textContent = 'No scored predictions yet.'; return; }
+      if(!rows.length){ msg.textContent='No scored predictions yet.'; return; }
 
-      tbody.innerHTML = '';
-      rows.forEach((r, i) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
+      tbody.innerHTML='';
+      rows.forEach((r,i)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
           <td>${i+1}</td>
-          <td>${r.label}</td>
+          <td>
+            <div class="pname">
+              ${r.crest ? `<img class="crest" src="${r.crest}" alt="${r.team} crest">` : ''}
+              <span>${r.label}</span>
+            </div>
+          </td>
           <td><b>${r.pts}</b></td>
           <td>${r.played}</td>
           <td>${r.exact}</td>
@@ -150,9 +147,7 @@
         `;
         tbody.appendChild(tr);
       });
-
-      msg.textContent = 'Updated from live fixtures.';
-      table.style.display = '';
+      msg.textContent='Updated from live fixtures.'; table.style.display='';
     }
 
     loadLeaderboard();
@@ -160,6 +155,7 @@
   </script>
 </body>
 </html>
+
 
 
 
