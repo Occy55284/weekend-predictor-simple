@@ -26,7 +26,11 @@
     .btn:disabled { opacity:.5; cursor:not-allowed; }
     .muted { color:#555; font-size:12px; }
     .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
-    .pill.locked { background:#fee2e2; color:#991b1b; } /* 🔒 look */
+    .pill.locked { background:#fee2e2; color:#991b1b; }
+    .potbox { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#f9fafb; padding:12px 14px; border-radius:12px; margin-bottom:10px; }
+    .toggle { display:flex; gap:8px; }
+    .toggle button { padding:8px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; }
+    .toggle button.active { background:#facc15; border-color:#facc15; color:#111; font-weight:700; }
     a { color:#0f172a; }
     @media (max-width:640px){ .team{min-width:auto;} }
   </style>
@@ -38,6 +42,14 @@
   </header>
 
   <div class="card">
+    <div class="potbox">
+      <div><b>Play for this weekend’s pot? (£2)</b><br><span class="muted">Toggle to be counted in the pot total on Home</span></div>
+      <div class="toggle">
+        <button id="potYes">Yes</button>
+        <button id="potNo">No</button>
+      </div>
+    </div>
+
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
       <div>
         <div><b>This weekend</b> <span id="weekLabel" class="pill">Fixtures</span></div>
@@ -51,15 +63,14 @@
     <div id="list"></div>
   </div>
 
-  <!-- Supabase SDK + your config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
   window.addEventListener('DOMContentLoaded', () => {
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
     const LOGIN_URL = 'login.html';
+    const ENTRY_FEE = 2;
 
-    // Premier League crest map (extend as needed)
     const CRESTS = {
       'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
       'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
@@ -91,21 +102,34 @@
       return '';
     }
 
-    const KEY='wknd-preds';
-    function loadPreds(){ try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return{}} }
-    function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
-
     const list=document.getElementById('list');
     const clearBtn=document.getElementById('clearBtn');
     const saveCloudBtn=document.getElementById('saveCloud');
     const authStatus=document.getElementById('authStatus');
+    const potYes=document.getElementById('potYes');
+    const potNo=document.getElementById('potNo');
 
+    const KEY='wknd-preds';
+    function loadPreds(){ try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return{}} }
+    function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
     function LOCKED(iso){ return new Date()>=new Date(iso); }
 
     async function getUser(){ const {data}=await client.auth.getUser(); return data?.user||null; }
     (async()=>{ const u=await getUser(); authStatus.innerHTML = u?.email?`Signed in as <b>${u.email}</b>`:`Not signed in · <a href="${LOGIN_URL}">Sign in</a>`; })();
 
-    // 1) Try featured; 2) fallback to next 5 upcoming
+    function currentWeekendStartISO(){
+      const now = new Date();
+      const d = new Date(now);
+      const day = d.getDay(); // 0..6
+      const diffToFri = (5 - day + 7) % 7;
+      const fri = new Date(d);
+      fri.setDate(d.getDate() - ((day + 7 - 5) % 7));
+      if (day < 5) fri.setDate(fri.getDate() + diffToFri);
+      fri.setHours(0,0,0,0);
+      return fri.toISOString().slice(0,10); // YYYY-MM-DD
+    }
+
+    // Load featured first, fallback to next 5
     async function loadFixtures(){
       let {data,error}=await client.from('fixtures')
         .select('id, utc_date, status, home_team, away_team')
@@ -113,7 +137,6 @@
         .order('utc_date', { ascending: true });
       if(error){ list.innerHTML='<p class="muted">Error loading fixtures.</p>'; return[]; }
       if(data?.length) return data;
-
       const nowIso=new Date().toISOString();
       const {data:fallback}=await client.from('fixtures')
         .select('id, utc_date, status, home_team, away_team')
@@ -128,15 +151,12 @@
       const preds=loadPreds();
       list.innerHTML='';
       if(!fixtures.length){ list.innerHTML='<p class="muted">No fixtures yet. Try running sync.</p>'; return; }
-
       fixtures.forEach(f=>{
         const p=preds[f.id]||{home:'',away:''};
         const kickoff=new Date(f.utc_date);
         const time=kickoff.toLocaleString(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'});
         const isLocked=LOCKED(f.utc_date);
-
         const homeC=crestFor(f.home_team), awayC=crestFor(f.away_team);
-
         const row=document.createElement('div'); row.className='row';
         row.innerHTML=`
           <div class="pair">
@@ -156,7 +176,7 @@
       });
     }
 
-    // Local save to device
+    // Local save
     list.addEventListener('input',(e)=>{
       const el=e.target; if(el.tagName!=='INPUT') return;
       const id=el.getAttribute('data-id'), side=el.getAttribute('data-side');
@@ -164,57 +184,70 @@
     });
     list.addEventListener('click',(e)=>{
       const btn=e.target.closest('button[data-save]'); if(!btn) return;
-      const id=btn.getAttribute('data-save');
-      const all=loadPreds();
+      const id=btn.getAttribute('data-save'); const all=loadPreds();
       if(!all[id]||all[id].home===''||all[id].away===''){ alert('Please enter both scores'); return; }
       alert('Saved on this device!');
     });
+    clearBtn.addEventListener('click',()=>{ if(confirm('Clear all your saved picks on this device?')){ localStorage.removeItem(KEY); location.reload(); }});
 
-    clearBtn.addEventListener('click',()=>{
-      if(confirm('Clear all your saved picks on this device?')){ localStorage.removeItem(KEY); location.reload(); }
-    });
-
-    // Secure cloud save using UPSERT (blocked after kickoff by RLS)
+    // Cloud save (UPSERT)
     async function saveAllToCloud(){
       const user=await getUser(); if(!user){ alert('Please sign in first.'); location.href=LOGIN_URL; return; }
-
-      const inputs=list.querySelectorAll('input[data-id]');
-      const ids=new Set(Array.from(inputs).map(i=>i.getAttribute('data-id')));
-
+      const inputs=list.querySelectorAll('input[data-id]'); const ids=new Set(Array.from(inputs).map(i=>i.getAttribute('data-id')));
       const all=loadPreds();
       const rows=Array.from(ids).map(id=>{
         const p=all[id]; if(!p||p.home===''||p.away==='') return null;
         return { user_id:user.id, fixture_id:id, home_goals:Number(p.home), away_goals:Number(p.away) };
       }).filter(Boolean);
-
       if(!rows.length){ alert('Nothing to save. Enter scores first.'); return; }
-
       try{
-        const { error } = await client
-          .from('predictions')
-          .upsert(rows, { onConflict: 'user_id,fixture_id' });
-
+        const { error } = await client.from('predictions').upsert(rows, { onConflict: 'user_id,fixture_id' });
         if (error) {
           if (/row-level security|violates|permission/i.test(error.message)) {
             alert('Some fixtures are locked (kickoff passed) so those picks could not be changed.');
-          } else {
-            alert('Supabase error: ' + error.message);
-          }
+          } else { alert('Supabase error: ' + error.message); }
           return;
         }
         alert('Saved to cloud! 🎉');
-      }catch(err){
-        console.error('Supabase error:', err);
-        alert('Unexpected error saving. Please try again.');
-      }
+      }catch(err){ console.error('Supabase error:', err); alert('Unexpected error saving. Please try again.'); }
     }
     document.getElementById('saveCloud').addEventListener('click', saveAllToCloud);
 
-    (async function init(){ const fixtures=await loadFixtures(); render(fixtures); })();
+    // POT TOGGLE (Yes/No)
+    function setToggleUI(state){
+      potYes.classList.toggle('active', state===true);
+      potNo.classList.toggle('active', state===false);
+    }
+
+    async function loadPotChoice(){
+      const user=await getUser(); if(!user) return;
+      const weekStart = currentWeekendStartISO();
+      const { data, error } = await client.from('pot_entries')
+        .select('paid').eq('pot_week_start', weekStart).eq('user_id', user.id).single();
+      if (error && error.code !== 'PGRST116') { console.log('pot load error', error.message); }
+      setToggleUI(!!data?.paid);
+    }
+
+    async function savePotChoice(paid){
+      const user=await getUser(); if(!user){ location.href=LOGIN_URL; return; }
+      const weekStart = currentWeekendStartISO();
+      const payload = { pot_week_start: weekStart, user_id: user.id, paid };
+      const { error } = await client.from('pot_entries').upsert(payload, { onConflict: 'pot_week_start,user_id' });
+      if (error) { alert('Could not save pot choice: ' + error.message); return; }
+      setToggleUI(paid);
+      // Bonus: nudge the index page cache via broadcast not needed; it polls every 15s.
+      alert(paid ? `You’re in for £${ENTRY_FEE}. Good luck!` : 'You’re out of the pot for this weekend.');
+    }
+
+    potYes.addEventListener('click', ()=> savePotChoice(true));
+    potNo.addEventListener('click', ()=> savePotChoice(false));
+
+    (async function init(){ const fixtures=await loadFixtures(); render(fixtures); await loadPotChoice(); })();
   });
   </script>
 </body>
 </html>
+
 
 
 
