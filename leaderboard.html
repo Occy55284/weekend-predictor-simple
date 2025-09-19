@@ -19,32 +19,52 @@
     th,td { border:1px solid #ddd; padding:8px; text-align:center; }
     th { background:#facc15; color:#111; }
     .muted { color:#555; font-size:14px; }
-    .pname { display:flex; align-items:center; gap:8px; justify-content:center; }
+    .pname { display:flex; align-items:center; gap:8px; justify-content:center; flex-wrap:wrap; }
     .crest { width:18px; height:18px; object-fit:contain; }
+    .rank { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:12px; }
+    .rank.rookie { background:#e5f6ff; color:#064e66; }
+    .rank.amateur { background:#fff7ed; color:#7c2d12; }
+    .rank.pro { background:#ecfdf5; color:#065f46; }
+    .rank.goat { background:#fef3c7; color:#92400e; font-weight:700; }
     a { color:#0f172a; }
+    .legend { margin-top:10px; font-size:12px; color:#555; }
   </style>
 </head>
 <body>
   <header>
     <h1>⚽ Occy Weekend Football · Leaderboard</h1>
-    <p class="muted">Auto-updates as results finish</p>
+    <p class="muted">Auto-updates as results finish • Ranks based on season exact scores</p>
   </header>
 
   <div class="card">
     <p id="msg" class="muted">Loading…</p>
     <table id="lb" style="display:none">
       <thead>
-        <tr><th>#</th><th>Name</th><th>Points</th><th>Played</th><th>Exact</th><th>GD</th><th>Result</th></tr>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Rank</th>
+          <th>Points</th>
+          <th>Played</th>
+          <th>Exact</th>
+          <th>GD</th>
+          <th>Result</th>
+        </tr>
       </thead>
       <tbody></tbody>
     </table>
+
+    <div class="legend">
+      🌱 Rookie 0–9 · 🎖️ Amateur 10–24 · 🏆 Pro 25–29 · 🐐 GOAT 30+
+    </div>
+
     <p class="muted" style="margin-top:10px"><a href="index.html">← Back to home</a></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // Reuse the crest map (same as Predict)
+    // Favourite-team crests (same map used elsewhere)
     const CRESTS = {
       'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
       'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
@@ -77,6 +97,22 @@
       return '';
     }
 
+    // Season window: Aug 1 → Jun 30 (covers a typical EPL season)
+    function seasonBoundsNow() {
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const month = now.getUTCMonth() + 1; // 1..12
+      let startYear, endYear;
+      if (month >= 8) { // Aug–Dec → season starts this year, ends next year
+        startYear = year; endYear = year + 1;
+      } else {          // Jan–Jul → season started last year, ends this year
+        startYear = year - 1; endYear = year;
+      }
+      const from = new Date(Date.UTC(startYear, 7, 1, 0, 0, 0)); // Aug=7
+      const to   = new Date(Date.UTC(endYear, 5, 30, 23, 59, 59)); // Jun=5
+      return { fromISO: from.toISOString(), toISO: to.toISOString() };
+    }
+
     function pointsFor(pred, actual){
       if(!actual) return { pts:0, exact:0, gd:0, res:0, played:0 };
       const ph=+pred.home_goals, pa=+pred.away_goals, ah=+actual.home, aa=+actual.away;
@@ -86,20 +122,37 @@
       return { pts, exact, gd:correctGD, res:correctRes, played:1 };
     }
 
+    function rankFor(exactCount){
+      if (exactCount >= 30) return { key:'goat', label:'🐐 GOAT' };
+      if (exactCount >= 25) return { key:'pro', label:'🏆 Pro' };
+      if (exactCount >= 10) return { key:'amateur', label:'🎖️ Amateur' };
+      return { key:'rookie', label:'🌱 Rookie' };
+    }
+
     async function loadLeaderboard(){
       const msg=document.getElementById('msg'); const table=document.getElementById('lb'); const tbody=table.querySelector('tbody');
       const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-      const { data: preds, error:e1 } = await client.from('predictions').select('user_id,name,fixture_id,home_goals,away_goals');
+      // Get predictions
+      const { data: preds, error:e1 } = await client
+        .from('predictions')
+        .select('user_id,name,fixture_id,home_goals,away_goals');
       if(e1){ msg.textContent = 'Error loading predictions: '+e1.message; return; }
       if(!preds?.length){ msg.textContent='No predictions yet.'; return; }
 
-      const { data: fixes, error:e2 } = await client.from('fixtures').select('id,home_score,away_score,status').eq('status','FINISHED');
+      // Get FINISHED fixtures within the current season window
+      const { fromISO, toISO } = seasonBoundsNow();
+      const { data: fixes, error:e2 } = await client
+        .from('fixtures')
+        .select('id,home_score,away_score,status,utc_date')
+        .eq('status','FINISHED')
+        .gte('utc_date', fromISO)
+        .lte('utc_date', toISO);
       if(e2){ msg.textContent='Error loading fixtures: '+e2.message; return; }
-      if(!fixes?.length){ msg.textContent='No finished results yet – check back soon.'; return; }
 
-      const results={}; fixes.forEach(f=>{ results[f.id]={home:f.home_score, away:f.away_score}; });
+      const results={}; (fixes||[]).forEach(f=>{ results[f.id]={home:f.home_score, away:f.away_score}; });
 
+      // Aggregate totals and exact counts for rank
       const totals={}, userIds=new Set();
       preds.forEach(r=>{
         const who=r.user_id||r.name||'(anon)'; if(r.user_id) userIds.add(r.user_id);
@@ -108,7 +161,7 @@
         totals[who].pts+=s.pts; totals[who].played+=s.played; totals[who].exact+=s.exact; totals[who].gd+=s.gd; totals[who].res+=s.res;
       });
 
-      // Pull display_name + favorite_team
+      // Profiles for display_name + favorite_team
       let profileById={};
       if(userIds.size){
         const { data: profiles } = await client
@@ -118,12 +171,14 @@
         (profiles||[]).forEach(p=>{ profileById[p.id]=p; });
       }
 
+      // Build rows with name, crest, and rank pill (based on season exact)
       const rows = Object.values(totals).map(r=>{
         const prof = r.user_id ? profileById[r.user_id] : null;
         const label = r.user_id ? (prof?.display_name || '(no name set)') : r.who;
-        const team = prof?.favorite_team || '';
-        const crest = crestFor(team);
-        return { label, team, crest, ...r };
+        const favTeam = prof?.favorite_team || '';
+        const crest = crestFor(favTeam);
+        const rank = rankFor(r.exact);
+        return { label, crest, rank, ...r };
       }).sort((a,b)=> b.pts-a.pts || a.label.localeCompare(b.label));
 
       if(!rows.length){ msg.textContent='No scored predictions yet.'; return; }
@@ -135,10 +190,11 @@
           <td>${i+1}</td>
           <td>
             <div class="pname">
-              ${r.crest ? `<img class="crest" src="${r.crest}" alt="${r.team} crest">` : ''}
+              ${r.crest ? `<img class="crest" src="${r.crest}" alt="team crest">` : ''}
               <span>${r.label}</span>
             </div>
           </td>
+          <td><span class="rank ${r.rank.key}">${r.rank.label}</span></td>
           <td><b>${r.pts}</b></td>
           <td>${r.played}</td>
           <td>${r.exact}</td>
@@ -147,6 +203,7 @@
         `;
         tbody.appendChild(tr);
       });
+
       msg.textContent='Updated from live fixtures.'; table.style.display='';
     }
 
@@ -155,6 +212,7 @@
   </script>
 </body>
 </html>
+
 
 
 
