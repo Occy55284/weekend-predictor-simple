@@ -8,49 +8,73 @@
   <link rel="apple-touch-icon" href="/favicon.svg" />
   <meta name="theme-color" content="#0f172a" />
   <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0; padding: 20px;
-      background: linear-gradient(135deg, #0f172a, #1e3a8a, #0f172a);
-      color: #fff;
-    }
-    .card {
-      background: rgba(255,255,255,0.95); color: #111;
-      border-radius: 16px; padding: 24px; max-width: 900px; margin: 40px auto;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; padding: 20px;
+      background: linear-gradient(135deg, #0f172a, #1e3a8a, #0f172a); color: #fff; }
+    .card { background: rgba(255,255,255,0.95); color: #111; border-radius: 16px; padding: 24px; max-width: 980px; margin: 40px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     h1 { color: #facc15; }
-    button {
-      margin-top: 8px; margin-right: 6px; padding: 8px 12px;
-      border-radius: 8px; border: none; background: #facc15; color: #111; font-weight: bold; cursor: pointer;
-    }
+    button { margin-top: 8px; margin-right: 6px; padding: 8px 12px; border-radius: 8px; border: none; background: #facc15; color: #111; font-weight: bold; cursor: pointer; }
     .muted { color:#555; font-size: 14px; }
     table { border-collapse: collapse; width:100%; margin-top:16px; }
     th, td { border:1px solid #ddd; padding:8px; text-align:left; }
     th { background:#facc15; color:#111; }
+    #contributors { display:none; margin-top:14px; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>⚽ Occy Weekend Football · Admin</h1>
     <p class="muted">Pick featured fixtures (only upcoming shown)</p>
-    <button id="earliest">Pick earliest 5 upcoming</button>
-    <button id="save">Save selected as featured</button>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="earliest">Pick earliest 5 upcoming</button>
+      <button id="save">Save selected as featured</button>
+      <button id="showContribs" style="display:none;">Show contributors (this weekend)</button>
+    </div>
+
     <table>
-      <thead>
-        <tr><th>Pick</th><th>Date</th><th>Home</th><th>Away</th><th>Status</th></tr>
-      </thead>
+      <thead><tr><th>Pick</th><th>Date</th><th>Home</th><th>Away</th><th>Status</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
+
+    <div id="contributors">
+      <h3>Weekend Contributors</h3>
+      <table>
+        <thead><tr><th>Name</th><th>Paid?</th></tr></thead>
+        <tbody id="contribRows"></tbody>
+      </table>
+    </div>
+
     <p id="msg" class="muted"></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
+    const ADMIN_EMAIL = 'your-admin-email@example.com'; // <-- change to your email (lowercase)
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
     const rows = document.getElementById('rows');
     const msg = document.getElementById('msg');
+    const showBtn = document.getElementById('showContribs');
+    const contribRows = document.getElementById('contribRows');
+    const contribBox = document.getElementById('contributors');
+
+    function currentWeekendStartISO(){
+      const now = new Date();
+      const d = new Date(now);
+      const day = d.getDay();
+      const diffToFri = (5 - day + 7) % 7;
+      const fri = new Date(d);
+      fri.setDate(d.getDate() - ((day + 7 - 5) % 7));
+      if (day < 5) fri.setDate(fri.getDate() + diffToFri);
+      fri.setHours(0,0,0,0);
+      return fri.toISOString().slice(0,10);
+    }
+
+    async function gateAdminButton(){
+      const { data } = await client.auth.getUser();
+      const email = (data?.user?.email || '').toLowerCase();
+      if (email === ADMIN_EMAIL) showBtn.style.display = '';
+    }
 
     async function load() {
       const nowIso = new Date().toISOString();
@@ -60,15 +84,9 @@
         .in('status', ['SCHEDULED', 'TIMED'])
         .gte('utc_date', nowIso)
         .order('utc_date', { ascending: true });
-
       if (error) { msg.textContent = error.message; return; }
-
       rows.innerHTML = '';
-      if (!data?.length) {
-        msg.textContent = 'No upcoming fixtures found.';
-        return;
-      }
-
+      if (!data?.length) { msg.textContent = 'No upcoming fixtures found.'; return; }
       data.forEach(f => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -96,12 +114,39 @@
       msg.textContent = error ? "Error: " + error.message : "Saved!";
     });
 
+    // Admin-only: show contributors list
+    showBtn.addEventListener('click', async () => {
+      const weekStart = currentWeekendStartISO();
+      const { data: entries, error } = await client
+        .from('pot_entries')
+        .select('user_id, paid')
+        .eq('pot_week_start', weekStart);
+      if (error) { alert('Error loading contributors: ' + error.message); return; }
+
+      const ids = [...new Set(entries.map(e => e.user_id).filter(Boolean))];
+      let namesById = {};
+      if (ids.length) {
+        const { data: profiles } = await client.from('profiles').select('id, display_name').in('id', ids);
+        (profiles||[]).forEach(p => namesById[p.id] = p.display_name || '(no name set)');
+      }
+
+      contribRows.innerHTML = '';
+      entries.sort((a,b) => (namesById[a.user_id]||'').localeCompare(namesById[b.user_id]||''));
+      entries.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${namesById[e.user_id] || '(anon)'}</td><td>${e.paid ? 'Yes' : 'No'}</td>`;
+        contribRows.appendChild(tr);
+      });
+      contribBox.style.display = '';
+    });
+
     load();
-    // Optional auto-refresh every minute (keeps list clean if matches roll over)
+    gateAdminButton();
     setInterval(load, 60000);
   </script>
 </body>
 </html>
+
 
 
 
