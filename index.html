@@ -2,62 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Weekend Football Predictor</title>
+  <title>Occy Weekend Football</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <meta name="theme-color" content="#0f172a" />
   <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0;
-      padding: 0 16px;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    header { text-align: center; margin: 40px 0 24px 0; }
-    header img { width: 90px; }
-    header h1 { margin-top: 12px; color: #facc15; font-size: 2rem; }
-    header p { color: #ddd; margin-top: 6px; }
-    .card {
-      background: rgba(255, 255, 255, 0.9);
-      color: #111; border-radius: 16px; padding: 20px;
-      margin: 16px auto; max-width: 800px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    .btn { display: inline-block; padding: 12px 16px; border-radius: 12px;
-      text-decoration: none; color: #111; background: #facc15; font-weight: bold;
-      margin: 6px; transition: transform 0.15s ease; }
-    .btn:hover { transform: scale(1.05); }
-    .btn-ghost { background: #fff; color: #111; }
-    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
-    .muted { color: #555; }
-    /* Hide content until we know auth status (prevents flicker) */
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin:0; padding:0 16px; min-height:100vh;
+      background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; display:flex; flex-direction:column; align-items:center; }
+    header { text-align:center; margin:40px 0 24px; }
+    header h1 { margin:12px 0 0; color:#facc15; font-size:2rem; }
+    header p { color:#ddd; margin-top:6px; }
+    .card { background:rgba(255,255,255,0.95); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:820px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3); width:100%; }
+    .btn { display:inline-block; padding:12px 16px; border-radius:12px; text-decoration:none; color:#111; background:#facc15; font-weight:700; margin:6px; transition:transform .15s ease; }
+    .btn:hover { transform:scale(1.05); }
+    .btn-ghost { background:#fff; color:#111; }
+    .btn-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; justify-content:center; }
+    .muted { color:#555; }
+    .stat { display:flex; align-items:center; justify-content:space-between; background:#f9fafb; padding:12px 14px; border-radius:12px; margin-top:10px; }
+    .stat b { font-size:1.1rem; }
     #app { display:none; }
   </style>
 </head>
 <body>
-
   <header>
-    <img src="https://cdn-icons-png.flaticon.com/512/1975/1975116.png" alt="Football Icon" />
-    <h1>Weekend Predictor</h1>
+    <h1>⚽ Occy Weekend Football</h1>
     <p class="muted">Pick scores • Beat your mates • Claim bragging rights</p>
   </header>
 
   <div id="app">
     <div class="card">
       <h2>Get started</h2>
-      <p>This version saves on your device, and you can also save to the cloud to share with mates.</p>
+      <div class="stat">
+        <span>💰 Weekend Pot (live)</span>
+        <b id="potTotal">£0.00</b>
+      </div>
+      <p class="muted" id="potNote">Entry is £2. Toggle “Play for the pot” on the Predict page.</p>
+
       <div class="btn-row">
         <a class="btn" href="predict.html">Make Predictions →</a>
         <a class="btn" href="leaderboard.html">View Leaderboard →</a>
-        <a class="btn btn-ghost" href="wall.html">View Predictions Wall →</a>
+        <a class="btn btn-ghost" href="wall.html">Predictions Wall →</a>
         <a class="btn btn-ghost" href="profile.html">My Profile →</a>
         <a class="btn btn-ghost" href="login.html">Sign in →</a>
-        <a class="btn btn-ghost" href="admin.html">Admin →</a>
         <a class="btn" style="background:#facc15;color:#111;" href="pot.html">💰 Weekend Pot →</a>
-
+        <a class="btn btn-ghost" href="admin.html">Admin →</a>
       </div>
     </div>
 
@@ -71,36 +61,49 @@
     </div>
   </div>
 
-  <!-- Supabase: check auth and redirect if needed -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    (async function () {
-      const PROD_ORIGIN = 'https://weekend-predictor-simple.vercel.app';
-      const LOGIN_URL = PROD_ORIGIN + '/login.html';
+    const ENTRY_FEE = 2; // £2 per player
 
-      const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
-      if (!url || !key) {
-        // If config is missing, just show the page (so you can fix config)
-        document.getElementById('app').style.display = 'block';
-        return;
-      }
+    function currentWeekendStartISO(){
+      // Friday 00:00 local → ISO
+      const now = new Date();
+      const d = new Date(now);
+      const day = d.getDay(); // 0=Sun..6=Sat
+      const diffToFri = (5 - day + 7) % 7;
+      const fri = new Date(d);
+      fri.setDate(d.getDate() - ((day + 7 - 5) % 7)); // previous Friday
+      if (day < 5) fri.setDate(fri.getDate() + diffToFri); // upcoming Friday if before Fri
+      fri.setHours(0,0,0,0);
+      return fri.toISOString().slice(0,10); // YYYY-MM-DD
+    }
 
-      const supa = supabase.createClient(url, key);
-      const { data } = await supa.auth.getUser();
-
-      if (!data?.user) {
-        // Not signed in: send straight to login
-        window.location.href = LOGIN_URL;
-        return;
-      }
-
-      // Signed in: show the normal homepage
+    (async function init(){
+      const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      const { data } = await client.auth.getUser();
+      if (!data?.user) { window.location.href = 'login.html'; return; }
       document.getElementById('app').style.display = 'block';
+
+      async function refreshPot(){
+        const weekStart = currentWeekendStartISO();
+        const { data: rows, error } = await client
+          .from('pot_entries')
+          .select('paid')
+          .eq('pot_week_start', weekStart)
+          .eq('paid', true);
+        const count = error ? 0 : (rows?.length || 0);
+        const total = count * ENTRY_FEE;
+        document.getElementById('potTotal').textContent = `£${total.toFixed(2)}`;
+      }
+
+      await refreshPot();
+      setInterval(refreshPot, 15000);
     })();
   </script>
 </body>
 </html>
+
 
 
 
