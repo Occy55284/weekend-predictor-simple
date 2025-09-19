@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="card" id="app" style="display:none">
     <h1>⚽ Occy Weekend Football · Admin</h1>
     <p class="muted">Pick featured fixtures (only upcoming shown)</p>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -50,8 +50,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    const ADMIN_EMAIL = 'grahammark55284@gmail.com'; // <-- change to your email (lowercase)
+    // 🔒 set this to your real login email (lowercase)
+    const ADMIN_EMAIL = 'grahammark55284@gmail.com';
+
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const app = document.getElementById('app');
     const rows = document.getElementById('rows');
     const msg = document.getElementById('msg');
     const showBtn = document.getElementById('showContribs');
@@ -70,10 +73,15 @@
       return fri.toISOString().slice(0,10);
     }
 
-    async function gateAdminButton(){
+    async function gateAdmin(){
       const { data } = await client.auth.getUser();
       const email = (data?.user?.email || '').toLowerCase();
-      if (email === ADMIN_EMAIL) showBtn.style.display = '';
+      if (!email) { window.location.href = 'login.html'; return false; }
+      if (email !== ADMIN_EMAIL) { window.location.href = 'index.html'; return false; }
+      // admin OK
+      app.style.display = '';
+      showBtn.style.display = ''; // show contributors button only to admin
+      return true;
     }
 
     async function load() {
@@ -131,21 +139,26 @@
       }
 
       contribRows.innerHTML = '';
-      entries.sort((a,b) => (namesById[a.user_id]||'').localeCompare(namesById[b.user_id]||''));
-      entries.forEach(e => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${namesById[e.user_id] || '(anon)'}</td><td>${e.paid ? 'Yes' : 'No'}</td>`;
-        contribRows.appendChild(tr);
-      });
+      entries
+        .sort((a,b) => (namesById[a.user_id]||'').localeCompare(namesById[b.user_id]||''))
+        .forEach(e => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${namesById[e.user_id] || '(anon)'}</td><td>${e.paid ? 'Yes' : 'No'}</td>`;
+          contribRows.appendChild(tr);
+        });
       contribBox.style.display = '';
     });
 
-    load();
-    gateAdminButton();
-    setInterval(load, 60000);
+    (async function init(){
+      const ok = await gateAdmin(); // ✅ blocks non-admins
+      if (!ok) return;
+      await load();
+      setInterval(load, 60000);
+    })();
   </script>
 </body>
 </html>
+
 
 
 
