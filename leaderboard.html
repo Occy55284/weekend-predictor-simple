@@ -8,86 +8,95 @@
   <link rel="apple-touch-icon" href="/favicon.svg" />
   <meta name="theme-color" content="#0f172a" />
   <style>
-    :root{
-      --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --card:#fffffff2; --muted:#555;
-    }
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
-      background: linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; }
-    header { text-align:center; margin:40px 0 24px; }
-    header h1 { margin-top:12px; color:var(--gold); }
-    header p { color:#ddd; }
-    .card { background:var(--card); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:1000px;
-      box-shadow:0 4px 12px rgba(0,0,0,.3); }
-    .split { display:grid; grid-template-columns:1fr; gap:18px; }
-    @media (min-width:1000px){ .split{ grid-template-columns:1fr 1fr; } }
-    h2 { margin:0 0 6px 0; }
-    .muted { color:var(--muted); font-size:14px; }
-    table { border-collapse:collapse; width:100%; margin-top:12px; }
-    th,td { border:1px solid #ddd; padding:8px; text-align:center; }
-    th { background:var(--gold); color:#111; }
-    .pname { display:flex; align-items:center; gap:8px; justify-content:flex-start; }
-    .crest { width:18px; height:18px; object-fit:contain; }
-    .rank { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:12px; white-space:nowrap; }
-    .rank.rookie { background:#e5f6ff; color:#064e66; }
-    .rank.amateur { background:#fff7ed; color:#7c2d12; }
-    .rank.pro { background:#ecfdf5; color:#065f46; }
-    .rank.goat { background:#fef3c7; color:#92400e; font-weight:700; }
-    .legend { margin-top:8px; font-size:12px; color:#555; }
-    .debug { font-size:12px; color:#374151; background:#f3f4f6; border-radius:10px; padding:8px 10px; margin:8px 0;}
-    a { color:#0f172a; }
+    :root{ --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --card:#fffffff2; --muted:#555; }
+    *{ box-sizing:border-box }
+    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
+      background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; }
+    header{ text-align:center; margin:36px 0 18px }
+    header h1{ margin:8px 0; color:var(--gold) }
+    header p{ color:#ddd }
+    .card{ background:var(--card); color:#111; border-radius:16px; padding:18px; margin:14px auto; max-width:1000px;
+      box-shadow:0 4px 12px rgba(0,0,0,.3) }
+    .tabs{ display:flex; gap:8px; border-bottom:1px solid #e5e7eb; margin:6px 0 12px }
+    .tab{ padding:10px 14px; border:1px solid #e5e7eb; border-bottom:none; border-top-left-radius:10px; border-top-right-radius:10px;
+      background:#f9fafb; cursor:pointer; }
+    .tab.active{ background:#fff; font-weight:700 }
+    .pane{ display:none }
+    .pane.active{ display:block }
+    .muted{ color:var(--muted); font-size:14px }
+    table{ border-collapse:collapse; width:100%; margin-top:12px }
+    th,td{ border:1px solid #ddd; padding:8px; text-align:center }
+    th{ background:var(--gold); color:#111 }
+    td.left{ text-align:left; padding-left:10px }
+    .pname{ display:flex; align-items:center; gap:8px }
+    .crest{ width:18px; height:18px; object-fit:contain }
+    .rank{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:12px; white-space:nowrap }
+    .rank.rookie{ background:#e5f6ff; color:#064e66 }
+    .rank.amateur{ background:#fff7ed; color:#7c2d12 }
+    .rank.pro{ background:#ecfdf5; color:#065f46 }
+    .rank.goat{ background:#fef3c7; color:#92400e; font-weight:700 }
+    .legend{ margin-top:8px; font-size:12px; color:#555 }
+    .debug{ font-size:12px; color:#374151; background:#f3f4f6; border-radius:10px; padding:8px 10px; margin:8px 0; display:none }
+    a{ color:#0f172a }
   </style>
 </head>
 <body>
   <header>
     <h1>⚽ Occy Weekend Football · Leaderboard</h1>
-    <p class="muted">Weekly winner (auto-reset each Fri→Mon) + Season standings</p>
+    <p class="muted">Weekly winner + Season standings</p>
   </header>
 
   <div class="card">
-    <div id="debugWeekly" class="debug" style="display:none"></div>
-    <div class="split">
-      <section>
-        <h2>This Weekend</h2>
-        <p id="weekRange" class="muted">—</p>
-        <table id="tblWeek" style="display:none">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th style="text-align:left;padding-left:10px;">Name</th>
-              <th>Points</th>
-              <th>Played</th>
-              <th>Exact</th>
-              <th>GD</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <p id="msgWeek" class="muted">Loading…</p>
-      </section>
-
-      <section>
-        <h2>Season Standings</h2>
-        <p class="muted">Aug 1 → Jun 30</p>
-        <table id="tblSeason" style="display:none">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th style="text-align:left;padding-left:10px;">Name</th>
-              <th>Rank</th>
-              <th>Points</th>
-              <th>Played</th>
-              <th>Exact</th>
-              <th>GD</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <p id="msgSeason" class="muted">Loading…</p>
-        <div class="legend">🌱 Rookie 0–9 · 🎖️ Amateur 10–24 · 🏆 Pro 25–29 · 🐐 GOAT 30+</div>
-      </section>
+    <div class="tabs">
+      <button id="tabWeek" class="tab active">This Weekend</button>
+      <button id="tabSeason" class="tab">Season</button>
     </div>
+
+    <!-- WEEKLY -->
+    <section id="paneWeek" class="pane active">
+      <div id="debugWeekly" class="debug"></div>
+      <h2 style="margin:0 0 6px 0;">This Weekend</h2>
+      <p id="weekRange" class="muted">—</p>
+      <table id="tblWeek" style="display:none">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th class="left">Name</th>
+            <th>Points</th>
+            <th>Played</th>
+            <th>Exact</th>
+            <th>GD</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="msgWeek" class="muted">Loading…</p>
+    </section>
+
+    <!-- SEASON -->
+    <section id="paneSeason" class="pane">
+      <div id="debugSeason" class="debug"></div>
+      <h2 style="margin:0 0 6px 0;">Season Standings</h2>
+      <p class="muted">Aug 1 → Jun 30</p>
+      <table id="tblSeason" style="display:none">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th class="left">Name</th>
+            <th>Rank</th>
+            <th>Points</th>
+            <th>Played</th>
+            <th>Exact</th>
+            <th>GD</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="msgSeason" class="muted">Loading…</p>
+      <div class="legend">🌱 Rookie 0–9 · 🎖️ Amateur 10–24 · 🏆 Pro 25–29 · 🐐 GOAT 30+</div>
+    </section>
 
     <p class="muted" style="margin-top:10px"><a href="index.html">← Back to home</a></p>
   </div>
@@ -95,7 +104,21 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // --- Utility: team crests for favourite team display (season table) ---
+    // --- Tabs ---
+    const tabWeek=document.getElementById('tabWeek');
+    const tabSeason=document.getElementById('tabSeason');
+    const paneWeek=document.getElementById('paneWeek');
+    const paneSeason=document.getElementById('paneSeason');
+    function setTab(which){
+      tabWeek.classList.toggle('active', which==='week');
+      tabSeason.classList.toggle('active', which==='season');
+      paneWeek.classList.toggle('active', which==='week');
+      paneSeason.classList.toggle('active', which==='season');
+    }
+    tabWeek.onclick=()=>setTab('week');
+    tabSeason.onclick=()=>setTab('season');
+
+    // --- Favourite-team crests for Season view ---
     const CRESTS = {
       'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
       'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
@@ -128,9 +151,9 @@
       return '';
     }
 
-    // --- Helper functions ---
+    // --- Helpers ---
     function normTeam(s){ return (s||'').replace(/ Football Club| FC| AFC/gi,'').trim().toLowerCase(); }
-    function keyFor(home,away){ return normTeam(home)+'|'+normTeam(away); }
+    function keyFor(h,a){ return normTeam(h)+'|'+normTeam(a); }
     function pointsFor(pred, actual){
       if(!actual) return { pts:0, exact:0, gd:0, res:0, played:0 };
       const ph=+pred.home_goals, pa=+pred.away_goals, ah=+actual.home, aa=+actual.away;
@@ -146,216 +169,200 @@
       return { key:'rookie', label:'🌱 Rookie' };
     }
 
-    // Weekend window: Fri 00:00 → Mon 03:00 (local time)
-    function currentWeekendRange(){
-      const now = new Date();
-      const day = now.getDay(); // 0 Sun .. 6 Sat
-      // Find Friday of this week
-      const diffToFri = (5 - day + 7) % 7;
-      const fri = new Date(now);
-      fri.setDate(now.getDate() - ((day + 7 - 5) % 7));
-      if (day < 5) fri.setDate(fri.getDate() + diffToFri);
-      fri.setHours(0,0,0,0);
-      const mon = new Date(fri);
-      mon.setDate(fri.getDate() + 3); // Fri + 3 = Monday
-      mon.setHours(3,0,0,0); // 03:00 buffer
-      return { start: fri, end: mon };
+    // Detect the "current weekend block" from YOUR GROUP'S predictions:
+    // take fixtures your users predicted in the last 8 days → use min..max of those dates.
+    function detectCurrentBlock(predFixtures){
+      const now = Date.now();
+      const eightDaysAgo = now - 8*24*60*60*1000;
+      const twoDaysAhead = now + 2*24*60*60*1000;
+      const recent = predFixtures.filter(f=>{
+        const t = new Date(f.utc_date).getTime();
+        return t >= eightDaysAgo && t <= twoDaysAhead;
+      });
+      const pool = recent.length ? recent : predFixtures; // fallback to all predicted fixtures
+      if (!pool.length) return null;
+      const times = pool.map(f=>new Date(f.utc_date).getTime());
+      const start = new Date(Math.min(...times));
+      const end   = new Date(Math.max(...times));
+      return { start, end };
     }
 
-    // Season window: Aug 1 → Jun 30 (UTC-ish)
-    function seasonBoundsNow() {
-      const now = new Date();
-      const y = now.getUTCFullYear();
-      const m = now.getUTCMonth()+1;
-      let startY, endY;
-      if (m >= 8) { startY = y; endY = y + 1; } else { startY = y - 1; endY = y; }
-      const from = new Date(Date.UTC(startY,7,1,0,0,0));  // Aug 1
-      const to   = new Date(Date.UTC(endY,5,30,23,59,59)); // Jun 30
-      return { from, to };
-    }
-
-    // --- Main loader ---
     async function loadBoth(){
-      const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-      // Pull all predictions once
+      // 1) All predictions
       const { data: preds, error:pErr } = await client
         .from('predictions')
         .select('user_id,name,fixture_id,home_goals,away_goals');
-      if (pErr) {
-        document.getElementById('msgWeek').textContent = 'Error loading predictions: '+pErr.message;
-        document.getElementById('msgSeason').textContent = 'Error loading predictions: '+pErr.message;
-        return;
-      }
-      if (!preds?.length){
-        document.getElementById('msgWeek').textContent='No predictions yet.';
-        document.getElementById('msgSeason').textContent='No predictions yet.';
-        return;
-      }
+      if (pErr){ document.getElementById('msgWeek').textContent=document.getElementById('msgSeason').textContent='Error: '+pErr.message; return; }
+      if (!preds?.length){ document.getElementById('msgWeek').textContent=document.getElementById('msgSeason').textContent='No predictions yet.'; return; }
 
-      // Fetch fixture rows for those prediction IDs (to know predicted teams and kickoff)
+      // 2) Fixtures referenced by those predictions (to know teams + kickoff)
       const ids = [...new Set(preds.map(p=>p.fixture_id))];
       let predFixtures = [];
       if (ids.length){
-        const { data: fxA, error: fxErr } = await client
-          .from('fixtures')
+        const { data: fxA, error: fxErr } = await client.from('fixtures')
           .select('id,home_team,away_team,utc_date')
           .in('id', ids);
-        if (fxErr) {
-          document.getElementById('msgWeek').textContent = 'Error loading fixtures: '+fxErr.message;
-          document.getElementById('msgSeason').textContent = 'Error loading fixtures: '+fxErr.message;
-          return;
-        }
+        if (fxErr){ document.getElementById('msgWeek').textContent=document.getElementById('msgSeason').textContent='Error loading fixtures: '+fxErr.message; return; }
         predFixtures = fxA || [];
       }
-      const predById = Object.fromEntries(predFixtures.map(f => [f.id, f]));
+      const predById = Object.fromEntries(predFixtures.map(f=>[f.id, f]));
 
-      // Fetch ALL finished fixtures (used for weekly + season scoring)
+      // 3) ALL finished fixtures (for scoring)
       const { data: fxScored, error:fErr } = await client
         .from('fixtures')
         .select('home_team,away_team,home_score,away_score,utc_date')
         .not('home_score','is', null)
         .not('away_score','is', null);
-      if (fErr) {
-        document.getElementById('msgWeek').textContent = 'Error loading scored fixtures: '+fErr.message;
-        document.getElementById('msgSeason').textContent = 'Error loading scored fixtures: '+fErr.message;
-        return;
-      }
+      if (fErr){ document.getElementById('msgWeek').textContent=document.getElementById('msgSeason').textContent='Error loading results: '+fErr.message; return; }
       const scored = fxScored || [];
 
-      // Bucket scored fixtures by team pair
+      // Bucket by team-pair
       const bucket = {};
       scored.forEach(s=>{
         const k = keyFor(s.home_team, s.away_team);
-        if (!bucket[k]) bucket[k] = [];
-        bucket[k].push(s);
+        (bucket[k] ||= []).push(s);
       });
 
-      // Helper: find nearest scored fixture by team pair to a predicted fixture date
+      // Find nearest scored for a predicted fixture
       const nearestFor = (pf) => {
         const list = bucket[keyFor(pf.home_team, pf.away_team)] || [];
         if (!list.length) return null;
         const tgt = new Date(pf.utc_date).getTime();
-        let best=null, bestGap=1e15;
+        let best=null, gap=1e15;
         for (const s of list){
           const g = Math.abs(new Date(s.utc_date).getTime() - tgt);
-          if (g < bestGap){ bestGap=g; best=s; }
+          if (g < gap){ gap=g; best=s; }
         }
-        if (!best) return null;
-        return { home: best.home_score, away: best.away_score, when: new Date(best.utc_date) };
+        return best ? { home:best.home_score, away:best.away_score, when:new Date(best.utc_date) } : null;
       };
 
-      // --- WEEKLY TABLE ---
-      const { start, end } = currentWeekendRange();
-      document.getElementById('weekRange').textContent =
-        start.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit'}) +
-        ' → ' +
-        end.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit'});
-
-      const weeklyTotals = {};
-      let weeklyMatched = 0;
-      const weekPreds = preds.filter(r=>{
-        const pf = predById[r.fixture_id];
-        if (!pf) return false;
-        const t = new Date(pf.utc_date);
-        return t >= start && t <= end; // only this weekend's fixtures
-      });
-
-      weekPreds.forEach(r=>{
-        const pf = predById[r.fixture_id]; if(!pf) return;
-        const actual = nearestFor(pf);
-        if (actual) weeklyMatched++;
-        const s = pointsFor(r, actual);
-        const who = r.user_id || r.name || '(anon)';
-        if (!weeklyTotals[who]) weeklyTotals[who] = { who, pts:0, played:0, exact:0, gd:0, res:0, user_id:r.user_id||null };
-        weeklyTotals[who].pts += s.pts; weeklyTotals[who].played += s.played; weeklyTotals[who].exact += s.exact; weeklyTotals[who].gd += s.gd; weeklyTotals[who].res += s.res;
-      });
-
-      const weekRows = Object.values(weeklyTotals)
-        .sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.who.localeCompare(b.who));
-
+      // 4) WEEKLY — use your group's most-recent prediction block
+      const block = detectCurrentBlock(predFixtures);
       const dbgW = document.getElementById('debugWeekly');
-      dbgW.style.display='';
-      dbgW.textContent = `fixturesThisWeekend=${new Set(weekPreds.map(p=>p.fixture_id)).size} · predictionsThisWeekend=${weekPreds.length} · matched=${weeklyMatched}`;
+      if (!block){ document.getElementById('msgWeek').textContent='No recent fixtures predicted.'; }
+      else {
+        document.getElementById('weekRange').textContent =
+          block.start.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit'})+' → '+
+          block.end.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit'});
 
-      const msgWeek = document.getElementById('msgWeek');
-      const tblWeek = document.getElementById('tblWeek');
-      const tbWeek = tblWeek.querySelector('tbody');
-      if (!weekRows.length){
-        msgWeek.textContent = 'No scored predictions for this weekend yet.';
-      } else {
-        msgWeek.textContent = '';
-        tbWeek.innerHTML='';
-        weekRows.forEach((r,i)=>{
-          const tr=document.createElement('tr');
-          tr.innerHTML = `
-            <td>${i+1}</td>
-            <td style="text-align:left;padding-left:10px;">${r.who}</td>
-            <td><b>${r.pts}</b></td>
-            <td>${r.played}</td>
-            <td>${r.exact}</td>
-            <td>${r.gd}</td>
-            <td>${r.res}</td>
-          `;
-          tbWeek.appendChild(tr);
+        const weekPreds = preds.filter(r=>{
+          const pf = predById[r.fixture_id]; if (!pf) return false;
+          const t = new Date(pf.utc_date);
+          return t >= block.start && t <= block.end;
         });
-        tblWeek.style.display='';
+
+        // build totals
+        const weeklyTotals={}, weeklyUsers=new Set(); let weeklyMatched=0;
+        weekPreds.forEach(r=>{
+          const pf = predById[r.fixture_id]; if (!pf) return;
+          const act = nearestFor(pf);
+          if (act) weeklyMatched++;
+          const s = pointsFor(r, act);
+          const uid = r.user_id || null;
+          const key = uid || (r.name || '(anon)');
+          if (!weeklyTotals[key]) weeklyTotals[key] = { user_id:uid, label:r.name || '(anon)', pts:0,played:0,exact:0,gd:0,res:0 };
+          weeklyTotals[key].pts+=s.pts; weeklyTotals[key].played+=s.played; weeklyTotals[key].exact+=s.exact; weeklyTotals[key].gd+=s.gd; weeklyTotals[key].res+=s.res;
+          if (uid) weeklyUsers.add(uid);
+        });
+
+        // replace labels with profile display_name when available
+        let profById={};
+        if (weeklyUsers.size){
+          const { data: profs } = await client.from('profiles')
+            .select('id,display_name')
+            .in('id', Array.from(weeklyUsers));
+          (profs||[]).forEach(p=> profById[p.id]=p.display_name||'(no name set)');
+        }
+        Object.values(weeklyTotals).forEach(r=>{
+          if (r.user_id && profById[r.user_id]) r.label = profById[r.user_id];
+        });
+
+        const weekRows = Object.values(weeklyTotals)
+          .sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.label.localeCompare(b.label));
+
+        // render weekly table
+        const msgW=document.getElementById('msgWeek');
+        const tblW=document.getElementById('tblWeek'); const tbW=tblW.querySelector('tbody');
+        if (!weekRows.length){ msgW.textContent='No scored predictions for this block yet.'; }
+        else{
+          msgW.textContent=''; tbW.innerHTML='';
+          weekRows.forEach((r,i)=>{
+            const tr=document.createElement('tr');
+            tr.innerHTML = `
+              <td>${i+1}</td>
+              <td class="left">${r.label}</td>
+              <td><b>${r.pts}</b></td>
+              <td>${r.played}</td>
+              <td>${r.exact}</td>
+              <td>${r.gd}</td>
+              <td>${r.res}</td>`;
+            tbW.appendChild(tr);
+          });
+          tblW.style.display='';
+        }
+        dbgW.style.display=''; dbgW.textContent = `fixturesThisBlock=${new Set(weekPreds.map(p=>p.fixture_id)).size} · predictionsThisBlock=${weekPreds.length} · matched=${weeklyMatched}`;
       }
 
-      // --- SEASON TABLE ---
-      const { from, to } = seasonBoundsNow();
+      // 5) SEASON — running total + badges
+      function seasonBoundsNow(){
+        const now=new Date(); const y=now.getUTCFullYear(); const m=now.getUTCMonth()+1;
+        const startY = (m>=8)? y : y-1; const endY = (m>=8)? y+1 : y;
+        return { from:new Date(Date.UTC(startY,7,1,0,0,0)), to:new Date(Date.UTC(endY,5,30,23,59,59)) };
+      }
+      const { from:seaFrom, to:seaTo } = seasonBoundsNow();
 
-      // Season totals: include any prediction whose matched scored fixture falls inside the season window
-      const seasonTotals = {};
-      let seasonMatched = 0;
+      const seasonTotals={}, seasonUsers=new Set(); let seasonMatched=0;
       preds.forEach(r=>{
         const pf = predById[r.fixture_id]; if (!pf) return;
-        const act = nearestFor(pf);
-        if (!act) return;
-        const when = act.when;
-        if (when < from || when > to) return; // outside season
+        const act = nearestFor(pf); if (!act) return;
+        if (act.when < seaFrom || act.when > seaTo) return;
         seasonMatched++;
-        const s = pointsFor(r, act);
-        const who = r.user_id || r.name || '(anon)';
-        if (!seasonTotals[who]) seasonTotals[who] = { who, pts:0, played:0, exact:0, gd:0, res:0, user_id:r.user_id||null };
-        seasonTotals[who].pts += s.pts; seasonTotals[who].played += s.played; seasonTotals[who].exact += s.exact; seasonTotals[who].gd += s.gd; seasonTotals[who].res += s.res;
+        const s=pointsFor(r, act);
+        const uid = r.user_id || null;
+        const key = uid || (r.name || '(anon)');
+        if (!seasonTotals[key]) seasonTotals[key] = { user_id:uid, label:r.name || '(anon)', pts:0,played:0,exact:0,gd:0,res:0, crest:'', rank:{key:'rookie',label:'Rookie'} };
+        seasonTotals[key].pts+=s.pts; seasonTotals[key].played+=s.played; seasonTotals[key].exact+=s.exact; seasonTotals[key].gd+=s.gd; seasonTotals[key].res+=s.res;
+        if (uid) seasonUsers.add(uid);
       });
 
-      // Pull profile names + favourite teams for crest + nicer label
-      const userIds = Object.values(seasonTotals).map(r=>r.user_id).filter(Boolean);
-      let profileById = {};
-      if (userIds.length){
-        const { data: profiles } = await client
-          .from('profiles')
+      // enrich season labels + crests + rank
+      let seasonProfById={};
+      if (seasonUsers.size){
+        const { data: profs2 } = await client.from('profiles')
           .select('id,display_name,favorite_team')
-          .in('id', userIds);
-        (profiles||[]).forEach(p=> profileById[p.id]=p);
+          .in('id', Array.from(seasonUsers));
+        (profs2||[]).forEach(p=> seasonProfById[p.id]=p);
       }
+      Object.values(seasonTotals).forEach(r=>{
+        const prof = r.user_id ? seasonProfById[r.user_id] : null;
+        r.label = prof?.display_name || r.label;
+        const fav = prof?.favorite_team || '';
+        r.crest = fav ? (CRESTS[fav] || '') : '';
+        // ranks by exact scores over season
+        const exact = r.exact;
+        r.rank = (exact>=30)?{key:'goat',label:'🐐 GOAT'}:
+                 (exact>=25)?{key:'pro',label:'🏆 Pro'}:
+                 (exact>=10)?{key:'amateur',label:'🎖️ Amateur'}:
+                              {key:'rookie',label:'🌱 Rookie'};
+      });
 
-      const seasonRows = Object.values(seasonTotals).map(r=>{
-        const prof = r.user_id ? profileById[r.user_id] : null;
-        const label = r.user_id ? (prof?.display_name || '(no name set)') : r.who;
-        const favTeam = prof?.favorite_team || '';
-        const crest = favTeam ? crestFor(favTeam) : '';
-        const rank = rankFor(r.exact);
-        return { label, crest, rank, ...r };
-      }).sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.label.localeCompare(b.label));
+      const seasonRows = Object.values(seasonTotals)
+        .sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.label.localeCompare(b.label));
 
-      const msgSeason = document.getElementById('msgSeason');
-      const tblSeason = document.getElementById('tblSeason');
-      const tbSeason = tblSeason.querySelector('tbody');
-      if (!seasonRows.length){
-        msgSeason.textContent = 'No scored predictions in the season yet.';
-      } else {
-        msgSeason.textContent = '';
-        tbSeason.innerHTML='';
+      const msgS=document.getElementById('msgSeason');
+      const tblS=document.getElementById('tblSeason'); const tbS=tblS.querySelector('tbody');
+      if (!seasonRows.length){ msgS.textContent='No scored predictions in season yet.'; }
+      else{
+        msgS.textContent=''; tbS.innerHTML='';
         seasonRows.forEach((r,i)=>{
           const tr=document.createElement('tr');
           tr.innerHTML = `
             <td>${i+1}</td>
-            <td style="text-align:left;padding-left:10px;">
+            <td class="left">
               <div class="pname">
-                ${r.crest ? `<img class="crest" src="${r.crest}" alt="crest">` : ''}
+                ${r.crest?`<img class="crest" src="${r.crest}" alt="crest">`:''}
                 <span>${r.label}</span>
               </div>
             </td>
@@ -364,20 +371,19 @@
             <td>${r.played}</td>
             <td>${r.exact}</td>
             <td>${r.gd}</td>
-            <td>${r.res}</td>
-          `;
-          tbSeason.appendChild(tr);
+            <td>${r.res}</td>`;
+          tbS.appendChild(tr);
         });
-        tblSeason.style.display='';
+        tblS.style.display='';
       }
     }
 
     loadBoth();
-    // auto-refresh occasionally
     setInterval(loadBoth, 20000);
   </script>
 </body>
 </html>
+
 
 
 
