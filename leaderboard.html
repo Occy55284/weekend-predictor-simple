@@ -33,7 +33,7 @@
 <body>
   <header>
     <h1>⚽ Occy Weekend Football · Leaderboard</h1>
-    <p class="muted">Auto-updates as results finish • Ranks based on season exact scores</p>
+    <p class="muted">Auto-updates • Counts any fixtures with recorded scores (even if status isn’t “FINISHED”)</p>
   </header>
 
   <div class="card">
@@ -64,7 +64,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // Favourite-team crests (same map used elsewhere)
+    // Favourite-team crests
     const CRESTS = {
       'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
       'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
@@ -97,17 +97,13 @@
       return '';
     }
 
-    // Season window: Aug 1 → Jun 30 (covers a typical EPL season)
+    // Season window: Aug 1 → Jun 30 (typical EPL season)
     function seasonBoundsNow() {
       const now = new Date();
       const year = now.getUTCFullYear();
       const month = now.getUTCMonth() + 1; // 1..12
       let startYear, endYear;
-      if (month >= 8) { // Aug–Dec → season starts this year, ends next year
-        startYear = year; endYear = year + 1;
-      } else {          // Jan–Jul → season started last year, ends this year
-        startYear = year - 1; endYear = year;
-      }
+      if (month >= 8) { startYear = year; endYear = year + 1; } else { startYear = year - 1; endYear = year; }
       const from = new Date(Date.UTC(startYear, 7, 1, 0, 0, 0)); // Aug=7
       const to   = new Date(Date.UTC(endYear, 5, 30, 23, 59, 59)); // Jun=5
       return { fromISO: from.toISOString(), toISO: to.toISOString() };
@@ -133,26 +129,27 @@
       const msg=document.getElementById('msg'); const table=document.getElementById('lb'); const tbody=table.querySelector('tbody');
       const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-      // Get predictions
+      // Pull all predictions (season scoring handled by fixtures window below)
       const { data: preds, error:e1 } = await client
         .from('predictions')
         .select('user_id,name,fixture_id,home_goals,away_goals');
       if(e1){ msg.textContent = 'Error loading predictions: '+e1.message; return; }
       if(!preds?.length){ msg.textContent='No predictions yet.'; return; }
 
-      // Get FINISHED fixtures within the current season window
+      // ✅ Get fixtures WITH SCORES (counts even if status didn’t flip to FINISHED)
       const { fromISO, toISO } = seasonBoundsNow();
       const { data: fixes, error:e2 } = await client
         .from('fixtures')
         .select('id,home_score,away_score,status,utc_date')
-        .eq('status','FINISHED')
+        .not('home_score','is', null)
+        .not('away_score','is', null)
         .gte('utc_date', fromISO)
         .lte('utc_date', toISO);
       if(e2){ msg.textContent='Error loading fixtures: '+e2.message; return; }
 
       const results={}; (fixes||[]).forEach(f=>{ results[f.id]={home:f.home_score, away:f.away_score}; });
 
-      // Aggregate totals and exact counts for rank
+      // Aggregate totals + exact counts for rank
       const totals={}, userIds=new Set();
       preds.forEach(r=>{
         const who=r.user_id||r.name||'(anon)'; if(r.user_id) userIds.add(r.user_id);
@@ -171,7 +168,7 @@
         (profiles||[]).forEach(p=>{ profileById[p.id]=p; });
       }
 
-      // Build rows with name, crest, and rank pill (based on season exact)
+      // Build rows with name, crest, and rank pill
       const rows = Object.values(totals).map(r=>{
         const prof = r.user_id ? profileById[r.user_id] : null;
         const label = r.user_id ? (prof?.display_name || '(no name set)') : r.who;
@@ -179,7 +176,7 @@
         const crest = crestFor(favTeam);
         const rank = rankFor(r.exact);
         return { label, crest, rank, ...r };
-      }).sort((a,b)=> b.pts-a.pts || a.label.localeCompare(b.label));
+      }).sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.label.localeCompare(b.label));
 
       if(!rows.length){ msg.textContent='No scored predictions yet.'; return; }
 
@@ -204,7 +201,7 @@
         tbody.appendChild(tr);
       });
 
-      msg.textContent='Updated from live fixtures.'; table.style.display='';
+      msg.textContent='Updated from recorded results.'; table.style.display='';
     }
 
     loadLeaderboard();
@@ -212,6 +209,7 @@
   </script>
 </body>
 </html>
+
 
 
 
