@@ -34,7 +34,7 @@
 <body>
   <header>
     <h1>⚽ Occy Weekend Football · Leaderboard</h1>
-    <p class="muted">Scores any match that has a score, matched by teams (no DB joins needed)</p>
+    <p class="muted">Matches predictions to the nearest finished game with the same teams (IDs ignored)</p>
   </header>
 
   <div class="card">
@@ -100,9 +100,10 @@
       return '';
     }
 
-    // Helpers to match by teams
+    // Helpers for fuzzy team matching
     function normTeam(s){ return (s||'').replace(/ Football Club| FC| AFC/gi,'').trim().toLowerCase(); }
     function keyFor(home,away){ return normTeam(home) + '|' + normTeam(away); }
+    function timeOf(d){ return (new Date(d)).getTime(); }
 
     // Scoring helpers
     function pointsFor(pred, actual){
@@ -127,40 +128,65 @@
       const dbg=document.getElementById('debug');
       const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-      // 1) Pull ALL predictions
+      // 1) Pull all predictions
       const { data: preds, error:pErr } = await client
         .from('predictions')
         .select('user_id,name,fixture_id,home_goals,away_goals');
       if (pErr) { msg.textContent = 'Error loading predictions: '+pErr.message; return; }
       if (!preds?.length){ msg.textContent='No predictions yet.'; return; }
 
-      // 2) Fetch fixtures for those fixture_ids (to get team names), plus build scored map by TEAMS
+      // 2) Pull fixture rows for those prediction IDs (to know the predicted teams + kickoff date)
       const ids = [...new Set(preds.map(p=>p.fixture_id))];
-      let fixturesById = {};
+      let predFixtures = [];
       if (ids.length){
-        const { data: fxA } = await client.from('fixtures')
-          .select('id,home_team,away_team').in('id', ids);
-        (fxA||[]).forEach(f => { fixturesById[f.id] = f; });
+        const { data: fxA, error: fxErr } = await client
+          .from('fixtures')
+          .select('id,home_team,away_team,utc_date')
+          .in('id', ids);
+        if (fxErr) { msg.textContent = 'Error loading fixtures for predictions: '+fxErr.message; return; }
+        predFixtures = fxA || [];
       }
+      const predById = Object.fromEntries(predFixtures.map(f => [f.id, f]));
 
+      // 3) Pull ALL scored fixtures (status ignored; just need non-null scores)
       const { data: fxScored, error:fErr } = await client
         .from('fixtures')
-        .select('home_team,away_team,home_score,away_score')
+        .select('home_team,away_team,home_score,away_score,utc_date')
         .not('home_score','is', null)
         .not('away_score','is', null);
-      if (fErr) { msg.textContent = 'Error loading fixtures: '+fErr.message; return; }
-      const resultsByTeams = {};
-      (fxScored||[]).forEach(f=>{
-        resultsByTeams[keyFor(f.home_team,f.away_team)] = { home:f.home_score, away:f.away_score };
+      if (fErr) { msg.textContent = 'Error loading scored fixtures: '+fErr.message; return; }
+      const scored = fxScored || [];
+
+      // Pre-bucket scored fixtures by team-pair key for speed
+      const bucket = {};
+      scored.forEach(s=>{
+        const k = keyFor(s.home_team, s.away_team);
+        if (!bucket[k]) bucket[k] = [];
+        bucket[k].push(s);
       });
 
-      // 3) Totals
+      // 4) For each prediction, find the nearest scored fixture with the same teams
+      let matched=0;
       const totals={}, userIds=new Set();
-      let matched = 0;
-
       preds.forEach(r=>{
-        const fx = fixturesById[r.fixture_id];
-        const actual = fx ? resultsByTeams[keyFor(fx.home_team, fx.away_team)] : null;
+        const pf = predById[r.fixture_id];
+        let actual=null;
+
+        if (pf){
+          const k = keyFor(pf.home_team, pf.away_team);
+          const list = bucket[k] || [];
+          if (list.length){
+            // choose the one nearest in time to the predicted fixture date
+            const tgt = timeOf(pf.utc_date);
+            let best=null, bestGap=Number.POSITIVE_INFINITY;
+            for (const s of list){
+              const g = Math.abs(timeOf(s.utc_date) - tgt);
+              if (g < bestGap){ bestGap=g; best=s; }
+            }
+            if (best) actual = { home: best.home_score, away: best.away_score };
+          }
+        }
+
         if (actual) matched++;
         const who=r.user_id||r.name||'(anon)'; if(r.user_id) userIds.add(r.user_id);
         const s=pointsFor(r, actual);
@@ -168,7 +194,7 @@
         totals[who].pts+=s.pts; totals[who].played+=s.played; totals[who].exact+=s.exact; totals[who].gd+=s.gd; totals[who].res+=s.res;
       });
 
-      // 4) Names + favourite team
+      // 5) Pull display names + favourite teams
       let profileById={};
       if(userIds.size){
         const { data: profiles } = await client
@@ -188,7 +214,7 @@
       }).sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.label.localeCompare(b.label));
 
       // Debug line
-      const fixturesWithScores = Object.keys(resultsByTeams).length;
+      const fixturesWithScores = scored.length;
       dbg.style.display='';
       dbg.textContent = `fixturesWithScores=${fixturesWithScores} · predictions=${preds.length} · matchedPredictions=${matched}`;
 
@@ -223,7 +249,6 @@
   </script>
 </body>
 </html>
-
 
 
 
