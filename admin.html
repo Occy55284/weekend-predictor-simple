@@ -14,7 +14,7 @@
       background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; min-height:100vh; }
     h1 { color:var(--gold); text-align:center; }
     .card { background:rgba(255,255,255,.95); color:#111; border-radius:12px; padding:20px; margin:20px auto;
-      max-width:900px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+      max-width:1000px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
     table { border-collapse:collapse; width:100%; margin-top:12px; }
     th,td { border:1px solid #ddd; padding:8px; text-align:left; }
     th { background:var(--gold); color:#111; }
@@ -26,10 +26,10 @@
     a { color:#0f172a; }
     #gate { text-align:center; margin-top:20px; color:#ddd; }
     #app { display:none; }
-    .error { background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; padding:10px; border-radius:8px; margin:12px auto; max-width:900px; display:none; }
-    .ok    { background:#ecfdf5; color:#064e3b; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin:12px auto; max-width:900px; }
+    .error { background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; padding:10px; border-radius:8px; margin:12px auto; max-width:1000px; display:none; }
+    .ok    { background:#ecfdf5; color:#064e3b; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin:12px auto; max-width:1000px; display:none; }
     .muted { color:#555; font-size:14px; }
-    code  { background:#111; color:#facc15; padding:2px 6px; border-radius:6px; }
+    .hint  { margin-top:10px; font-size:14px; color:#333; }
   </style>
 </head>
 <body>
@@ -37,7 +37,7 @@
 
   <!-- Visible diagnostics -->
   <div id="err" class="error"></div>
-  <div id="ok" class="ok" style="display:none"></div>
+  <div id="ok"  class="ok"   style="display:none"></div>
 
   <!-- Gate / status -->
   <div id="gate">Checking permissions…</div>
@@ -48,6 +48,7 @@
     <p class="muted">Select which fixtures should appear on the Predict page. Only admins can change this.</p>
 
     <div class="actions">
+      <button id="sync">🔄 Sync fixtures now</button>
       <button id="earliest">Pick earliest 5 upcoming</button>
       <button id="save">Save selected as featured</button>
     </div>
@@ -60,6 +61,10 @@
       </thead>
       <tbody id="rows"></tbody>
     </table>
+
+    <p id="hint" class="hint" style="display:none">
+      No fixtures yet. Click <b>“Sync fixtures now”</b> to pull fresh games, then click <b>“Pick earliest 5”</b> and <b>“Save”</b>.
+    </p>
 
     <p style="margin-top:10px"><a href="index.html">← Back to home</a></p>
   </div>
@@ -74,37 +79,20 @@
     const whoEl = document.getElementById('who');
     const rows  = document.getElementById('rows');
     const msg   = document.getElementById('msg');
+    const hint  = document.getElementById('hint');
 
-    function showError(txt){
-      errEl.textContent = txt;
-      errEl.style.display = 'block';
-    }
-    function showOk(txt){
-      okEl.textContent = txt;
-      okEl.style.display = 'block';
+    function showError(txt){ errEl.textContent = txt; errEl.style.display = 'block'; }
+    function showOk(txt){ okEl.textContent = txt; okEl.style.display = 'block'; }
+
+    // Config sanity
+    if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY){
+      showError('Missing Supabase config. Check /supabase-config.js is present and has your URL + anon key.');
     }
 
-    // --- Config sanity checks BEFORE creating client ---
-    (function checkConfig(){
-      if (!window.SUPABASE_URL) showError('Missing SUPABASE_URL. Create /supabase-config.js with your project URL.');
-      if (!window.SUPABASE_ANON_KEY) showError('Missing SUPABASE_ANON_KEY. Paste your anon key in /supabase-config.js.');
-      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
-        gateEl.textContent = 'Config error.';
-      } else {
-        showOk(`Using project: ${window.SUPABASE_URL}`);
-      }
-    })();
-
-    let client;
-    try {
-      client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    } catch (e){
-      showError('Failed to create Supabase client: ' + e.message);
-      gateEl.textContent = 'Config error.';
-    }
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
     async function ensureOwnProfile(user){
-      // Try to read
+      // Try to read your profile; if missing, create it (needs profiles policies set)
       let { data: prof, error } = await client
         .from('profiles')
         .select('id, display_name, is_admin')
@@ -113,13 +101,11 @@
       if (error && error.code !== 'PGRST116') throw new Error('profiles select: ' + error.message);
 
       if (!prof){
-        // Create own row (requires profiles_insert_own policy)
         const displayName = user.email?.split('@')[0] || 'User';
         const { error: insErr } = await client
           .from('profiles')
           .insert({ id: user.id, display_name: displayName });
         if (insErr) throw new Error('profiles insert: ' + insErr.message);
-
         const res = await client
           .from('profiles')
           .select('id, display_name, is_admin')
@@ -132,37 +118,24 @@
     }
 
     async function gateAdmin(){
-      try {
-        if (!client) return false;
-
+      try{
         const { data: userRes, error: uErr } = await client.auth.getUser();
         if (uErr) throw new Error('auth getUser: ' + uErr.message);
         const user = userRes?.user;
-        if (!user) {
-          showError('Not signed in. Redirecting to login…');
-          window.location.href = 'login.html';
-          return false;
-        }
+        if (!user) { window.location.href='login.html'; return false; }
 
-        // who’s signed in
         whoEl.textContent = `Signed in as ${user.email}`;
 
         const prof = await ensureOwnProfile(user);
-        if (!prof?.is_admin) {
-          showError('You are signed in, but not an admin. Redirecting to home…');
-          setTimeout(()=> window.location.href='index.html', 1200);
-          return false;
-        }
+        if (!prof?.is_admin){ window.location.href='index.html'; return false; }
 
-        // OK
         gateEl.style.display='none';
         appEl.style.display='';
         showOk('Admin verified.');
         return true;
-
-      } catch (e){
+      }catch(e){
         showError(e.message || String(e));
-        gateEl.textContent = 'Permission error.';
+        gateEl.textContent='Permission error.';
         return false;
       }
     }
@@ -174,7 +147,14 @@
         .select('id,home_team,away_team,utc_date,featured')
         .order('utc_date', { ascending: true });
       if(error){ msg.textContent='Error: '+error.message; return; }
+
       rows.innerHTML='';
+      if (!data || data.length===0){
+        msg.textContent='No fixtures found.';
+        hint.style.display='';
+        return;
+      }
+      hint.style.display='none';
       (data||[]).forEach(f=>{
         const tr=document.createElement('tr');
         const d=new Date(f.utc_date);
@@ -189,6 +169,36 @@
       msg.textContent=`Loaded ${data.length} fixtures.`;
     }
 
+    // 🔄 Call your Edge Function to sync fixtures
+    async function callSync(){
+      try{
+        msg.textContent='Syncing…';
+        // Use the signed-in user's access token for the function
+        const { data: sess } = await client.auth.getSession();
+        const token = sess?.session?.access_token || '';
+        const res = await fetch(`${window.SUPABASE_URL}/functions/v1/sync_fixtures`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'x-client-info': 'weekend-admin'
+          },
+          body: JSON.stringify({ trigger: 'admin' })
+        });
+        const text = await res.text();
+        if (!res.ok){
+          msg.textContent = 'Sync failed: ' + text;
+          return;
+        }
+        msg.textContent = 'Sync complete: ' + text;
+        await load();
+      }catch(e){
+        msg.textContent = 'Sync error: ' + (e.message || String(e));
+      }
+    }
+
+    document.getElementById('sync').addEventListener('click', callSync);
+
     document.getElementById('earliest').addEventListener('click', ()=>{
       const checks = rows.querySelectorAll('input[type=checkbox]');
       let count=0;
@@ -198,7 +208,7 @@
       msg.textContent='Earliest 5 marked.';
     });
 
-    // UPDATE-only saves (RLS safe)
+    // ✅ RLS-safe: UPDATE only
     document.getElementById('save').addEventListener('click', async () => {
       const checks = rows.querySelectorAll('input[type=checkbox]');
       const selectedIds = [], unselectedIds = [];
@@ -234,6 +244,7 @@
   </script>
 </body>
 </html>
+
 
 
 
