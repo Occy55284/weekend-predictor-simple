@@ -12,33 +12,44 @@
       background:linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; min-height:100vh; }
     h1 { color:#facc15; text-align:center; }
     .card { background:rgba(255,255,255,.95); color:#111; border-radius:12px; padding:20px; margin:20px auto;
-      max-width:800px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+      max-width:900px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
     table { border-collapse:collapse; width:100%; margin-top:12px; }
     th,td { border:1px solid #ddd; padding:8px; text-align:left; }
     th { background:#facc15; color:#111; }
-    .actions { margin-top:12px; }
+    .actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
     button { padding:8px 14px; border:none; border-radius:6px; cursor:pointer; font-size:14px;
       background:#1e3a8a; color:#fff; }
     button:hover { background:#3746c2; }
     #msg { margin-top:10px; font-size:14px; }
     a { color:#0f172a; }
+    #gate { text-align:center; margin-top:40px; color:#ddd; }
+    #app { display:none; }
   </style>
 </head>
 <body>
   <h1>⚽ Occy Weekend Football · Admin</h1>
-  <div class="card">
+
+  <!-- Gate / status -->
+  <div id="gate">Checking permissions…</div>
+
+  <!-- Admin app -->
+  <div id="app" class="card">
     <p>Select which fixtures should appear on the Predict page. Only admins can change this.</p>
+
     <div class="actions">
       <button id="earliest">Pick earliest 5 upcoming</button>
       <button id="save">Save selected as featured</button>
     </div>
+
     <p id="msg"></p>
+
     <table>
       <thead>
         <tr><th>Use?</th><th>Date</th><th>Home</th><th>Away</th></tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
+
     <p style="margin-top:10px"><a href="index.html">← Back to home</a></p>
   </div>
 
@@ -46,15 +57,52 @@
   <script src="supabase-config.js"></script>
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const rows = document.getElementById('rows');
-    const msg = document.getElementById('msg');
+    const gateEl = document.getElementById('gate');
+    const appEl  = document.getElementById('app');
+    const rows   = document.getElementById('rows');
+    const msg    = document.getElementById('msg');
+
+    // 🔒 Client-side admin gate using profiles.is_admin
+    async function gateAdmin() {
+      // require signed-in user
+      const { data: userRes } = await client.auth.getUser();
+      const user = userRes?.user;
+      if (!user) {
+        gateEl.textContent = 'Please sign in…';
+        // send to login page
+        window.location.href = 'login.html';
+        return false;
+      }
+
+      // check profiles.is_admin
+      const { data: prof, error } = await client
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        gateEl.textContent = 'Error checking permissions: ' + error.message;
+        return false;
+      }
+      if (!prof || !prof.is_admin) {
+        // not an admin → bounce to home
+        window.location.href = 'index.html';
+        return false;
+      }
+
+      // ok to show app
+      gateEl.style.display = 'none';
+      appEl.style.display = '';
+      return true;
+    }
 
     async function load(){
       msg.textContent='Loading…';
       const { data, error } = await client
         .from('fixtures')
         .select('id,home_team,away_team,utc_date,featured')
-        .order('utc_date');
+        .order('utc_date', { ascending: true });
       if(error){ msg.textContent='Error: '+error.message; return; }
       rows.innerHTML='';
       (data||[]).forEach(f=>{
@@ -75,11 +123,12 @@
       const checks = rows.querySelectorAll('input[type=checkbox]');
       let count=0;
       checks.forEach(c=>{
-        if(count<5 && !c.disabled){ c.checked=true; count++; } else { c.checked=false; }
+        if(count<5){ c.checked=true; count++; } else { c.checked=false; }
       });
       msg.textContent='Earliest 5 marked.';
     });
 
+    // ✅ RLS-safe: only UPDATEs (no upsert)
     document.getElementById('save').addEventListener('click', async () => {
       const checks = rows.querySelectorAll('input[type=checkbox]');
       const selectedIds = [], unselectedIds = [];
@@ -107,10 +156,15 @@
       await load();
     });
 
-    load();
+    (async function init(){
+      const ok = await gateAdmin();
+      if (!ok) return;
+      await load();
+    })();
   </script>
 </body>
 </html>
+
 
 
 
