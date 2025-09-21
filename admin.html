@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Occy Weekend Football — Admin</title>
+  <title>Occy Weekend Football — Admin (v3)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/favicon.svg" />
@@ -24,12 +24,13 @@
     button:hover { background:#3746c2; }
     #msg, #who { margin-top:10px; font-size:14px; }
     a { color:#0f172a; }
-    #gate { text-align:center; margin-top:20px; color:#ddd; }
+    #gate { text-align:center; margin:16px 0; color:#ddd; }
     #app { display:none; }
     .error { background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; padding:10px; border-radius:8px; margin:12px auto; max-width:1000px; display:none; }
     .ok    { background:#ecfdf5; color:#064e3b; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin:12px auto; max-width:1000px; display:none; }
     .muted { color:#555; font-size:14px; }
     .hint  { margin-top:10px; font-size:14px; color:#333; }
+    .meta  { text-align:center; font-size:12px; color:#bbb; margin-top:8px; }
   </style>
 </head>
 <body>
@@ -67,6 +68,7 @@
     </p>
 
     <p style="margin-top:10px"><a href="index.html">← Back to home</a></p>
+    <div class="meta">Admin v3 • If this appears, your new file is deployed.</div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -81,36 +83,28 @@
     const msg   = document.getElementById('msg');
     const hint  = document.getElementById('hint');
 
-    function showError(txt){ errEl.textContent = txt; errEl.style.display = 'block'; }
-    function showOk(txt){ okEl.textContent = txt; okEl.style.display = 'block'; }
+    function showError(txt){ errEl.textContent = txt; errEl.style.display = 'block'; console.error('[admin]', txt); }
+    function showOk(txt){ okEl.textContent = txt; okEl.style.display = 'block'; console.log('[admin]', txt); }
 
-    // Config sanity
+    // Sanity
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY){
-      showError('Missing Supabase config. Check /supabase-config.js is present and has your URL + anon key.');
+      showError('Missing Supabase config. Ensure /supabase-config.js exists with your URL + anon key.');
     }
 
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
     async function ensureOwnProfile(user){
-      // Try to read your profile; if missing, create it (needs profiles policies set)
       let { data: prof, error } = await client
         .from('profiles')
         .select('id, display_name, is_admin')
         .eq('id', user.id)
         .maybeSingle();
       if (error && error.code !== 'PGRST116') throw new Error('profiles select: ' + error.message);
-
       if (!prof){
         const displayName = user.email?.split('@')[0] || 'User';
-        const { error: insErr } = await client
-          .from('profiles')
-          .insert({ id: user.id, display_name: displayName });
+        const { error: insErr } = await client.from('profiles').insert({ id: user.id, display_name: displayName });
         if (insErr) throw new Error('profiles insert: ' + insErr.message);
-        const res = await client
-          .from('profiles')
-          .select('id, display_name, is_admin')
-          .eq('id', user.id)
-          .single();
+        const res = await client.from('profiles').select('id, display_name, is_admin').eq('id', user.id).single();
         if (res.error) throw new Error('profiles reselect: ' + res.error.message);
         prof = res.data;
       }
@@ -123,7 +117,6 @@
         if (uErr) throw new Error('auth getUser: ' + uErr.message);
         const user = userRes?.user;
         if (!user) { window.location.href='login.html'; return false; }
-
         whoEl.textContent = `Signed in as ${user.email}`;
 
         const prof = await ensureOwnProfile(user);
@@ -135,13 +128,13 @@
         return true;
       }catch(e){
         showError(e.message || String(e));
-        gateEl.textContent='Permission error.';
+        gateEl.textContent = 'Permission error.';
         return false;
       }
     }
 
     async function load(){
-      msg.textContent='Loading…';
+      msg.textContent='Loading fixtures…';
       const { data, error } = await client
         .from('fixtures')
         .select('id,home_team,away_team,utc_date,featured')
@@ -150,11 +143,12 @@
 
       rows.innerHTML='';
       if (!data || data.length===0){
-        msg.textContent='No fixtures found.';
+        msg.textContent='No fixtures found (yet).';
         hint.style.display='';
         return;
       }
       hint.style.display='none';
+
       (data||[]).forEach(f=>{
         const tr=document.createElement('tr');
         const d=new Date(f.utc_date);
@@ -173,7 +167,6 @@
     async function callSync(){
       try{
         msg.textContent='Syncing…';
-        // Use the signed-in user's access token for the function
         const { data: sess } = await client.auth.getSession();
         const token = sess?.session?.access_token || '';
         const res = await fetch(`${window.SUPABASE_URL}/functions/v1/sync_fixtures`, {
@@ -181,7 +174,7 @@
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
-            'x-client-info': 'weekend-admin'
+            'x-client-info': 'weekend-admin-v3'
           },
           body: JSON.stringify({ trigger: 'admin' })
         });
@@ -205,10 +198,10 @@
       checks.forEach(c=>{
         if(count<5){ c.checked=true; count++; } else { c.checked=false; }
       });
-      msg.textContent='Earliest 5 marked.';
+      msg.textContent='Earliest 5 marked (toggle any you don’t want).';
     });
 
-    // ✅ RLS-safe: UPDATE only
+    // ✅ RLS-safe: UPDATE only (no upsert)
     document.getElementById('save').addEventListener('click', async () => {
       const checks = rows.querySelectorAll('input[type=checkbox]');
       const selectedIds = [], unselectedIds = [];
@@ -218,17 +211,11 @@
       let errMsg='';
 
       if (selectedIds.length){
-        const { error } = await client
-          .from('fixtures')
-          .update({ featured: true })
-          .in('id', selectedIds);
+        const { error } = await client.from('fixtures').update({ featured: true }).in('id', selectedIds);
         if (error) errMsg += `Set featured error: ${error.message} `;
       }
       if (unselectedIds.length){
-        const { error } = await client
-          .from('fixtures')
-          .update({ featured: false })
-          .in('id', unselectedIds);
+        const { error } = await client.from('fixtures').update({ featured: false }).in('id', unselectedIds);
         if (error) errMsg += `Unset featured error: ${error.message}`;
       }
 
@@ -244,6 +231,7 @@
   </script>
 </body>
 </html>
+
 
 
 
