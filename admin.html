@@ -9,6 +9,7 @@
   <meta name="theme-color" content="#0f172a" />
   <style>
     :root{ --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --card:#fffffff2; }
+    *{ box-sizing:border-box }
     body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:16px;
       background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; min-height:100vh; }
     h1 { color:var(--gold); text-align:center; }
@@ -21,25 +22,29 @@
     button { padding:8px 14px; border:none; border-radius:6px; cursor:pointer; font-size:14px;
       background:#1e3a8a; color:#fff; }
     button:hover { background:#3746c2; }
-    #msg { margin-top:10px; font-size:14px; }
+    #msg, #who { margin-top:10px; font-size:14px; }
     a { color:#0f172a; }
-    #gate { text-align:center; margin-top:40px; color:#ddd; }
+    #gate { text-align:center; margin-top:20px; color:#ddd; }
     #app { display:none; }
     .error { background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; padding:10px; border-radius:8px; margin:12px auto; max-width:900px; display:none; }
+    .ok    { background:#ecfdf5; color:#064e3b; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin:12px auto; max-width:900px; }
     .muted { color:#555; font-size:14px; }
+    code  { background:#111; color:#facc15; padding:2px 6px; border-radius:6px; }
   </style>
 </head>
 <body>
   <h1>⚽ Occy Weekend Football · Admin</h1>
 
-  <!-- Error panel -->
+  <!-- Visible diagnostics -->
   <div id="err" class="error"></div>
+  <div id="ok" class="ok" style="display:none"></div>
 
   <!-- Gate / status -->
   <div id="gate">Checking permissions…</div>
 
   <!-- Admin app -->
   <div id="app" class="card">
+    <p id="who" class="muted">—</p>
     <p class="muted">Select which fixtures should appear on the Predict page. Only admins can change this.</p>
 
     <div class="actions">
@@ -62,77 +67,102 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const errEl  = document.getElementById('err');
-    const gateEl = document.getElementById('gate');
-    const appEl  = document.getElementById('app');
-    const rows   = document.getElementById('rows');
-    const msg    = document.getElementById('msg');
+    const errEl = document.getElementById('err');
+    const okEl  = document.getElementById('ok');
+    const gateEl= document.getElementById('gate');
+    const appEl = document.getElementById('app');
+    const whoEl = document.getElementById('who');
+    const rows  = document.getElementById('rows');
+    const msg   = document.getElementById('msg');
 
-    function showError(text){
-      errEl.textContent = String(text || 'Unknown error');
+    function showError(txt){
+      errEl.textContent = txt;
       errEl.style.display = 'block';
     }
+    function showOk(txt){
+      okEl.textContent = txt;
+      okEl.style.display = 'block';
+    }
 
-    // Tries to ensure the current user has a profiles row.
+    // --- Config sanity checks BEFORE creating client ---
+    (function checkConfig(){
+      if (!window.SUPABASE_URL) showError('Missing SUPABASE_URL. Create /supabase-config.js with your project URL.');
+      if (!window.SUPABASE_ANON_KEY) showError('Missing SUPABASE_ANON_KEY. Paste your anon key in /supabase-config.js.');
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+        gateEl.textContent = 'Config error.';
+      } else {
+        showOk(`Using project: ${window.SUPABASE_URL}`);
+      }
+    })();
+
+    let client;
+    try {
+      client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    } catch (e){
+      showError('Failed to create Supabase client: ' + e.message);
+      gateEl.textContent = 'Config error.';
+    }
+
     async function ensureOwnProfile(user){
-      // Try to read your row
+      // Try to read
       let { data: prof, error } = await client
         .from('profiles')
         .select('id, display_name, is_admin')
         .eq('id', user.id)
         .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw new Error('profiles select: ' + error.message);
 
-      if (error && error.code !== 'PGRST116') { // 116 = no rows
-        throw new Error('profiles select: ' + (error.message || error));
-      }
-
-      if (!prof) {
-        // Create your row (allowed by profiles_insert_own policy)
+      if (!prof){
+        // Create own row (requires profiles_insert_own policy)
         const displayName = user.email?.split('@')[0] || 'User';
         const { error: insErr } = await client
           .from('profiles')
           .insert({ id: user.id, display_name: displayName });
-        if (insErr) throw new Error('profiles insert: ' + (insErr.message || insErr));
-        // Re-read
+        if (insErr) throw new Error('profiles insert: ' + insErr.message);
+
         const res = await client
           .from('profiles')
           .select('id, display_name, is_admin')
           .eq('id', user.id)
           .single();
-        if (res.error) throw new Error('profiles reselect: ' + (res.error.message || res.error));
+        if (res.error) throw new Error('profiles reselect: ' + res.error.message);
         prof = res.data;
       }
       return prof;
     }
 
     async function gateAdmin(){
-      try{
-        // 1) Must be signed in
+      try {
+        if (!client) return false;
+
         const { data: userRes, error: uErr } = await client.auth.getUser();
-        if (uErr) throw new Error('auth getUser: ' + (uErr.message || uErr));
+        if (uErr) throw new Error('auth getUser: ' + uErr.message);
         const user = userRes?.user;
         if (!user) {
+          showError('Not signed in. Redirecting to login…');
           window.location.href = 'login.html';
           return false;
         }
 
-        // 2) Ensure you have a profile row, then check is_admin
+        // who’s signed in
+        whoEl.textContent = `Signed in as ${user.email}`;
+
         const prof = await ensureOwnProfile(user);
         if (!prof?.is_admin) {
-          // Not admin → go home
-          window.location.href = 'index.html';
+          showError('You are signed in, but not an admin. Redirecting to home…');
+          setTimeout(()=> window.location.href='index.html', 1200);
           return false;
         }
 
-        // 3) OK, show app
-        gateEl.style.display = 'none';
-        appEl.style.display  = '';
+        // OK
+        gateEl.style.display='none';
+        appEl.style.display='';
+        showOk('Admin verified.');
         return true;
 
       } catch (e){
-        showError(e.message || e);
-        gateEl.textContent = 'Could not verify permissions.';
+        showError(e.message || String(e));
+        gateEl.textContent = 'Permission error.';
         return false;
       }
     }
@@ -168,7 +198,7 @@
       msg.textContent='Earliest 5 marked.';
     });
 
-    // ✅ RLS-safe: only UPDATEs (no upsert)
+    // UPDATE-only saves (RLS safe)
     document.getElementById('save').addEventListener('click', async () => {
       const checks = rows.querySelectorAll('input[type=checkbox]');
       const selectedIds = [], unselectedIds = [];
@@ -204,6 +234,7 @@
   </script>
 </body>
 </html>
+
 
 
 
