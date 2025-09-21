@@ -8,157 +8,110 @@
   <link rel="apple-touch-icon" href="/favicon.svg" />
   <meta name="theme-color" content="#0f172a" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; padding: 20px;
-      background: linear-gradient(135deg, #0f172a, #1e3a8a, #0f172a); color: #fff; }
-    .card { background: rgba(255,255,255,0.95); color: #111; border-radius: 16px; padding: 24px; max-width: 980px; margin: 40px auto;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    h1 { color: #facc15; }
-    button { margin-top: 8px; margin-right: 6px; padding: 8px 12px; border-radius: 8px; border: none; background: #facc15; color: #111; font-weight: bold; cursor: pointer; }
-    .muted { color:#555; font-size: 14px; }
-    table { border-collapse: collapse; width:100%; margin-top:16px; }
-    th, td { border:1px solid #ddd; padding:8px; text-align:left; }
+    body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:16px;
+      background:linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; min-height:100vh; }
+    h1 { color:#facc15; text-align:center; }
+    .card { background:rgba(255,255,255,.95); color:#111; border-radius:12px; padding:20px; margin:20px auto;
+      max-width:800px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+    table { border-collapse:collapse; width:100%; margin-top:12px; }
+    th,td { border:1px solid #ddd; padding:8px; text-align:left; }
     th { background:#facc15; color:#111; }
-    #contributors { display:none; margin-top:14px; }
+    .actions { margin-top:12px; }
+    button { padding:8px 14px; border:none; border-radius:6px; cursor:pointer; font-size:14px;
+      background:#1e3a8a; color:#fff; }
+    button:hover { background:#3746c2; }
+    #msg { margin-top:10px; font-size:14px; }
+    a { color:#0f172a; }
   </style>
 </head>
 <body>
-  <div class="card" id="app" style="display:none">
-    <h1>⚽ Occy Weekend Football · Admin</h1>
-    <p class="muted">Pick featured fixtures (only upcoming shown)</p>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+  <h1>⚽ Occy Weekend Football · Admin</h1>
+  <div class="card">
+    <p>Select which fixtures should appear on the Predict page. Only admins can change this.</p>
+    <div class="actions">
       <button id="earliest">Pick earliest 5 upcoming</button>
       <button id="save">Save selected as featured</button>
-      <button id="showContribs" style="display:none;">Show contributors (this weekend)</button>
-    
     </div>
-
+    <p id="msg"></p>
     <table>
-      <thead><tr><th>Pick</th><th>Date</th><th>Home</th><th>Away</th><th>Status</th></tr></thead>
+      <thead>
+        <tr><th>Use?</th><th>Date</th><th>Home</th><th>Away</th></tr>
+      </thead>
       <tbody id="rows"></tbody>
     </table>
-
-    <div id="contributors">
-      <h3>Weekend Contributors</h3>
-      <table>
-        <thead><tr><th>Name</th><th>Paid?</th></tr></thead>
-        <tbody id="contribRows"></tbody>
-      </table>
-    </div>
-
-    <p id="msg" class="muted"></p>
+    <p style="margin-top:10px"><a href="index.html">← Back to home</a></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // 🔒 set this to your real login email (lowercase)
-    const ADMIN_EMAIL = 'grahammark55284@gmail.com';
-
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const app = document.getElementById('app');
     const rows = document.getElementById('rows');
     const msg = document.getElementById('msg');
-    const showBtn = document.getElementById('showContribs');
-    const contribRows = document.getElementById('contribRows');
-    const contribBox = document.getElementById('contributors');
 
-    function currentWeekendStartISO(){
-      const now = new Date();
-      const d = new Date(now);
-      const day = d.getDay();
-      const diffToFri = (5 - day + 7) % 7;
-      const fri = new Date(d);
-      fri.setDate(d.getDate() - ((day + 7 - 5) % 7));
-      if (day < 5) fri.setDate(fri.getDate() + diffToFri);
-      fri.setHours(0,0,0,0);
-      return fri.toISOString().slice(0,10);
-    }
-
-    async function gateAdmin(){
-      const { data } = await client.auth.getUser();
-      const email = (data?.user?.email || '').toLowerCase();
-      if (!email) { window.location.href = 'login.html'; return false; }
-      if (email !== ADMIN_EMAIL) { window.location.href = 'index.html'; return false; }
-      // admin OK
-      app.style.display = '';
-      showBtn.style.display = ''; // show contributors button only to admin
-      return true;
-    }
-
-    async function load() {
-      const nowIso = new Date().toISOString();
+    async function load(){
+      msg.textContent='Loading…';
       const { data, error } = await client
         .from('fixtures')
-        .select('id, utc_date, home_team, away_team, status, featured')
-        .in('status', ['SCHEDULED', 'TIMED'])
-        .gte('utc_date', nowIso)
-        .order('utc_date', { ascending: true });
-      if (error) { msg.textContent = error.message; return; }
-      rows.innerHTML = '';
-      if (!data?.length) { msg.textContent = 'No upcoming fixtures found.'; return; }
-      data.forEach(f => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><input type="checkbox" data-id="${f.id}" ${f.featured ? 'checked':''}></td>
-          <td>${new Date(f.utc_date).toLocaleString()}</td>
+        .select('id,home_team,away_team,utc_date,featured')
+        .order('utc_date');
+      if(error){ msg.textContent='Error: '+error.message; return; }
+      rows.innerHTML='';
+      (data||[]).forEach(f=>{
+        const tr=document.createElement('tr');
+        const d=new Date(f.utc_date);
+        tr.innerHTML=`
+          <td><input type="checkbox" data-id="${f.id}" ${f.featured?'checked':''}></td>
+          <td>${d.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
           <td>${f.home_team}</td>
           <td>${f.away_team}</td>
-          <td>${f.status}</td>
         `;
         rows.appendChild(tr);
       });
-      msg.textContent = `Loaded ${data.length} upcoming fixture(s).`;
+      msg.textContent=`Loaded ${data.length} fixtures.`;
     }
 
-    document.getElementById('earliest').addEventListener('click', () => {
+    document.getElementById('earliest').addEventListener('click', ()=>{
       const checks = rows.querySelectorAll('input[type=checkbox]');
-      let count = 0;
-      checks.forEach(c => { if (count < 5) { c.checked = true; count++; } else { c.checked = false; } });
+      let count=0;
+      checks.forEach(c=>{
+        if(count<5 && !c.disabled){ c.checked=true; count++; } else { c.checked=false; }
+      });
+      msg.textContent='Earliest 5 marked.';
     });
 
     document.getElementById('save').addEventListener('click', async () => {
       const checks = rows.querySelectorAll('input[type=checkbox]');
-      const updates = Array.from(checks).map(c => ({ id: c.dataset.id, featured: c.checked }));
-      const { error } = await client.from('fixtures').upsert(updates);
-      msg.textContent = error ? "Error: " + error.message : "Saved!";
-    });
+      const selectedIds = [], unselectedIds = [];
+      checks.forEach(c => (c.checked ? selectedIds : unselectedIds).push(c.dataset.id));
 
-    // Admin-only: show contributors list
-    showBtn.addEventListener('click', async () => {
-      const weekStart = currentWeekendStartISO();
-      const { data: entries, error } = await client
-        .from('pot_entries')
-        .select('user_id, paid')
-        .eq('pot_week_start', weekStart);
-      if (error) { alert('Error loading contributors: ' + error.message); return; }
+      msg.textContent = 'Saving…';
+      let errMsg='';
 
-      const ids = [...new Set(entries.map(e => e.user_id).filter(Boolean))];
-      let namesById = {};
-      if (ids.length) {
-        const { data: profiles } = await client.from('profiles').select('id, display_name').in('id', ids);
-        (profiles||[]).forEach(p => namesById[p.id] = p.display_name || '(no name set)');
+      if (selectedIds.length){
+        const { error } = await client
+          .from('fixtures')
+          .update({ featured: true })
+          .in('id', selectedIds);
+        if (error) errMsg += `Set featured error: ${error.message} `;
+      }
+      if (unselectedIds.length){
+        const { error } = await client
+          .from('fixtures')
+          .update({ featured: false })
+          .in('id', unselectedIds);
+        if (error) errMsg += `Unset featured error: ${error.message}`;
       }
 
-      contribRows.innerHTML = '';
-      entries
-        .sort((a,b) => (namesById[a.user_id]||'').localeCompare(namesById[b.user_id]||''))
-        .forEach(e => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${namesById[e.user_id] || '(anon)'}</td><td>${e.paid ? 'Yes' : 'No'}</td>`;
-          contribRows.appendChild(tr);
-        });
-      contribBox.style.display = '';
+      msg.textContent = errMsg ? ('Error: '+errMsg.trim()) : 'Saved!';
+      await load();
     });
 
-    (async function init(){
-      const ok = await gateAdmin(); // ✅ blocks non-admins
-      if (!ok) return;
-      await load();
-      setInterval(load, 60000);
-    })();
+    load();
   </script>
 </body>
 </html>
+
 
 
 
