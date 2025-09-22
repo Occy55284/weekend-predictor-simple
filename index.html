@@ -2,71 +2,120 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Occy Weekend Football</title>
+  <title>Occy Weekend Football — Home</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
   <meta name="theme-color" content="#0f172a" />
   <style>
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0; padding: 16px;
+      margin: 0; padding: 24px;
+      min-height: 100vh;
       background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a);
-      color: #fff; min-height: 100vh;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; display: grid; place-items: center;
     }
-    h1 { color: #facc15; text-align: center; }
-    .buttons { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
-    button {
-      padding: 12px 18px; border: none; border-radius: 8px; font-size: 16px;
-      background: #1e3a8a; color: #fff; cursor: pointer;
+    .wrap { max-width: 720px; width: 100%; text-align: center; }
+    h1 { color:#facc15; margin: 8px 0 16px; }
+    .buttons { display:flex; flex-direction:column; gap:12px; align-items:center; margin-top:18px; }
+    button,a.btn {
+      display:inline-block; padding:12px 18px; border-radius:10px; border:none; cursor:pointer;
+      background:#1e3a8a; color:#fff; font-size:16px; text-decoration:none;
+      width: min(320px, 90%);
     }
-    button:hover { background: #3746c2; }
-    .muted { color: #ddd; margin-top: 20px; }
-    #adminBtn { display: none; } /* hidden until check passes */
+    button:hover, a.btn:hover { background:#3746c2; }
+    .muted { color:#cbd5e1; margin-top:12px; }
+    #who { margin-top:6px; font-size:14px; color:#ddd; }
   </style>
 </head>
 <body>
-  <h1>⚽ Occy Weekend Football</h1>
-  <div class="buttons">
-    <button onclick="location.href='login.html'">Sign In / Sign Up</button>
-    <button onclick="location.href='predict.html'">Make Predictions</button>
-    <button onclick="location.href='leaderboard.html'">Leaderboard</button>
-    <button onclick="location.href='wall.html'">Prediction Wall</button>
-    <button id="adminBtn" onclick="location.href='admin.html'">Admin</button>
+  <div class="wrap">
+    <h1>⚽ Occy Weekend Football</h1>
+    <div id="who"></div>
+
+    <!-- Logged OUT -->
+    <div id="loggedOut" class="buttons" style="display:none">
+      <a class="btn" href="login.html">Sign in / Sign up</a>
+    </div>
+
+    <!-- Logged IN: ADMIN -->
+    <div id="adminOnly" class="buttons" style="display:none">
+      <a class="btn" href="admin.html">Admin</a>
+      <button id="logoutBtn">Sign out</button>
+    </div>
+
+    <!-- Logged IN: REGULAR USER -->
+    <div id="userOnly" class="buttons" style="display:none">
+      <a class="btn" href="predict.html">Make Predictions</a>
+      <a class="btn" href="leaderboard.html">Leaderboard</a>
+      <a class="btn" href="profile.html">My Profile</a>
+      <button id="logoutBtn2">Sign out</button>
+    </div>
+
+    <p class="muted">Welcome! Sign in to start making your weekend picks.</p>
   </div>
-  <p class="muted">Welcome to your weekend predictor app.</p>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
+    const ADMIN_EMAIL = 'grahammark@gmail.com';
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const who = document.getElementById('who');
+    const out = document.getElementById('loggedOut');
+    const admin = document.getElementById('adminOnly');
+    const user = document.getElementById('userOnly');
 
-    async function checkAdmin(){
-      const { data: userRes } = await client.auth.getUser();
-      const user = userRes?.user;
-      if (!user) return;
-
-      const { data: prof, error } = await client
-        .from('profiles')
-        .select('is_admin')
+    async function ensureOwnProfile(user){
+      // Create your own row if missing (needs profiles RLS policies set)
+      let { data: prof } = await client.from('profiles')
+        .select('id, display_name')
         .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.warn("Profile check failed", error.message);
-        return;
-      }
-
-      if (prof && prof.is_admin) {
-        document.getElementById('adminBtn').style.display = 'block';
+        .maybeSingle();
+      if (!prof){
+        const display_name = user.email?.split('@')[0] || 'User';
+        await client.from('profiles').insert({ id: user.id, display_name });
       }
     }
 
-    checkAdmin();
+    async function init(){
+      const { data: ur } = await client.auth.getUser();
+      const u = ur?.user;
+
+      if (!u){
+        who.textContent = '';
+        out.style.display='flex';
+        admin.style.display='none';
+        user.style.display='none';
+        return;
+      }
+
+      await ensureOwnProfile(u);
+      who.textContent = `Signed in as ${u.email}`;
+
+      if (u.email && u.email.toLowerCase() === ADMIN_EMAIL){
+        // Admin: no Predict button — just Admin
+        out.style.display='none';
+        admin.style.display='flex';
+        user.style.display='none';
+      } else {
+        // Regular user
+        out.style.display='none';
+        admin.style.display='none';
+        user.style.display='flex';
+      }
+    }
+
+    async function logout(){
+      await client.auth.signOut();
+      location.href='index.html';
+    }
+    document.getElementById('logoutBtn')?.addEventListener('click', logout);
+    document.getElementById('logoutBtn2')?.addEventListener('click', logout);
+
+    init();
   </script>
 </body>
 </html>
+
 
 
 
