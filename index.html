@@ -5,55 +5,35 @@
   <title>Occy Weekend Football — Home</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      margin: 0; padding: 24px;
-      min-height: 100vh;
-      background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a);
-      color: #fff; display: grid; place-items: center;
-    }
-    .wrap { max-width: 720px; width: 100%; text-align: center; }
-    h1 { color:#facc15; margin: 8px 0 10px; }
-    .tag { display:inline-block; padding:4px 8px; border-radius:999px; background:#0ea5e9; color:#fff; font-size:12px; margin-left:8px; }
-    .buttons { display:flex; flex-direction:column; gap:12px; align-items:center; margin-top:18px; }
-    button,a.btn {
-      display:inline-block; padding:12px 18px; border-radius:10px; border:none; cursor:pointer;
-      background:#1e3a8a; color:#fff; font-size:16px; text-decoration:none;
-      width: min(320px, 90%);
-    }
-    button:hover, a.btn:hover { background:#3746c2; }
-    .muted { color:#cbd5e1; margin-top:12px; }
-    #who { margin-top:6px; font-size:14px; color:#ddd; }
-    #adminOnly, #userOnly, #loggedOut { display:none; }
-  </style>
+  <link rel="stylesheet" href="brand.css" />
 </head>
-<body>
-  <div class="wrap">
-    <h1>⚽ Occy Weekend Football <span id="roleTag" class="tag" style="display:none">Admin mode</span></h1>
-    <div id="who"></div>
+<body class="center-screen">
+  <div class="container" style="max-width:720px; text-align:center;">
+    <div class="header">
+      <h1>⚽ Occy Weekend Football <span id="roleTag" class="tag" style="display:none">Admin mode</span></h1>
+      <div id="who" class="muted"></div>
+    </div>
 
     <!-- Logged OUT -->
-    <div id="loggedOut" class="buttons">
+    <div id="loggedOut" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="login.html">Sign in / Sign up</a>
     </div>
 
     <!-- Logged IN: ADMIN -->
-    <div id="adminOnly" class="buttons">
+    <div id="adminOnly" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="admin.html">Admin</a>
-      <button id="logoutAdmin">Sign out</button>
+      <button id="logoutAdmin" class="btn btn-dark">Sign out</button>
     </div>
 
     <!-- Logged IN: REGULAR USER -->
-    <div id="userOnly" class="buttons">
+    <div id="userOnly" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="predict.html">Make Predictions</a>
       <a class="btn" href="leaderboard.html">Leaderboard</a>
       <a class="btn" href="profile.html">My Profile</a>
-      <button id="logoutUser">Sign out</button>
+      <button id="logoutUser" class="btn btn-dark">Sign out</button>
     </div>
 
-    <p class="muted" id="hint">Welcome! Sign in to start making your weekend picks.</p>
+    <p class="muted" id="hint" style="text-align:center; margin-top:12px;">Welcome! Sign in to start making your weekend picks.</p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -76,12 +56,7 @@
     }
 
     async function ensureOwnProfile(id, email){
-      // Create row if missing (needs profiles_insert_own policy)
-      const { data: prof } = await client
-        .from('profiles')
-        .select('id')
-        .eq('id', id)
-        .maybeSingle();
+      const { data: prof } = await client.from('profiles').select('id').eq('id', id).maybeSingle();
       if (!prof){
         const display_name = (email||'').split('@')[0] || 'User';
         await client.from('profiles').insert({ id, display_name });
@@ -89,15 +64,8 @@
     }
 
     async function isAdmin(id){
-      const { data, error } = await client
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', id)
-        .single();
-      if (error) {
-        console.warn('profiles check failed:', error.message);
-        return false;
-      }
+      const { data, error } = await client.from('profiles').select('is_admin').eq('id', id).single();
+      if (error) return false;
       return !!data?.is_admin;
     }
 
@@ -131,7 +99,6 @@
 
     async function logout(){
       await client.auth.signOut();
-      // Force a clean reload so buttons switch immediately
       location.replace('index.html');
     }
     document.getElementById('logoutAdmin')?.addEventListener('click', logout);
@@ -141,6 +108,7 @@
   </script>
 </body>
 </html>
+
 
 
 
