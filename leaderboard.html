@@ -5,100 +5,58 @@
   <title>Occy Weekend Football — Leaderboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
-    :root{ --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --card:#fffffff2; --muted:#6b7280; }
-    *{ box-sizing:border-box }
-    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:16px; min-height:100vh;
-      background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; }
-    header{ text-align:center; margin:28px 0 14px }
-    header h1{ margin:6px 0; color:var(--gold) }
-    header p{ color:#e5e7eb; margin:0 }
-    .card{ background:var(--card); color:#111; border-radius:16px; padding:16px; margin:14px auto; max-width:1000px;
-      box-shadow:0 4px 12px rgba(0,0,0,.3) }
-    .tabs{ display:flex; gap:8px; border-bottom:1px solid #e5e7eb; margin:4px 0 12px; flex-wrap:wrap }
-    .tab{ padding:10px 14px; border:1px solid #e5e7eb; border-bottom:none; border-top-left-radius:10px; border-top-right-radius:10px;
-      background:#f9fafb; cursor:pointer; }
-    .tab.active{ background:#fff; font-weight:700 }
-    .pane{ display:none }
-    .pane.active{ display:block }
-    .muted{ color:var(--muted); font-size:14px }
-    table{ border-collapse:collapse; width:100%; margin-top:10px }
-    th,td{ border:1px solid #e5e7eb; padding:8px; text-align:center }
-    th{ background:#fde68a; color:#111 }
-    td.left{ text-align:left }
-    .pname{ display:flex; align-items:center; gap:8px }
-    .crest{ width:18px; height:18px; object-fit:contain }
-    .rank{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:12px; white-space:nowrap }
-    .rank.rookie{ background:#e5f6ff; color:#064e66 }
-    .rank.amateur{ background:#fff7ed; color:#7c2d12 }
-    .rank.pro{ background:#ecfdf5; color:#065f46 }
-    .rank.goat{ background:#fef3c7; color:#92400e; font-weight:700 }
-    a{ color:#0f172a }
-  </style>
+  <link rel="stylesheet" href="brand.css" />
 </head>
 <body>
-  <header>
-    <h1>⚽ Occy Weekend Football · Leaderboard</h1>
-    <p class="muted">Weekly winner & Season standings</p>
-  </header>
-
-  <div class="card">
-    <div class="tabs">
-      <button id="tabWeek" class="tab active">This Weekend</button>
-      <button id="tabSeason" class="tab">Season</button>
+  <div class="container">
+    <div class="header">
+      <h1>Leaderboard</h1>
+      <p class="muted">Weekly winner & Season standings</p>
     </div>
 
-    <!-- WEEKLY -->
-    <section id="paneWeek" class="pane active">
-      <h2 style="margin:0 0 4px 0;">This Weekend</h2>
-      <p id="weekRange" class="muted">—</p>
-      <table id="tblWeek" style="display:none">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th class="left">Name</th>
-            <th>Points</th>
-            <th>Played</th>
-            <th>Exact</th>
-            <th>GD</th>
-            <th>Result</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <p id="msgWeek" class="muted">Loading…</p>
-    </section>
+    <div class="card">
+      <div class="tabs">
+        <button id="tabWeek" class="tab active">This Weekend</button>
+        <button id="tabSeason" class="tab">Season</button>
+      </div>
 
-    <!-- SEASON -->
-    <section id="paneSeason" class="pane">
-      <h2 style="margin:0 0 4px 0;">Season Standings</h2>
-      <p class="muted">Aug 1 → Jun 30</p>
-      <table id="tblSeason" style="display:none">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th class="left">Name</th>
-            <th>Rank</th>
-            <th>Points</th>
-            <th>Played</th>
-            <th>Exact</th>
-            <th>GD</th>
-            <th>Result</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <p id="msgSeason" class="muted">Loading…</p>
-    </section>
+      <!-- WEEKLY -->
+      <section id="paneWeek" class="pane active">
+        <h2 style="margin:0 0 4px 0;">This Weekend</h2>
+        <p id="weekRange" class="muted">—</p>
+        <table id="tblWeek" style="display:none">
+          <thead>
+            <tr>
+              <th>#</th><th class="left">Name</th><th>Points</th><th>Played</th><th>Exact</th><th>GD</th><th>Result</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="msgWeek" class="muted">Loading…</p>
+      </section>
 
-    <p class="muted" style="margin-top:10px"><a href="index.html">← Back to home</a></p>
+      <!-- SEASON -->
+      <section id="paneSeason" class="pane">
+        <h2 style="margin:0 0 4px 0;">Season Standings</h2>
+        <p class="muted">Aug 1 → Jun 30</p>
+        <table id="tblSeason" style="display:none">
+          <thead>
+            <tr>
+              <th>#</th><th class="left">Name</th><th>Rank</th><th>Points</th><th>Played</th><th>Exact</th><th>GD</th><th>Result</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="msgSeason" class="muted">Loading…</p>
+      </section>
+
+      <p class="muted" style="margin-top:10px"><a href="index.html">← Back to home</a></p>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // --- Small helpers ---
     function pointsFor(pred, actual){
       if(!actual) return { pts:0, exact:0, gd:0, res:0, played:0 };
       const ph=+pred.home_goals, pa=+pred.away_goals, ah=+actual.home, aa=+actual.away;
@@ -137,7 +95,6 @@
     };
     function crestFor(team){ return CRESTS[team] || ''; }
 
-    // --- Tabs ---
     const tabWeek=document.getElementById('tabWeek');
     const tabSeason=document.getElementById('tabSeason');
     const paneWeek=document.getElementById('paneWeek');
@@ -151,18 +108,15 @@
     tabWeek.onclick=()=>setTab('week');
     tabSeason.onclick=()=>setTab('season');
 
-    // --- Data load ---
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
     async function load(){
-      // 1) All predictions
       const { data: preds, error:pErr } = await client
         .from('predictions')
         .select('user_id,fixture_id,home_goals,away_goals');
       if (pErr){ document.getElementById('msgWeek').textContent=document.getElementById('msgSeason').textContent='Error: '+pErr.message; return; }
       if (!preds?.length){ document.getElementById('msgWeek').textContent=document.getElementById('msgSeason').textContent='No predictions yet.'; return; }
 
-      // 2) Fixtures referenced by those predictions (for kickoff time + results)
       const ids = [...new Set(preds.map(p=>p.fixture_id))];
       const { data: fx, error:fErr } = await client
         .from('fixtures')
@@ -171,43 +125,33 @@
       if (fErr){ document.getElementById('msgWeek').textContent=document.getElementById('msgSeason').textContent='Error loading fixtures: '+fErr.message; return; }
       const fxById = Object.fromEntries((fx||[]).map(f=>[f.id, f]));
 
-      // 3) Profiles for display names + teams
       const userIds = [...new Set(preds.map(p=>p.user_id).filter(Boolean))];
       let profById = {};
       if (userIds.length){
-        const { data: profs } = await client.from('profiles')
-          .select('id,display_name,favorite_team')
-          .in('id', userIds);
+        const { data: profs } = await client.from('profiles').select('id,display_name,favorite_team').in('id', userIds);
         (profs||[]).forEach(p=> profById[p.id]=p);
       }
 
-      // Helper to totalise
       function accumulate(rows){
         const totals={};
         rows.forEach(r=>{
           const f = fxById[r.fixture_id];
           const finished = f && f.home_score!==null && f.away_score!==null;
-          if (!finished) return; // score only if the game has a result
-
+          if (!finished) return;
           const s = pointsFor(r, { home:f.home_score, away:f.away_score });
           const key = r.user_id || 'anon';
           if (!totals[key]) totals[key] = { user_id:r.user_id, label:'(no name set)', crest:'', pts:0,played:0,exact:0,gd:0,res:0 };
           const t = totals[key];
           t.pts+=s.pts; t.played+=s.played; t.exact+=s.exact; t.gd+=s.gd; t.res+=s.res;
         });
-
-        // Enrich labels/crests
         Object.values(totals).forEach(t=>{
           const p = t.user_id ? profById[t.user_id] : null;
           t.label = p?.display_name || t.label;
           if (p?.favorite_team) t.crest = crestFor(p.favorite_team);
         });
-
-        return Object.values(totals)
-          .sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.label.localeCompare(b.label));
+        return Object.values(totals).sort((a,b)=> b.pts-a.pts || b.exact-a.exact || a.label.localeCompare(b.label));
       }
 
-      // --- WEEKLY: auto-detect most recent finished block users predicted in ---
       const finishedPreds = preds.filter(r=>{
         const f = fxById[r.fixture_id];
         return f && f.home_score!==null && f.away_score!==null;
@@ -215,9 +159,7 @@
       if (!finishedPreds.length){
         document.getElementById('msgWeek').textContent='No finished, predicted fixtures yet.';
       } else {
-        // Find the most recent finished fixture datetime among predicted ones
         const latestMs = Math.max(...finishedPreds.map(r=> new Date(fxById[r.fixture_id].utc_date).getTime()));
-        // Define a “weekend window”: latest - 4 days .. latest + 1 day
         const start = new Date(latestMs - 4*24*60*60*1000);
         const end   = new Date(latestMs + 1*24*60*60*1000);
 
@@ -253,7 +195,6 @@
         }
       }
 
-      // --- SEASON totals (Aug 1 → Jun 30) ---
       function seasonBoundsNow(){
         const now=new Date(); const y=now.getUTCFullYear(); const m=now.getUTCMonth()+1;
         const startY = (m>=8)? y : y-1; const endY = (m>=8)? y+1 : y;
@@ -267,9 +208,12 @@
         return finished && t>=seaFrom && t<=seaTo;
       });
 
-      const season = accumulate(seasonRows).map(r=>{
-        return { ...r, rank: rankFor(r.exact) };
-      });
+      const season = accumulate(seasonRows).map(r=>({ ...r, rank: (function(ex){ 
+        if (ex >= 30) return { key:'goat', label:'🐐 GOAT' };
+        if (ex >= 25) return { key:'pro', label:'🏆 Pro' };
+        if (ex >= 10) return { key:'amateur', label:'🎖️ Amateur' };
+        return { key:'rookie', label:'🌱 Rookie' };
+      })(r.exact)}));
 
       const msgS=document.getElementById('msgSeason');
       const tblS=document.getElementById('tblSeason'); const tbS=tblS.querySelector('tbody');
@@ -282,7 +226,7 @@
           tr.innerHTML = `
             <td>${i+1}</td>
             <td class="left"><div class="pname">${crest}<span>${r.label}</span></div></td>
-            <td><span class="rank ${r.rank.key}">${r.rank.label}</span></td>
+            <td><span class="pill ${r.rank.key}">${r.rank.label}</span></td>
             <td><b>${r.pts}</b></td>
             <td>${r.played}</td>
             <td>${r.exact}</td>
@@ -295,11 +239,11 @@
     }
 
     load();
-    // Optional light auto-refresh
     setInterval(load, 20000);
   </script>
 </body>
 </html>
+
 
 
 
