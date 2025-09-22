@@ -5,27 +5,23 @@
   <title>Sign in · Occy Weekend Football</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <style>
-    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:24px;
-      min-height:100vh; display:grid; place-items:center;
-      background:linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
-    .card{ background:rgba(255,255,255,.95); color:#111; border-radius:12px; padding:20px; width:min(420px,90%); box-shadow:0 4px 12px rgba(0,0,0,.3);}
-    h1{ margin:0 0 10px; color:#0f172a;}
-    label{ display:block; margin:12px 0 6px;}
-    input{ width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;}
-    button{ margin-top:12px; width:100%; padding:12px; border:none; border-radius:8px; background:#1e3a8a; color:#fff; font-size:16px; cursor:pointer;}
-    button:hover{ background:#3746c2;}
-    .muted{ color:#555; font-size:14px; margin-top:8px;}
-  </style>
+  <link rel="stylesheet" href="brand.css" />
 </head>
-<body>
-  <div class="card">
-    <h1>Sign in / Sign up</h1>
-    <p class="muted">Enter your email and we’ll send a magic link.</p>
-    <label for="email">Email</label>
-    <input id="email" type="email" placeholder="you@example.com" />
-    <button id="send">Send magic link</button>
-    <p id="msg" class="muted"></p>
+<body class="center-screen">
+  <div class="container" style="max-width:440px;">
+    <div class="card">
+      <h1 style="margin:0 0 10px;">Sign in / Sign up</h1>
+      <p class="muted">Enter your email and we’ll send a magic link.</p>
+
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" />
+      <div class="btn-row" style="margin-top:12px">
+        <button id="send" class="btn">Send magic link</button>
+        <a class="btn btn-dark" href="index.html">← Home</a>
+      </div>
+
+      <p id="msg" class="muted" style="margin-top:10px;"></p>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -35,7 +31,6 @@
     const emailEl = document.getElementById('email');
     const msg = document.getElementById('msg');
 
-    // If already signed in, go home
     client.auth.getUser().then(({data})=>{
       if (data?.user) location.replace('index.html');
     });
@@ -53,6 +48,7 @@
   </script>
 </body>
 </html>
+
 
 
 
