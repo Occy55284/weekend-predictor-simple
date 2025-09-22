@@ -15,7 +15,8 @@
       color: #fff; display: grid; place-items: center;
     }
     .wrap { max-width: 720px; width: 100%; text-align: center; }
-    h1 { color:#facc15; margin: 8px 0 16px; }
+    h1 { color:#facc15; margin: 8px 0 10px; }
+    .tag { display:inline-block; padding:4px 8px; border-radius:999px; background:#0ea5e9; color:#fff; font-size:12px; margin-left:8px; }
     .buttons { display:flex; flex-direction:column; gap:12px; align-items:center; margin-top:18px; }
     button,a.btn {
       display:inline-block; padding:12px 18px; border-radius:10px; border:none; cursor:pointer;
@@ -25,55 +26,79 @@
     button:hover, a.btn:hover { background:#3746c2; }
     .muted { color:#cbd5e1; margin-top:12px; }
     #who { margin-top:6px; font-size:14px; color:#ddd; }
+    #adminOnly, #userOnly, #loggedOut { display:none; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>⚽ Occy Weekend Football</h1>
+    <h1>⚽ Occy Weekend Football <span id="roleTag" class="tag" style="display:none">Admin mode</span></h1>
     <div id="who"></div>
 
     <!-- Logged OUT -->
-    <div id="loggedOut" class="buttons" style="display:none">
+    <div id="loggedOut" class="buttons">
       <a class="btn" href="login.html">Sign in / Sign up</a>
     </div>
 
     <!-- Logged IN: ADMIN -->
-    <div id="adminOnly" class="buttons" style="display:none">
+    <div id="adminOnly" class="buttons">
       <a class="btn" href="admin.html">Admin</a>
-      <button id="logoutBtn">Sign out</button>
+      <button id="logoutAdmin">Sign out</button>
     </div>
 
     <!-- Logged IN: REGULAR USER -->
-    <div id="userOnly" class="buttons" style="display:none">
+    <div id="userOnly" class="buttons">
       <a class="btn" href="predict.html">Make Predictions</a>
       <a class="btn" href="leaderboard.html">Leaderboard</a>
       <a class="btn" href="profile.html">My Profile</a>
-      <button id="logoutBtn2">Sign out</button>
+      <button id="logoutUser">Sign out</button>
     </div>
 
-    <p class="muted">Welcome! Sign in to start making your weekend picks.</p>
+    <p class="muted" id="hint">Welcome! Sign in to start making your weekend picks.</p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    const ADMIN_EMAIL = 'grahammark@gmail.com';
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
     const who = document.getElementById('who');
+    const hint = document.getElementById('hint');
+    const tag = document.getElementById('roleTag');
+
     const out = document.getElementById('loggedOut');
     const admin = document.getElementById('adminOnly');
     const user = document.getElementById('userOnly');
 
-    async function ensureOwnProfile(user){
-      // Create your own row if missing (needs profiles RLS policies set)
-      let { data: prof } = await client.from('profiles')
-        .select('id, display_name')
-        .eq('id', user.id)
+    function show(view){
+      out.style.display   = (view==='out')   ? 'flex' : 'none';
+      admin.style.display = (view==='admin') ? 'flex' : 'none';
+      user.style.display  = (view==='user')  ? 'flex' : 'none';
+    }
+
+    async function ensureOwnProfile(id, email){
+      // Create row if missing (needs profiles_insert_own policy)
+      const { data: prof } = await client
+        .from('profiles')
+        .select('id')
+        .eq('id', id)
         .maybeSingle();
       if (!prof){
-        const display_name = user.email?.split('@')[0] || 'User';
-        await client.from('profiles').insert({ id: user.id, display_name });
+        const display_name = (email||'').split('@')[0] || 'User';
+        await client.from('profiles').insert({ id, display_name });
       }
+    }
+
+    async function isAdmin(id){
+      const { data, error } = await client
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', id)
+        .single();
+      if (error) {
+        console.warn('profiles check failed:', error.message);
+        return false;
+      }
+      return !!data?.is_admin;
     }
 
     async function init(){
@@ -82,39 +107,41 @@
 
       if (!u){
         who.textContent = '';
-        out.style.display='flex';
-        admin.style.display='none';
-        user.style.display='none';
+        tag.style.display='none';
+        hint.textContent = 'Welcome! Sign in to start making your weekend picks.';
+        show('out');
         return;
       }
 
-      await ensureOwnProfile(u);
       who.textContent = `Signed in as ${u.email}`;
+      await ensureOwnProfile(u.id, u.email);
 
-      if (u.email && u.email.toLowerCase() === ADMIN_EMAIL){
-        // Admin: no Predict button — just Admin
-        out.style.display='none';
-        admin.style.display='flex';
-        user.style.display='none';
+      const adminFlag = await isAdmin(u.id);
+
+      if (adminFlag){
+        tag.style.display='inline-block';
+        hint.textContent = 'Admin: manage fixtures from here.';
+        show('admin');
       } else {
-        // Regular user
-        out.style.display='none';
-        admin.style.display='none';
-        user.style.display='flex';
+        tag.style.display='none';
+        hint.textContent = 'Pick your matches, view the leaderboard, and edit your profile.';
+        show('user');
       }
     }
 
     async function logout(){
       await client.auth.signOut();
-      location.href='index.html';
+      // Force a clean reload so buttons switch immediately
+      location.replace('index.html');
     }
-    document.getElementById('logoutBtn')?.addEventListener('click', logout);
-    document.getElementById('logoutBtn2')?.addEventListener('click', logout);
+    document.getElementById('logoutAdmin')?.addEventListener('click', logout);
+    document.getElementById('logoutUser')?.addEventListener('click', logout);
 
     init();
   </script>
 </body>
 </html>
+
 
 
 
