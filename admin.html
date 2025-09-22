@@ -5,46 +5,33 @@
   <title>Occy Weekend Football — Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
-    :root{ --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; }
-    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:24px; min-height:100vh;
-      background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; }
-    h1{ color:#facc15; text-align:center; }
-    .card{ background:rgba(255,255,255,.95); color:#111; border-radius:12px; padding:20px; margin:20px auto; max-width:1000px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
-    table{ border-collapse:collapse; width:100%; margin-top:12px; }
-    th,td{ border:1px solid #ddd; padding:8px; text-align:left; }
-    th{ background:#facc15; color:#111; }
-    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
-    button{ padding:8px 14px; border:none; border-radius:8px; background:#1e3a8a; color:#fff; cursor:pointer; }
-    button:hover{ background:#3746c2; }
-    .muted{ color:#555; font-size:14px; }
-    .error{ background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; padding:10px; border-radius:8px; margin:12px 0; display:none; }
-    .ok{ background:#ecfdf5; color:#064e3b; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin:12px 0; display:none; }
-  </style>
+  <link rel="stylesheet" href="brand.css" />
 </head>
 <body>
-  <h1>⚽ Admin</h1>
-  <div class="card">
-    <p id="who" class="muted">—</p>
-    <div id="err" class="error"></div>
-    <div id="ok" class="ok"></div>
+  <div class="container">
+    <div class="header"><h1>Admin</h1></div>
 
-    <div class="actions">
-      <button id="sync">🔄 Sync fixtures now</button>
-      <button id="earliest">Pick earliest 5 upcoming</button>
-      <button id="save">Save selected as featured</button>
-      <button id="home" onclick="location.href='index.html'">← Home</button>
+    <div class="card">
+      <div id="who" class="muted">—</div>
+      <div id="ok" class="ok" style="display:block; margin-top:10px;">Checking permissions…</div>
+      <div id="err" class="error" style="margin-top:10px;"></div>
+
+      <div class="btn-row" style="margin-top:12px">
+        <button id="sync" class="btn">🔄 Sync fixtures now</button>
+        <button id="earliest" class="btn">Pick earliest 5 upcoming</button>
+        <button id="save" class="btn">Save selected as featured</button>
+        <a id="home" class="btn btn-dark" href="index.html">← Home</a>
+      </div>
+
+      <p id="msg" class="muted" style="margin-top:10px;"></p>
+
+      <table style="margin-top:10px">
+        <thead>
+          <tr><th>Use?</th><th>Date</th><th>Home</th><th>Away</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
     </div>
-
-    <p id="msg"></p>
-
-    <table>
-      <thead>
-        <tr><th>Use?</th><th>Date</th><th>Home</th><th>Away</th></tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -61,7 +48,6 @@
     function showOk(t){ ok.textContent=t; ok.style.display='block'; }
 
     async function ensureOwnProfile(u){
-      // Create your own row if missing (RLS must allow insert own row)
       const { data: prof } = await client.from('profiles').select('id').eq('id', u.id).maybeSingle();
       if (!prof){
         await client.from('profiles').insert({ id: u.id, display_name: (u.email||'').split('@')[0] || 'User' });
@@ -69,12 +55,7 @@
     }
 
     async function isAdmin(u){
-      // Gate by profiles.is_admin (not by email string)
-      const { data, error } = await client
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', u.id)
-        .single();
+      const { data, error } = await client.from('profiles').select('is_admin').eq('id', u.id).single();
       if (error){ showErr('Profile check failed: '+error.message); return false; }
       return !!data?.is_admin;
     }
@@ -90,7 +71,6 @@
 
       const admin = await isAdmin(u);
       if (!admin){
-        // Not admin → send back home
         location.replace('index.html');
         return null;
       }
@@ -121,7 +101,6 @@
       msg.textContent = `Loaded ${data?.length||0} fixtures.`;
     }
 
-    // Sync fixtures via Edge Function
     async function syncNow(){
       msg.textContent='Syncing…';
       try{
@@ -173,12 +152,13 @@
 
     (async function init(){
       const u = await gate();
-      if (!u) return;   // stops the page if not admin (prevents bounce loop confusion)
+      if (!u) return;
       await load();
     })();
   </script>
 </body>
 </html>
+
 
 
 
