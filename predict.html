@@ -2,251 +2,237 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Occy Weekend Football — Make Predictions</title>
+  <title>Make Predictions · Occy Weekend Football</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
   <meta name="theme-color" content="#0f172a" />
   <style>
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
-      background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
-    header { text-align:center; margin:40px 0 24px; }
-    header h1 { margin-top:12px; color:#facc15; }
-    header p { color:#ddd; }
-    .card { background:rgba(255,255,255,0.95); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:900px;
-      box-shadow:0 4px 12px rgba(0,0,0,0.3); }
-    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-top:1px solid #eee; }
-    .pair { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-    .team { display:flex; align-items:center; gap:8px; min-width:180px; }
-    .crest { width:24px; height:24px; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
-    input[type="number"] { width:60px; padding:8px; text-align:center; border:1px solid #ccc; border-radius:8px; }
-    .btn { padding:10px 14px; border-radius:12px; background:#facc15; color:#111; font-weight:bold; border:none; cursor:pointer; transition:transform .15s ease; }
-    .btn:hover { transform:scale(1.05); }
-    .btn.ghost { background:#fff; color:#111; }
-    .btn:disabled { opacity:.5; cursor:not-allowed; }
-    .muted { color:#555; font-size:12px; }
-    .pill { background:#f3f4f6; border-radius:12px; padding:4px 8px; font-size:12px; color:#374151; }
-    .pill.locked { background:#fee2e2; color:#991b1b; }
-    .potbox { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#f9fafb; padding:12px 14px; border-radius:12px; margin-bottom:10px; }
-    .toggle { display:flex; gap:8px; }
-    .toggle button { padding:8px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; }
-    .toggle button.active { background:#facc15; border-color:#facc15; color:#111; font-weight:700; }
-    a { color:#0f172a; }
-    @media (max-width:640px){ .team{min-width:auto;} }
+    :root{ --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --card:#fffffff2; --muted:#555;}
+    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:16px; min-height:100vh;
+      background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; }
+    h1{ color:var(--gold); text-align:center; }
+    .card{ background:rgba(255,255,255,.95); color:#111; border-radius:14px; padding:18px; margin:18px auto; max-width:1000px; box-shadow:0 4px 12px rgba(0,0,0,.3);}
+    .muted{ color:var(--muted); font-size:14px;}
+    table{ border-collapse:collapse; width:100%; margin-top:10px;}
+    th,td{ border:1px solid #ddd; padding:8px; text-align:center;}
+    th{ background:#fef08a; color:#111;}
+    input[type=number]{ width:56px; padding:6px; border:1px solid #ddd; border-radius:6px; }
+    .rowhead{ text-align:left; }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+    button{ padding:8px 14px; border:none; border-radius:8px; background:#1e3a8a; color:#fff; cursor:pointer;}
+    button:hover{ background:#3746c2; }
+    .warn{ background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:10px; border-radius:10px; margin-bottom:12px;}
+    .ok{ background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:10px; border-radius:10px; margin-top:10px; display:none;}
+    .pill{ font-size:12px; padding:2px 8px; border-radius:999px; background:#111; color:#fff; }
+    .pill.lock{ background:#6b7280; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>⚽ Occy Weekend Football · Make Predictions</h1>
-    <p class="muted">Shows featured fixtures, or next 5 upcoming if none set</p>
-  </header>
+  <h1>Make Predictions</h1>
 
-  <div class="card">
-    <div class="potbox">
-      <div><b>Play for this weekend’s pot? (£2)</b><br><span class="muted">Toggle to be counted in the pot total on Home</span></div>
-      <div class="toggle">
-        <button id="potYes">Yes</button>
-        <button id="potNo">No</button>
+  <!-- Profile Required Gate -->
+  <div id="gate" class="card" style="display:none">
+    <div class="warn">
+      You need to complete your profile before predicting.
+      <ul>
+        <li>Set a <b>display name</b></li>
+        <li>Pick your <b>favourite team</b></li>
+      </ul>
+      <div class="actions">
+        <button id="toProfile">Go to My Profile</button>
+        <button id="toHome" style="background:#334155">← Home</button>
       </div>
     </div>
+    <p class="muted">Once saved, come back here to make your picks.</p>
+  </div>
 
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-      <div>
-        <div><b>This weekend</b> <span id="weekLabel" class="pill">Fixtures</span></div>
-        <div id="authStatus" class="muted"></div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button id="saveCloud" class="btn">Save all to cloud</button>
-        <button id="clearBtn" class="btn ghost">Clear my device</button>
-      </div>
+  <!-- Prediction UI -->
+  <div id="app" class="card" style="display:none">
+    <p class="muted" id="who">—</p>
+    <p class="muted">Only upcoming, featured fixtures are shown. Games lock at kickoff.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="rowhead">Fixture</th>
+          <th>Kickoff</th>
+          <th>Your Pick</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <div class="actions">
+      <button id="saveAll">Save all to cloud</button>
+      <button id="clearLocal" style="background:#334155">Clear my device</button>
+      <button id="homeBtn" style="background:#334155">← Home</button>
     </div>
-    <div id="list"></div>
+    <div id="ok" class="ok">Saved!</div>
+    <p id="msg" class="muted"></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-  window.addEventListener('DOMContentLoaded', () => {
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const LOGIN_URL = 'login.html';
-    const ENTRY_FEE = 2;
 
-    const CRESTS = {
-      'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
-      'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
-      'AFC Bournemouth':'https://resources.premierleague.com/premierleague/badges/70/t91.png',
-      'Brentford':'https://resources.premierleague.com/premierleague/badges/70/t94.png',
-      'Brighton & Hove Albion':'https://resources.premierleague.com/premierleague/badges/70/t36.png',
-      'Chelsea':'https://resources.premierleague.com/premierleague/badges/70/t8.png',
-      'Crystal Palace':'https://resources.premierleague.com/premierleague/badges/70/t31.png',
-      'Everton':'https://resources.premierleague.com/premierleague/badges/70/t11.png',
-      'Fulham':'https://resources.premierleague.com/premierleague/badges/70/t54.png',
-      'Ipswich Town':'https://resources.premierleague.com/premierleague/badges/70/t40.png',
-      'Leicester City':'https://resources.premierleague.com/premierleague/badges/70/t13.png',
-      'Liverpool':'https://resources.premierleague.com/premierleague/badges/70/t14.png',
-      'Manchester City':'https://resources.premierleague.com/premierleague/badges/70/t43.png',
-      'Manchester United':'https://resources.premierleague.com/premierleague/badges/70/t1.png',
-      'Newcastle United':'https://resources.premierleague.com/premierleague/badges/70/t4.png',
-      'Nottingham Forest':'https://resources.premierleague.com/premierleague/badges/70/t17.png',
-      'Southampton':'https://resources.premierleague.com/premierleague/badges/70/t20.png',
-      'Tottenham Hotspur':'https://resources.premierleague.com/premierleague/badges/70/t6.png',
-      'West Ham United':'https://resources.premierleague.com/premierleague/badges/70/t21.png',
-      'Wolverhampton Wanderers':'https://resources.premierleague.com/premierleague/badges/70/t39.png',
-    };
-    function crestFor(name){
-      if (CRESTS[name]) return CRESTS[name];
-      const clean = name.replace(/ Football Club| FC| AFC/gi,'').trim();
-      for (const k of Object.keys(CRESTS)) {
-        if (k.replace(/ Football Club| FC| AFC/gi,'').trim() === clean) return CRESTS[k];
+    const gate = document.getElementById('gate');
+    const app  = document.getElementById('app');
+    const who  = document.getElementById('who');
+    const rows = document.getElementById('rows');
+    const msg  = document.getElementById('msg');
+    const okEl = document.getElementById('ok');
+
+    document.getElementById('toProfile').onclick = ()=> location.href='profile.html';
+    document.getElementById('toHome').onclick = ()=> location.href='index.html';
+    document.getElementById('homeBtn').onclick = ()=> location.href='index.html';
+    document.getElementById('clearLocal').onclick = ()=> { localStorage.removeItem('localPicks'); location.reload(); };
+
+    function nowUtcMs(){ return Date.now(); }
+
+    function getLocalPicks(){
+      try{ return JSON.parse(localStorage.getItem('localPicks')||'{}'); }catch{ return {}; }
+    }
+    function setLocalPicks(obj){ localStorage.setItem('localPicks', JSON.stringify(obj)); }
+
+    function isLocked(utcISO){
+      const t = new Date(utcISO).getTime();
+      return nowUtcMs() >= t;
+    }
+
+    function pickCells(fix, pick){
+      const locked = isLocked(fix.utc_date);
+      const d = document.createElement('tr');
+
+      d.innerHTML = `
+        <td class="rowhead">${fix.home_team} vs ${fix.away_team}</td>
+        <td>${new Date(fix.utc_date).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+        <td>
+          <input type="number" min="0" id="h_${fix.id}" value="${pick?.home_goals??''}" ${locked?'disabled':''} />
+          -
+          <input type="number" min="0" id="a_${fix.id}" value="${pick?.away_goals??''}" ${locked?'disabled':''} />
+        </td>
+        <td>${locked?'<span class="pill lock">Locked 🔒</span>':'Open'}</td>
+      `;
+      return d;
+    }
+
+    async function ensureProfile(id, email){
+      // Create minimal row if missing (so RLS allows you to update it later)
+      const { data: prof } = await client.from('profiles').select('id').eq('id', id).maybeSingle();
+      if (!prof){
+        await client.from('profiles').insert({ id, display_name: (email||'').split('@')[0] || 'User' });
       }
-      return '';
     }
 
-    const list=document.getElementById('list');
-    const clearBtn=document.getElementById('clearBtn');
-    const saveCloudBtn=document.getElementById('saveCloud');
-    const authStatus=document.getElementById('authStatus');
-    const potYes=document.getElementById('potYes');
-    const potNo=document.getElementById('potNo');
-
-    const KEY='wknd-preds';
-    function loadPreds(){ try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return{}} }
-    function savePreds(p){ localStorage.setItem(KEY, JSON.stringify(p)); }
-    function LOCKED(iso){ return new Date()>=new Date(iso); }
-
-    async function getUser(){ const {data}=await client.auth.getUser(); return data?.user||null; }
-    (async()=>{ const u=await getUser(); authStatus.innerHTML = u?.email?`Signed in as <b>${u.email}</b>`:`Not signed in · <a href="${LOGIN_URL}">Sign in</a>`; })();
-
-    function currentWeekendStartISO(){
-      const now = new Date();
-      const d = new Date(now);
-      const day = d.getDay(); // 0..6
-      const diffToFri = (5 - day + 7) % 7;
-      const fri = new Date(d);
-      fri.setDate(d.getDate() - ((day + 7 - 5) % 7));
-      if (day < 5) fri.setDate(fri.getDate() + diffToFri);
-      fri.setHours(0,0,0,0);
-      return fri.toISOString().slice(0,10); // YYYY-MM-DD
+    async function profileComplete(id){
+      const { data, error } = await client
+        .from('profiles')
+        .select('display_name,favorite_team')
+        .eq('id', id)
+        .single();
+      if (error) return false;
+      return !!(data?.display_name && data?.favorite_team);
     }
 
-    // Load featured first, fallback to next 5
-    async function loadFixtures(){
-      let {data,error}=await client.from('fixtures')
-        .select('id, utc_date, status, home_team, away_team')
+    async function load(){
+      const { data: ur } = await client.auth.getUser();
+      const u = ur?.user;
+      if (!u){ location.replace('login.html'); return; }
+
+      who.textContent = `Signed in as ${u.email}`;
+      await ensureProfile(u.id, u.email);
+
+      // Gate: require name + team
+      const ok = await profileComplete(u.id);
+      if (!ok){
+        gate.style.display = '';
+        app.style.display = 'none';
+        return;
+      }
+
+      gate.style.display = 'none';
+      app.style.display = '';
+
+      // Load featured, upcoming fixtures only
+      const nowIso = new Date().toISOString();
+      const { data: fixes, error } = await client
+        .from('fixtures')
+        .select('id,home_team,away_team,utc_date,featured')
         .eq('featured', true)
-        .order('utc_date', { ascending: true });
-      if(error){ list.innerHTML='<p class="muted">Error loading fixtures.</p>'; return[]; }
-      if(data?.length) return data;
-      const nowIso=new Date().toISOString();
-      const {data:fallback}=await client.from('fixtures')
-        .select('id, utc_date, status, home_team, away_team')
-        .in('status', ['SCHEDULED','TIMED'])
-        .gte('utc_date', nowIso)
-        .order('utc_date', { ascending: true })
-        .limit(5);
-      return fallback||[];
-    }
+        .gt('utc_date', nowIso)
+        .order('utc_date');
+      if (error){ msg.textContent = 'Error loading fixtures: ' + error.message; return; }
 
-    function render(fixtures){
-      const preds=loadPreds();
-      list.innerHTML='';
-      if(!fixtures.length){ list.innerHTML='<p class="muted">No fixtures yet. Try running sync.</p>'; return; }
-      fixtures.forEach(f=>{
-        const p=preds[f.id]||{home:'',away:''};
-        const kickoff=new Date(f.utc_date);
-        const time=kickoff.toLocaleString(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'});
-        const isLocked=LOCKED(f.utc_date);
-        const homeC=crestFor(f.home_team), awayC=crestFor(f.away_team);
-        const row=document.createElement('div'); row.className='row';
-        row.innerHTML=`
-          <div class="pair">
-            <div class="team">${homeC?`<img class="crest" src="${homeC}" alt="${f.home_team} crest">`:'⚽'}<span style="font-weight:600">${f.home_team}</span></div>
-            <span class="muted">vs</span>
-            <div class="team">${awayC?`<img class="crest" src="${awayC}" alt="${f.away_team} crest">`:'⚽'}<span style="font-weight:600">${f.away_team}</span></div>
-            <div class="muted">${time} • ${f.status}</div>
-            ${isLocked ? `<span class="pill locked" title="Kickoff passed">Locked 🔒</span>` : ''}
-          </div>
-          <div style="display:flex; align-items:center; gap:8px">
-            <input type="number" min="0" ${isLocked?'disabled':''} value="${p.home}" placeholder="H" data-id="${f.id}" data-side="home" />
-            <span class="muted">–</span>
-            <input type="number" min="0" ${isLocked?'disabled':''} value="${p.away}" placeholder="A" data-id="${f.id}" data-side="away" />
-            <button class="btn" ${isLocked?'disabled':''} data-save="${f.id}">${isLocked?'Closed':'Save'}</button>
-          </div>`;
-        list.appendChild(row);
+      rows.innerHTML = '';
+      const picks = getLocalPicks();
+
+      (fixes||[]).forEach(f=>{
+        const p = picks[f.id] || null;
+        const tr = pickCells(f, p);
+        rows.appendChild(tr);
+        // Keep local cache in sync on change
+        const h = tr.querySelector('#h_'+f.id);
+        const a = tr.querySelector('#a_'+f.id);
+        if (h) h.addEventListener('input', ()=>{
+          picks[f.id] = picks[f.id] || {};
+          picks[f.id].home_goals = h.value===''? null : +h.value;
+          setLocalPicks(picks);
+        });
+        if (a) a.addEventListener('input', ()=>{
+          picks[f.id] = picks[f.id] || {};
+          picks[f.id].away_goals = a.value===''? null : +a.value;
+          setLocalPicks(picks);
+        });
       });
-    }
 
-    // Local save
-    list.addEventListener('input',(e)=>{
-      const el=e.target; if(el.tagName!=='INPUT') return;
-      const id=el.getAttribute('data-id'), side=el.getAttribute('data-side');
-      const all=loadPreds(); all[id]=all[id]||{home:'',away:''}; all[id][side]=el.value; savePreds(all);
-    });
-    list.addEventListener('click',(e)=>{
-      const btn=e.target.closest('button[data-save]'); if(!btn) return;
-      const id=btn.getAttribute('data-save'); const all=loadPreds();
-      if(!all[id]||all[id].home===''||all[id].away===''){ alert('Please enter both scores'); return; }
-      alert('Saved on this device!');
-    });
-    clearBtn.addEventListener('click',()=>{ if(confirm('Clear all your saved picks on this device?')){ localStorage.removeItem(KEY); location.reload(); }});
+      if (!fixes || fixes.length===0){
+        msg.textContent = 'No upcoming featured fixtures yet. Check back later.';
+      } else {
+        msg.textContent = `Loaded ${fixes.length} fixtures.`;
+      }
 
-    // Cloud save (UPSERT)
-    async function saveAllToCloud(){
-      const user=await getUser(); if(!user){ alert('Please sign in first.'); location.href=LOGIN_URL; return; }
-      const inputs=list.querySelectorAll('input[data-id]'); const ids=new Set(Array.from(inputs).map(i=>i.getAttribute('data-id')));
-      const all=loadPreds();
-      const rows=Array.from(ids).map(id=>{
-        const p=all[id]; if(!p||p.home===''||p.away==='') return null;
-        return { user_id:user.id, fixture_id:id, home_goals:Number(p.home), away_goals:Number(p.away) };
-      }).filter(Boolean);
-      if(!rows.length){ alert('Nothing to save. Enter scores first.'); return; }
-      try{
-        const { error } = await client.from('predictions').upsert(rows, { onConflict: 'user_id,fixture_id' });
-        if (error) {
-          if (/row-level security|violates|permission/i.test(error.message)) {
-            alert('Some fixtures are locked (kickoff passed) so those picks could not be changed.');
-          } else { alert('Supabase error: ' + error.message); }
+      // Save all handler
+      document.getElementById('saveAll').onclick = async ()=>{
+        okEl.style.display = 'none';
+        msg.textContent = 'Saving…';
+        const payload = [];
+
+        (fixes||[]).forEach(f=>{
+          if (isLocked(f.utc_date)) return; // don’t allow saving locked
+          const p = picks[f.id];
+          if (p && Number.isInteger(p.home_goals) && Number.isInteger(p.away_goals)){
+            payload.push({
+              fixture_id: f.id,
+              user_id: u.id,
+              home_goals: p.home_goals,
+              away_goals: p.away_goals
+            });
+          }
+        });
+
+        if (payload.length===0){
+          msg.textContent = 'Nothing to save. Enter scores for open fixtures.';
           return;
         }
-        alert('Saved to cloud! 🎉');
-      }catch(err){ console.error('Supabase error:', err); alert('Unexpected error saving. Please try again.'); }
-    }
-    document.getElementById('saveCloud').addEventListener('click', saveAllToCloud);
 
-    // POT TOGGLE (Yes/No)
-    function setToggleUI(state){
-      potYes.classList.toggle('active', state===true);
-      potNo.classList.toggle('active', state===false);
-    }
+        // Upsert (replace your previous pick for the same fixture)
+        const { error: e1 } = await client
+          .from('predictions')
+          .upsert(payload, { onConflict: 'user_id,fixture_id' });
+        if (e1){ msg.textContent = 'Save error: ' + e1.message; return; }
 
-    async function loadPotChoice(){
-      const user=await getUser(); if(!user) return;
-      const weekStart = currentWeekendStartISO();
-      const { data, error } = await client.from('pot_entries')
-        .select('paid').eq('pot_week_start', weekStart).eq('user_id', user.id).single();
-      if (error && error.code !== 'PGRST116') { console.log('pot load error', error.message); }
-      setToggleUI(!!data?.paid);
+        okEl.style.display = 'block';
+        msg.textContent = 'Saved to cloud.';
+      };
     }
 
-    async function savePotChoice(paid){
-      const user=await getUser(); if(!user){ location.href=LOGIN_URL; return; }
-      const weekStart = currentWeekendStartISO();
-      const payload = { pot_week_start: weekStart, user_id: user.id, paid };
-      const { error } = await client.from('pot_entries').upsert(payload, { onConflict: 'pot_week_start,user_id' });
-      if (error) { alert('Could not save pot choice: ' + error.message); return; }
-      setToggleUI(paid);
-      // Bonus: nudge the index page cache via broadcast not needed; it polls every 15s.
-      alert(paid ? `You’re in for £${ENTRY_FEE}. Good luck!` : 'You’re out of the pot for this weekend.');
-    }
-
-    potYes.addEventListener('click', ()=> savePotChoice(true));
-    potNo.addEventListener('click', ()=> savePotChoice(false));
-
-    (async function init(){ const fixtures=await loadFixtures(); render(fixtures); await loadPotChoice(); })();
-  });
+    load();
   </script>
 </body>
 </html>
+
 
 
 
