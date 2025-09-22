@@ -5,71 +5,55 @@
   <title>Make Predictions · Occy Weekend Football</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
-    :root{ --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --card:#fffffff2; --muted:#555;}
-    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:16px; min-height:100vh;
-      background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1)); color:#fff; }
-    h1{ color:var(--gold); text-align:center; }
-    .card{ background:rgba(255,255,255,.95); color:#111; border-radius:14px; padding:18px; margin:18px auto; max-width:1000px; box-shadow:0 4px 12px rgba(0,0,0,.3);}
-    .muted{ color:var(--muted); font-size:14px;}
-    table{ border-collapse:collapse; width:100%; margin-top:10px;}
-    th,td{ border:1px solid #ddd; padding:8px; text-align:center;}
-    th{ background:#fef08a; color:#111;}
-    input[type=number]{ width:56px; padding:6px; border:1px solid #ddd; border-radius:6px; }
-    .rowhead{ text-align:left; }
-    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
-    button{ padding:8px 14px; border:none; border-radius:8px; background:#1e3a8a; color:#fff; cursor:pointer;}
-    button:hover{ background:#3746c2; }
-    .warn{ background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:10px; border-radius:10px; margin-bottom:12px;}
-    .ok{ background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:10px; border-radius:10px; margin-top:10px; display:none;}
-    .pill{ font-size:12px; padding:2px 8px; border-radius:999px; background:#111; color:#fff; }
-    .pill.lock{ background:#6b7280; }
-  </style>
+  <link rel="stylesheet" href="brand.css" />
 </head>
 <body>
-  <h1>Make Predictions</h1>
+  <div class="container">
+    <div class="header">
+      <h1>Make Predictions</h1>
+      <p class="muted">Only upcoming, featured fixtures are shown. Games lock at kickoff.</p>
+    </div>
 
-  <!-- Profile Required Gate -->
-  <div id="gate" class="card" style="display:none">
-    <div class="warn">
-      You need to complete your profile before predicting.
-      <ul>
-        <li>Set a <b>display name</b></li>
-        <li>Pick your <b>favourite team</b></li>
-      </ul>
-      <div class="actions">
-        <button id="toProfile">Go to My Profile</button>
-        <button id="toHome" style="background:#334155">← Home</button>
+    <!-- Profile Required Gate -->
+    <div id="gate" class="card" style="display:none">
+      <div class="error" style="display:block">
+        You need to complete your profile before predicting.
+        <ul style="margin:8px 0 0 18px; color:var(--muted-ink);">
+          <li>Set a <b>display name</b></li>
+          <li>Pick your <b>favourite team</b></li>
+        </ul>
       </div>
+      <div class="btn-row" style="margin-top:10px">
+        <a class="btn" href="profile.html">Go to My Profile</a>
+        <a class="btn btn-dark" href="index.html">← Home</a>
+      </div>
+      <p class="muted" style="margin-top:8px">Once saved, come back here to make your picks.</p>
     </div>
-    <p class="muted">Once saved, come back here to make your picks.</p>
-  </div>
 
-  <!-- Prediction UI -->
-  <div id="app" class="card" style="display:none">
-    <p class="muted" id="who">—</p>
-    <p class="muted">Only upcoming, featured fixtures are shown. Games lock at kickoff.</p>
+    <!-- Prediction UI -->
+    <div id="app" class="card" style="display:none">
+      <p class="muted" id="who">—</p>
 
-    <table>
-      <thead>
-        <tr>
-          <th class="rowhead">Fixture</th>
-          <th>Kickoff</th>
-          <th>Your Pick</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
+      <table>
+        <thead>
+          <tr>
+            <th class="left">Fixture</th>
+            <th>Kickoff</th>
+            <th>Your Pick</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
 
-    <div class="actions">
-      <button id="saveAll">Save all to cloud</button>
-      <button id="clearLocal" style="background:#334155">Clear my device</button>
-      <button id="homeBtn" style="background:#334155">← Home</button>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="saveAll" class="btn">Save all to cloud</button>
+        <button id="clearLocal" class="btn btn-dark">Clear my device</button>
+        <a id="homeBtn" class="btn btn-dark" href="index.html">← Home</a>
+      </div>
+      <div id="ok" class="ok" style="margin-top:10px;">Saved!</div>
+      <p id="msg" class="muted" style="margin-top:8px;"></p>
     </div>
-    <div id="ok" class="ok">Saved!</div>
-    <p id="msg" class="muted"></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -84,29 +68,18 @@
     const msg  = document.getElementById('msg');
     const okEl = document.getElementById('ok');
 
-    document.getElementById('toProfile').onclick = ()=> location.href='profile.html';
-    document.getElementById('toHome').onclick = ()=> location.href='index.html';
-    document.getElementById('homeBtn').onclick = ()=> location.href='index.html';
     document.getElementById('clearLocal').onclick = ()=> { localStorage.removeItem('localPicks'); location.reload(); };
 
     function nowUtcMs(){ return Date.now(); }
-
-    function getLocalPicks(){
-      try{ return JSON.parse(localStorage.getItem('localPicks')||'{}'); }catch{ return {}; }
-    }
+    function getLocalPicks(){ try{ return JSON.parse(localStorage.getItem('localPicks')||'{}'); }catch{ return {}; } }
     function setLocalPicks(obj){ localStorage.setItem('localPicks', JSON.stringify(obj)); }
+    function isLocked(utcISO){ return nowUtcMs() >= new Date(utcISO).getTime(); }
 
-    function isLocked(utcISO){
-      const t = new Date(utcISO).getTime();
-      return nowUtcMs() >= t;
-    }
-
-    function pickCells(fix, pick){
+    function pickRow(fix, pick){
       const locked = isLocked(fix.utc_date);
-      const d = document.createElement('tr');
-
-      d.innerHTML = `
-        <td class="rowhead">${fix.home_team} vs ${fix.away_team}</td>
+      const tr=document.createElement('tr');
+      tr.innerHTML = `
+        <td class="left">${fix.home_team} vs ${fix.away_team}</td>
         <td>${new Date(fix.utc_date).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
         <td>
           <input type="number" min="0" id="h_${fix.id}" value="${pick?.home_goals??''}" ${locked?'disabled':''} />
@@ -115,11 +88,10 @@
         </td>
         <td>${locked?'<span class="pill lock">Locked 🔒</span>':'Open'}</td>
       `;
-      return d;
+      return tr;
     }
 
     async function ensureProfile(id, email){
-      // Create minimal row if missing (so RLS allows you to update it later)
       const { data: prof } = await client.from('profiles').select('id').eq('id', id).maybeSingle();
       if (!prof){
         await client.from('profiles').insert({ id, display_name: (email||'').split('@')[0] || 'User' });
@@ -127,11 +99,7 @@
     }
 
     async function profileComplete(id){
-      const { data, error } = await client
-        .from('profiles')
-        .select('display_name,favorite_team')
-        .eq('id', id)
-        .single();
+      const { data, error } = await client.from('profiles').select('display_name,favorite_team').eq('id', id).single();
       if (error) return false;
       return !!(data?.display_name && data?.favorite_team);
     }
@@ -144,18 +112,12 @@
       who.textContent = `Signed in as ${u.email}`;
       await ensureProfile(u.id, u.email);
 
-      // Gate: require name + team
       const ok = await profileComplete(u.id);
-      if (!ok){
-        gate.style.display = '';
-        app.style.display = 'none';
-        return;
-      }
+      if (!ok){ gate.style.display='block'; app.style.display='none'; return; }
 
-      gate.style.display = 'none';
-      app.style.display = '';
+      gate.style.display='none'; app.style.display='block';
 
-      // Load featured, upcoming fixtures only
+      // Featured & upcoming only
       const nowIso = new Date().toISOString();
       const { data: fixes, error } = await client
         .from('fixtures')
@@ -167,12 +129,10 @@
 
       rows.innerHTML = '';
       const picks = getLocalPicks();
-
       (fixes||[]).forEach(f=>{
         const p = picks[f.id] || null;
-        const tr = pickCells(f, p);
+        const tr = pickRow(f, p);
         rows.appendChild(tr);
-        // Keep local cache in sync on change
         const h = tr.querySelector('#h_'+f.id);
         const a = tr.querySelector('#a_'+f.id);
         if (h) h.addEventListener('input', ()=>{
@@ -187,44 +147,23 @@
         });
       });
 
-      if (!fixes || fixes.length===0){
-        msg.textContent = 'No upcoming featured fixtures yet. Check back later.';
-      } else {
-        msg.textContent = `Loaded ${fixes.length} fixtures.`;
-      }
+      msg.textContent = (!fixes || fixes.length===0) ? 'No upcoming featured fixtures yet.' : `Loaded ${fixes.length} fixtures.`;
 
-      // Save all handler
       document.getElementById('saveAll').onclick = async ()=>{
         okEl.style.display = 'none';
         msg.textContent = 'Saving…';
         const payload = [];
-
         (fixes||[]).forEach(f=>{
-          if (isLocked(f.utc_date)) return; // don’t allow saving locked
+          if (isLocked(f.utc_date)) return;
           const p = picks[f.id];
           if (p && Number.isInteger(p.home_goals) && Number.isInteger(p.away_goals)){
-            payload.push({
-              fixture_id: f.id,
-              user_id: u.id,
-              home_goals: p.home_goals,
-              away_goals: p.away_goals
-            });
+            payload.push({ fixture_id:f.id, user_id:u.id, home_goals:p.home_goals, away_goals:p.away_goals });
           }
         });
-
-        if (payload.length===0){
-          msg.textContent = 'Nothing to save. Enter scores for open fixtures.';
-          return;
-        }
-
-        // Upsert (replace your previous pick for the same fixture)
-        const { error: e1 } = await client
-          .from('predictions')
-          .upsert(payload, { onConflict: 'user_id,fixture_id' });
+        if (!payload.length){ msg.textContent='Nothing to save. Enter scores for open fixtures.'; return; }
+        const { error: e1 } = await client.from('predictions').upsert(payload, { onConflict:'user_id,fixture_id' });
         if (e1){ msg.textContent = 'Save error: ' + e1.message; return; }
-
-        okEl.style.display = 'block';
-        msg.textContent = 'Saved to cloud.';
+        okEl.style.display='block'; msg.textContent='Saved to cloud.';
       };
     }
 
@@ -232,24 +171,5 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
