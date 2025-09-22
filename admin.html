@@ -50,7 +50,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    const ADMIN_EMAIL = 'grahammark@gmail.com';
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
     const who = document.getElementById('who');
     const err = document.getElementById('err');
@@ -62,22 +61,37 @@
     function showOk(t){ ok.textContent=t; ok.style.display='block'; }
 
     async function ensureOwnProfile(u){
-      let { data: prof } = await client.from('profiles').select('id').eq('id', u.id).maybeSingle();
+      // Create your own row if missing (RLS must allow insert own row)
+      const { data: prof } = await client.from('profiles').select('id').eq('id', u.id).maybeSingle();
       if (!prof){
-        await client.from('profiles').insert({ id: u.id, display_name: u.email.split('@')[0] });
+        await client.from('profiles').insert({ id: u.id, display_name: (u.email||'').split('@')[0] || 'User' });
       }
     }
 
+    async function isAdmin(u){
+      // Gate by profiles.is_admin (not by email string)
+      const { data, error } = await client
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', u.id)
+        .single();
+      if (error){ showErr('Profile check failed: '+error.message); return false; }
+      return !!data?.is_admin;
+    }
+
     async function gate(){
-      const { data: ur } = await client.auth.getUser();
+      const { data: ur, error } = await client.auth.getUser();
+      if (error){ showErr('Auth error: '+error.message); return null; }
       const u = ur?.user;
       if (!u){ location.replace('login.html'); return null; }
+
       who.textContent = `Signed in as ${u.email}`;
       await ensureOwnProfile(u);
 
-      if (!u.email || u.email.toLowerCase() !== ADMIN_EMAIL){
-        // Not admin → block access
-        location.replace('index.html'); 
+      const admin = await isAdmin(u);
+      if (!admin){
+        // Not admin → send back home
+        location.replace('index.html');
         return null;
       }
       showOk('Admin verified.');
@@ -107,7 +121,7 @@
       msg.textContent = `Loaded ${data?.length||0} fixtures.`;
     }
 
-    // Sync: call your Edge Function
+    // Sync fixtures via Edge Function
     async function syncNow(){
       msg.textContent='Syncing…';
       try{
@@ -159,12 +173,13 @@
 
     (async function init(){
       const u = await gate();
-      if (!u) return;
+      if (!u) return;   // stops the page if not admin (prevents bounce loop confusion)
       await load();
     })();
   </script>
 </body>
 </html>
+
 
 
 
