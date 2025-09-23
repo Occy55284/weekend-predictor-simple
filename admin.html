@@ -32,6 +32,14 @@
         <tbody id="rows"></tbody>
       </table>
     </div>
+
+    <!-- Submissions list -->
+    <div class="card" style="margin-top:14px">
+      <h2 style="margin:0 0 6px;">This Weekend — Submissions</h2>
+      <p id="week" class="muted">—</p>
+      <ul id="submitted" style="margin:8px 0 0 18px; color:var(--muted-ink)"></ul>
+      <p id="msgSub" class="muted">Loading…</p>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -46,14 +54,12 @@
 
     function showErr(t){ err.textContent=t; err.style.display='block'; }
     function showOk(t){ ok.textContent=t; ok.style.display='block'; }
+    function fmt(dt){ return new Date(dt).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 
     async function ensureOwnProfile(u){
       const { data: prof } = await client.from('profiles').select('id').eq('id', u.id).maybeSingle();
-      if (!prof){
-        await client.from('profiles').insert({ id: u.id, display_name: (u.email||'').split('@')[0] || 'User' });
-      }
+      if (!prof){ await client.from('profiles').insert({ id: u.id, display_name: (u.email||'').split('@')[0] || 'User' }); }
     }
-
     async function isAdmin(u){
       const { data, error } = await client.from('profiles').select('is_admin').eq('id', u.id).single();
       if (error){ showErr('Profile check failed: '+error.message); return false; }
@@ -69,16 +75,12 @@
       who.textContent = `Signed in as ${u.email}`;
       await ensureOwnProfile(u);
 
-      const admin = await isAdmin(u);
-      if (!admin){
-        location.replace('index.html');
-        return null;
-      }
+      if (!await isAdmin(u)){ location.replace('index.html'); return null; }
       showOk('Admin verified.');
       return u;
     }
 
-    async function load(){
+    async function loadFixtures(){
       msg.textContent='Loading fixtures…';
       const { data, error } = await client
         .from('fixtures')
@@ -92,17 +94,63 @@
         const d=new Date(f.utc_date);
         tr.innerHTML = `
           <td><input type="checkbox" data-id="${f.id}" ${f.featured?'checked':''}></td>
-          <td>${d.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td>${fmt(f.utc_date)}</td>
           <td>${f.home_team}</td>
           <td>${f.away_team}</td>
         `;
         rows.appendChild(tr);
       });
       msg.textContent = `Loaded ${data?.length||0} fixtures.`;
+      return data||[];
+    }
+
+    async function loadSubmissions(){
+      const msgS = document.getElementById('msgSub');
+      const ul = document.getElementById('submitted');
+      const weekEl = document.getElementById('week');
+      ul.innerHTML=''; msgS.textContent='Loading…';
+
+      // Use earliest upcoming featured fixture date as week key
+      const nowIso = new Date().toISOString();
+      const { data: fixes } = await client.from('fixtures')
+        .select('id,utc_date').eq('featured', true).gt('utc_date', nowIso).order('utc_date');
+
+      if (!fixes || !fixes.length){
+        weekEl.textContent = 'No upcoming featured fixtures picked yet.';
+        msgS.textContent = '';
+        return;
+      }
+      const weekStart = fixes[0].utc_date.slice(0,10);
+      weekEl.textContent = `Weekend starting ${new Date(weekStart).toLocaleDateString()}`;
+
+      // Who has a lock row for that week?
+      const { data: locks, error: lerr } = await client.from('week_locks')
+        .select('user_id')
+        .eq('week_start', weekStart);
+      if (lerr){ msgS.textContent = 'Error: '+lerr.message; return; }
+
+      if (!locks || !locks.length){
+        msgS.textContent = 'No submissions yet.';
+        return;
+      }
+
+      const ids = [...new Set(locks.map(l=>l.user_id))];
+      const { data: profs } = await client.from('profiles')
+        .select('id,display_name')
+        .in('id', ids);
+
+      const nameById = Object.fromEntries((profs||[]).map(p=>[p.id, p.display_name || 'User']));
+      ids.forEach(id=>{
+        const li = document.createElement('li');
+        li.textContent = nameById[id] || 'User';
+        ul.appendChild(li);
+      });
+      msgS.textContent = `${ids.length} submission${ids.length===1?'':'s'}.`;
     }
 
     async function syncNow(){
-      msg.textContent='Syncing…';
+      const msgEl = document.getElementById('msg');
+      msgEl.textContent='Syncing…';
       try{
         const { data: sess } = await client.auth.getSession();
         const token = sess?.session?.access_token || '';
@@ -112,11 +160,12 @@
           body: JSON.stringify({ trigger:'admin' })
         });
         const txt = await res.text();
-        if (!res.ok) { showErr('Sync failed: '+txt); msg.textContent=''; return; }
+        if (!res.ok) { showErr('Sync failed: '+txt); msgEl.textContent=''; return; }
         showOk('Sync complete.');
-        msg.textContent = txt;
-        await load();
-      }catch(e){ showErr(e.message||String(e)); msg.textContent=''; }
+        msgEl.textContent = txt;
+        await loadFixtures();
+        await loadSubmissions();
+      }catch(e){ showErr(e.message||String(e)); msgEl.textContent=''; }
     }
 
     function pickEarliest5(){
@@ -143,7 +192,7 @@
         if (error) errMsg += 'Unset featured: '+error.message;
       }
       msg.textContent = errMsg ? ('Error: '+errMsg) : 'Saved!';
-      await load();
+      await loadSubmissions(); // update list just in case
     }
 
     document.getElementById('sync').addEventListener('click', syncNow);
@@ -153,11 +202,13 @@
     (async function init(){
       const u = await gate();
       if (!u) return;
-      await load();
+      await loadFixtures();
+      await loadSubmissions();
     })();
   </script>
 </body>
 </html>
+
 
 
 
