@@ -25,15 +25,22 @@
       <button id="logoutAdmin" class="btn btn-dark">Sign out</button>
     </div>
 
-    <!-- Logged IN: REGULAR USER -->
-    <div id="userOnly" class="btn-row" style="justify-content:center; display:none">
+    <!-- Logged IN: USER — PROFILE INCOMPLETE -->
+    <div id="userNeedsProfile" class="btn-row" style="justify-content:center; display:none">
+      <a class="btn" href="profile.html">My Profile</a>
+      <button id="logoutNeeds" class="btn btn-dark">Sign out</button>
+      <p class="muted" style="width:100%; margin-top:8px;">
+        Please complete your profile (nickname + favourite team) to unlock predictions.
+      </p>
+    </div>
+
+    <!-- Logged IN: USER — PROFILE COMPLETE -->
+    <div id="userReady" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="predict.html">Make Predictions</a>
       <a class="btn" href="leaderboard.html">Leaderboard</a>
       <a class="btn" href="profile.html">My Profile</a>
       <button id="logoutUser" class="btn btn-dark">Sign out</button>
     </div>
-
-    <p class="muted" id="hint" style="text-align:center; margin-top:12px;">Welcome! Sign in to start making your weekend picks.</p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -42,17 +49,18 @@
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
     const who = document.getElementById('who');
-    const hint = document.getElementById('hint');
     const tag = document.getElementById('roleTag');
 
-    const out = document.getElementById('loggedOut');
-    const admin = document.getElementById('adminOnly');
-    const user = document.getElementById('userOnly');
+    const loggedOut = document.getElementById('loggedOut');
+    const adminOnly = document.getElementById('adminOnly');
+    const userNeeds = document.getElementById('userNeedsProfile');
+    const userReady = document.getElementById('userReady');
 
     function show(view){
-      out.style.display   = (view==='out')   ? 'flex' : 'none';
-      admin.style.display = (view==='admin') ? 'flex' : 'none';
-      user.style.display  = (view==='user')  ? 'flex' : 'none';
+      loggedOut.style.display = (view==='out') ? 'flex' : 'none';
+      adminOnly.style.display = (view==='admin') ? 'flex' : 'none';
+      userNeeds.style.display = (view==='needs') ? 'flex' : 'none';
+      userReady.style.display = (view==='ready') ? 'flex' : 'none';
     }
 
     async function ensureOwnProfile(id, email){
@@ -69,6 +77,16 @@
       return !!data?.is_admin;
     }
 
+    async function profileComplete(id){
+      const { data, error } = await client
+        .from('profiles')
+        .select('display_name,favorite_team')
+        .eq('id', id)
+        .single();
+      if (error) return false;
+      return !!(data?.display_name && data?.favorite_team);
+    }
+
     async function init(){
       const { data: ur } = await client.auth.getUser();
       const u = ur?.user;
@@ -76,7 +94,6 @@
       if (!u){
         who.textContent = '';
         tag.style.display='none';
-        hint.textContent = 'Welcome! Sign in to start making your weekend picks.';
         show('out');
         return;
       }
@@ -84,17 +101,16 @@
       who.textContent = `Signed in as ${u.email}`;
       await ensureOwnProfile(u.id, u.email);
 
-      const adminFlag = await isAdmin(u.id);
-
-      if (adminFlag){
+      if (await isAdmin(u.id)){
         tag.style.display='inline-block';
-        hint.textContent = 'Admin: manage fixtures from here.';
         show('admin');
-      } else {
-        tag.style.display='none';
-        hint.textContent = 'Pick your matches, view the leaderboard, and edit your profile.';
-        show('user');
+        return;
       }
+
+      // Regular user: gate on profile completeness
+      tag.style.display='none';
+      const ready = await profileComplete(u.id);
+      show(ready ? 'ready' : 'needs');
     }
 
     async function logout(){
@@ -102,12 +118,14 @@
       location.replace('index.html');
     }
     document.getElementById('logoutAdmin')?.addEventListener('click', logout);
+    document.getElementById('logoutNeeds')?.addEventListener('click', logout);
     document.getElementById('logoutUser')?.addEventListener('click', logout);
 
     init();
   </script>
 </body>
 </html>
+
 
 
 
