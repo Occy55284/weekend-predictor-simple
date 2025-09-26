@@ -2,21 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>My Picks</title>
+  <title>My Picks · Occy Weekend Football</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="assets/logo-burst.png" />
+  <link rel="icon" href="assets/brand-logo.png" />
   <link rel="stylesheet" href="brand.css" />
+  <style>.wrap{max-width:900px;margin:0 auto}</style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1><img class="brand-logo" src="assets/logo-burst.png" alt="">My Picks</h1>
-      <p class="muted">Read-only view of your submitted predictions.</p>
-    </div>
+  <div class="brand-header"><img src="assets/brand-logo.png" alt="Occy Weekend Football"></div>
 
+  <div class="container wrap">
     <div class="card">
-      <div id="fixtures"></div>
-      <a class="btn btn-dark" href="index.html">← Home</a>
+      <div class="header"><h1>My Picks</h1><p class="muted">Read-only view of your submitted predictions.</p></div>
+      <div id="box"></div>
+      <div class="btn-row" style="margin-top:8px"><a class="btn btn-dark" href="index.html">← Home</a></div>
     </div>
   </div>
 
@@ -24,31 +23,35 @@
   <script src="supabase-config.js"></script>
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const fixturesDiv=document.getElementById('fixtures');
+    const box = document.getElementById('box');
+
+    function fmt(dt){ return new Date(dt).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 
     async function load(){
       const { data: ur } = await client.auth.getUser();
-      const u=ur?.user; if(!u){ location.replace('login.html'); return; }
-      const { data: feats } = await client.from('fixtures').select('*').eq('featured',true).order('utc_date');
-      if(!feats?.length){ fixturesDiv.textContent='No fixtures yet'; return; }
-      const ids=feats.map(f=>f.id);
-      const { data: preds } = await client.from('predictions').select('*').eq('user_id',u.id).in('fixture_id',ids);
-      const map={}; preds.forEach(p=>map[p.fixture_id]=p);
-      fixturesDiv.innerHTML='<table><tr><th>Date</th><th>Home</th><th>Score</th><th>Away</th></tr>'+
-        feats.map(f=>{
-          const p=map[f.id]||{};
-          const d=new Date(f.utc_date).toLocaleString(undefined,{weekday:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-          return `<tr>
-            <td>${d}</td>
-            <td>${f.home_team}</td>
-            <td>${p.home_score??'-'} : ${p.away_score??'-'}</td>
-            <td>${f.away_team}</td>
-          </tr>`;
-        }).join('')+'</table>';
-    }
+      const u = ur?.user; if(!u){ location.replace('login.html'); return; }
 
+      const nowIso = new Date().toISOString();
+      const { data: fixes } = await client.from('fixtures').select('id,home_team,away_team,utc_date').eq('featured',true).gt('utc_date',nowIso).order('utc_date');
+      if (!fixes?.length){ box.textContent='No upcoming featured fixtures.'; return; }
+
+      const ids = fixes.map(f=>f.id);
+      const { data: picks } = await client.from('predictions').select('fixture_id,home_goals,away_goals').eq('user_id',u.id).in('fixture_id',ids);
+      const map = Object.fromEntries((picks||[]).map(p=>[p.fixture_id,p]));
+      box.innerHTML = `<table>
+        <thead><tr><th class="left">Fixture</th><th>Kickoff</th><th>Your Pick</th><th>Status</th></tr></thead>
+        <tbody>${fixes.map(f=>{
+          const p = map[f.id];
+          const locked = Date.now() >= new Date(f.utc_date).getTime();
+          return `<tr>
+            <td class="left">${f.home_team} vs ${f.away_team}</td>
+            <td>${fmt(f.utc_date)}</td>
+            <td>${p ? `${p.home_goals} – ${p.away_goals}` : '<span class="muted">—</span>'}</td>
+            <td>${locked?'<span class="pill lock">Locked 🔒</span>':'Open'}</td>
+          </tr>`;
+        }).join('')}</tbody></table>`;
+    }
     load();
   </script>
 </body>
 </html>
-
