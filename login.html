@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login</title>
-  <link rel="stylesheet" href="brand.css?v=5" />
+  <link rel="stylesheet" href="brand.css?v=6" />
 </head>
 <body>
   <main class="landing">
-    <!-- Logo (replace SVG with <img src="logo.png"> if you have your own) -->
+    <!-- Logo -->
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
@@ -31,23 +31,26 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // 1) Check session immediately (handles return from magic link)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      window.location.replace('profile.html');
+    const statusEl = document.getElementById('status');
+    const form = document.getElementById('login-form');
+
+    // --- Handle redirect from Supabase magic link ---
+    async function checkRedirectSession() {
+      const { data, error } = await supabase.auth.getSession();
+      if (data.session) {
+        // user already has a valid session → send to profile
+        window.location.replace('profile.html');
+      }
     }
 
-    // 2) Watch for login event (fires when link completes)
+    // --- Listen for new login events (fires when magic link completes) ---
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         window.location.replace('profile.html');
       }
     });
 
-    // 3) Handle form submit
-    const form = document.getElementById('login-form');
-    const statusEl = document.getElementById('status');
-
+    // --- Form submit handler ---
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
@@ -56,7 +59,8 @@
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/profile.html`
+          emailRedirectTo: `${window.location.origin}/login.html` 
+          // NOTE: Redirects here, where we catch the session and forward to profile
         }
       });
 
@@ -67,6 +71,9 @@
         form.reset();
       }
     });
+
+    // Run immediately when page loads
+    checkRedirectSession();
   </script>
 </body>
 </html>
