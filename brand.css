@@ -1,51 +1,35 @@
 /* ===== Occy Weekend Football – Brand Theme ===== */
 
 :root{
-  --bg1:#0f172a;           /* deep slate */
-  --bg2:#1e3a8a;           /* indigo */
-  --gold:#facc15;          /* accent */
-  --ink:#0b1220;           /* near-black for text on light cards */
-  --card:#fffffff2;        /* white card with slight alpha */
-  --muted:#6b7280;         /* slate-500 */
-  --muted-ink:#444;        /* deeper on white */
-  --line:#e5e7eb;          /* light grey borders */
-  --btn:#1e3a8a;           /* primary button */
-  --btn-hover:#3746c2;     /* button hover */
-  --btn-dark:#334155;      /* secondary/dark button */
+  --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --ink:#0b1220;
+  --card:#fffffff2; --muted:#6b7280; --muted-ink:#444; --line:#e5e7eb;
+  --btn:#1e3a8a; --btn-hover:#3746c2; --btn-dark:#334155;
   --ok-bg:#ecfdf5; --ok-ink:#065f46; --ok-line:#a7f3d0;
   --err-bg:#fee2e2; --err-ink:#7f1d1d; --err-line:#fecaca;
-  --tab-bg:#f9fafb; --tab-active:#ffffff;
-  --table-head:#fde68a;
+  --tab-bg:#f9fafb; --tab-active:#ffffff; --table-head:#fde68a;
 }
 
-/* Base */
 *{ box-sizing:border-box }
 html,body{ height:100% }
 body{
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  font-family:system-ui,-apple-system, Segoe UI, Roboto, Arial;
   margin:0; padding:16px; min-height:100vh;
   background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg1));
   color:#fff;
 }
 
 /* Layout */
-.container{
-  max-width:1000px; margin:0 auto;
-}
-.center-screen{
-  min-height:calc(100vh - 32px);
-  display:grid; place-items:center;
-}
-.header{
-  text-align:center; margin:20px 0 8px;
-}
-.header h1{ color:var(--gold); margin:0; }
+.container{ max-width:1000px; margin:0 auto; }
+.center-screen{ min-height:calc(100vh - 32px); display:grid; place-items:center; }
+.header{ text-align:center; margin:20px 0 8px; }
+.header h1{ color:var(--gold); margin:8px 0 0; }
 .header p{ color:#e5e7eb; margin:6px 0 0; }
+.card{ background:var(--card); color:var(--ink); border-radius:16px; padding:18px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
 
-.card{
-  background:var(--card); color:var(--ink);
-  border-radius:16px; padding:18px; 
-  box-shadow:0 4px 12px rgba(0,0,0,.3);
+/* Brand logo in headers */
+.brand-logo{
+  width:40px; height:40px; vertical-align:middle; margin-right:8px; border-radius:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
 }
 
 /* Buttons */
@@ -55,17 +39,17 @@ body{
   background:var(--btn); color:#fff; font-size:16px;
 }
 .btn:hover, button.btn:hover{ background:var(--btn-hover); }
-.btn-dark{ background:var(--btn-dark) !important; }
+.btn-dark{ background:var(--btn-dark)!important; }
 .btn-row{ display:flex; gap:10px; flex-wrap:wrap; }
 
-/* Muted text / status */
+/* Text / Status */
 .muted{ color:var(--muted-ink); font-size:14px; }
 .ok{ background:var(--ok-bg); color:var(--ok-ink); border:1px solid var(--ok-line); padding:10px; border-radius:10px; display:none; }
 .error{ background:var(--err-bg); color:var(--err-ink); border:1px solid var(--err-line); padding:10px; border-radius:10px; display:none; }
 
 /* Forms */
 label{ display:block; margin:12px 0 6px; }
-input[type="text"], input[type="email"], input[type="number"], select{
+input[type="text"],input[type="email"],input[type="number"],select{
   width:100%; padding:10px; border-radius:8px; border:1px solid var(--line);
 }
 input[type="number"]{ width:64px; text-align:center; }
@@ -78,15 +62,12 @@ td.left{ text-align:left; }
 .pname{ display:flex; align-items:center; gap:8px; }
 .crest{ width:18px; height:18px; object-fit:contain; }
 
-/* Pills / badges */
+/* Pills / tabs */
 .pill{ font-size:12px; padding:2px 8px; border-radius:999px; background:#111; color:#fff; }
 .pill.lock{ background:#6b7280; }
-
-/* Tabs */
-.tabs{ display:flex; gap:8px; border-bottom:1px solid var(--line); margin:4px 0 12px; flex-wrap:wrap }
-.tab{ padding:10px 14px; border:1px solid var(--line); border-bottom:none; border-top-left-radius:10px; border-top-right-radius:10px;
-  background:var(--tab-bg); cursor:pointer; }
-.tab.active{ background:var(--tab-active); font-weight:700 }
+.tabs{ display:flex; gap:8px; border-bottom:1px solid var(--line); margin:4px 0 12px; flex-wrap:wrap; }
+.tab{ padding:10px 14px; border:1px solid var(--line); border-bottom:none; border-top-left-radius:10px; border-top-right-radius:10px; background:var(--tab-bg); cursor:pointer; }
+.tab.active{ background:var(--tab-active); font-weight:700; }
 .pane{ display:none } .pane.active{ display:block }
 
 /* Role tag */
