@@ -1,68 +1,52 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>My Profile</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="assets/logo-pick.png" />
-  <link rel="stylesheet" href="brand.css" />
+  <meta charset="UTF-8">
+  <title>My Profile – Occy Weekend Football</title>
+  <link rel="stylesheet" href="brand.css">
+  <link rel="icon" href="assets/brand-logo.png" />
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1><img class="brand-logo" src="assets/logo-pick.png" alt="">My Profile</h1>
-      <p class="muted">Set your nickname and favourite team.</p>
-    </div>
-
-    <div class="card">
-      <form id="form">
-        <label for="name">Nickname</label>
-        <input type="text" id="name" />
-
-        <label for="team">Favourite Team Badge URL</label>
-        <input type="text" id="team" placeholder="Paste image URL" />
-
-        <button type="submit" class="btn">Save Profile</button>
-      </form>
-      <div id="msg" class="muted"></div>
-    </div>
+  <div class="brand-header">
+    <img src="assets/brand-logo.png" alt="Occy Weekend Football">
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <div class="container card">
+    <h1>My Profile</h1>
+    <form id="profileForm">
+      <label>Nickname</label>
+      <input type="text" id="nickname">
+
+      <label>Favourite Team</label>
+      <input type="text" id="team">
+
+      <button class="btn">Save Profile</button>
+    </form>
+    <div id="msg" class="muted"></div>
+  </div>
+
   <script src="supabase-config.js"></script>
   <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const nameEl=document.getElementById('name');
-    const teamEl=document.getElementById('team');
-    const msg=document.getElementById('msg');
-
-    async function load(){
-      const { data: ur } = await client.auth.getUser();
-      const u=ur?.user; if(!u){ location.replace('login.html'); return; }
-      const { data } = await client.from('profiles')
-        .select('display_name,favorite_team').eq('id',u.id).maybeSingle();
-      if(data){ nameEl.value=data.display_name||''; teamEl.value=data.favorite_team||''; }
+    async function loadProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { location.href = "login.html"; return; }
+      let { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      if (prof) {
+        document.getElementById("nickname").value = prof.nickname || "";
+        document.getElementById("team").value = prof.team || "";
+      }
     }
-
-    async function save(e){
+    document.getElementById("profileForm").onsubmit = async (e) => {
       e.preventDefault();
-      const { data: ur } = await client.auth.getUser();
-      const u=ur?.user;
-      if(!u){ location.replace('login.html'); return; }
-      const { error } = await client.from('profiles').upsert({
-        id:u.id, display_name:nameEl.value, favorite_team:teamEl.value
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("profiles").upsert({
+        id: user.id,
+        nickname: document.getElementById("nickname").value,
+        team: document.getElementById("team").value
       });
-      if(error){ msg.textContent='Error: '+error.message; }
-      else { msg.textContent='Saved ✔'; }
+      document.getElementById("msg").textContent = "Saved!";
     }
-
-    document.getElementById('form').addEventListener('submit',save);
-    load();
+    loadProfile();
   </script>
 </body>
 </html>
-
-
-
-
-
