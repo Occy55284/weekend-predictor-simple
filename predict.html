@@ -49,6 +49,7 @@
         <tbody id="fixturesBody">
           <tr><td colspan="6" style="padding:18px;color:#64748b;">Fetching fixtures…</td></tr>
         </tbody>
+        
       </table>
 
       <div class="actions">
@@ -170,4 +171,53 @@
     render(fixtures,predsMap);
   </script>
 </body>
+  <!-- Mini top-right nav -->
+<nav class="topnav">
+  <a href="predict.html" data-nav="predict">Predict</a>
+  <a href="my-picks.html" data-nav="mypicks">My Picks</a>
+  <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+  <a href="profile.html" data-nav="profile">Profile</a>
+  <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
+  <button class="logout" id="navLogout" title="Sign out">Logout</button>
+</nav>
+
+<script type="module">
+  import { supabase } from './supabase-config.js';
+
+  // Highlight the current page
+  const path = location.pathname.toLowerCase();
+  const markActive = (key) => {
+    const el = document.querySelector(`.topnav [data-nav="${key}"]`);
+    if (el) el.classList.add('active');
+  };
+  if (path.endsWith('/predict.html')) markActive('predict');
+  else if (path.endsWith('/my-picks.html')) markActive('mypicks');
+  else if (path.endsWith('/leaderboard.html')) markActive('leaderboard');
+  else if (path.endsWith('/profile.html')) markActive('profile');
+  else if (path.endsWith('/admin.html')) markActive('admin');
+
+  // Show Admin link for admins
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+      if (!error && data?.is_admin) {
+        document.getElementById('navAdmin').style.display = '';
+      }
+    }
+  } catch (e) {
+    console.warn('Nav init warning:', e?.message || e);
+  }
+
+  // Logout
+  document.getElementById('navLogout').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    location.replace('login.html');
+  });
+</script>
+
 </html>
