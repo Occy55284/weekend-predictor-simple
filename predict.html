@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Make Your Predictions</title>
-  <link rel="stylesheet" href="brand.css?v=16" />
+  <link rel="stylesheet" href="brand.css?v=18" />
   <style>
     .panel{background:#fff;border-radius:16px;padding:20px;max-width:900px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
     .panel h2{margin-bottom:10px;color:#1f357a}
@@ -86,7 +86,7 @@
     if(!session) window.location.replace('login.html');
     const user=session.user;
 
-    // --- Admin block: redirect admins away ---
+    // --- Admin block ---
     const { data: prof } = await supabase
       .from('profiles')
       .select('is_admin')
@@ -102,13 +102,32 @@
     weekLabel.textContent=`Week: ${weekStart.toDateString()} → ${weekEnd.toDateString()}`;
 
     let isLocked=false;
+
+    // --- Personal lock check ---
     async function fetchLock(){
       const { data } = await supabase.from('week_locks')
         .select('user_id').eq('user_id', user.id)
-        .eq('week_start', weekStart.toISOString().slice(0,10)).maybeSingle?.() ?? {data:null};
-      if(data){isLocked=true;saveBtn.disabled=true;lockBtn.disabled=true;
+        .eq('week_start', weekStart.toISOString().slice(0,10))
+        .maybeSingle();
+      if(data){
+        isLocked=true;saveBtn.disabled=true;lockBtn.disabled=true;
         const banner=document.createElement('span');
         banner.className='locked-banner';banner.textContent='Locked';
+        weekLabel.appendChild(banner);
+      }
+    }
+
+    // --- Global lock check ---
+    async function fetchGlobalLock(){
+      const { data } = await supabase.from('global_locks')
+        .select('locked')
+        .eq('week_start', weekStart.toISOString().slice(0,10))
+        .maybeSingle();
+      if(data?.locked){
+        isLocked=true;saveBtn.disabled=true;lockBtn.disabled=true;
+        document.querySelectorAll('.score').forEach(inp=>inp.disabled=true);
+        const banner=document.createElement('span');
+        banner.className='locked-banner';banner.textContent='Globally Locked';
         weekLabel.appendChild(banner);
       }
     }
@@ -136,7 +155,10 @@
 
     function render(fixtures,predsMap){
       bodyEl.innerHTML='';
-      if(fixtures.length===0){bodyEl.innerHTML='<tr><td colspan="6" style="padding:18px;color:#64748b;">No fixtures yet.</td></tr>';saveBtn.disabled=true;lockBtn.disabled=true;return;}
+      if(fixtures.length===0){
+        bodyEl.innerHTML='<tr><td colspan="6" style="padding:18px;color:#64748b;">No fixtures yet.</td></tr>';
+        saveBtn.disabled=true;lockBtn.disabled=true;return;
+      }
       fixtures.forEach((fx,i)=>{
         const pre=predsMap.get(fx.id)||{};
         const tr=document.createElement('tr');
@@ -185,6 +207,7 @@
     lockBtn.addEventListener('click',lockWeek);
 
     await fetchLock();
+    await fetchGlobalLock();
     const fixtures=await loadFixtures();
     const preds=fixtures.length?await loadPredictions(fixtures.map(f=>f.id)):[];
     const predsMap=new Map(preds.map(p=>[p.fixture_id,p]));
