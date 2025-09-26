@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login</title>
-  <link rel="stylesheet" href="brand.css?v=7" />
+  <link rel="stylesheet" href="brand.css?v=9" />
 </head>
 <body>
   <main class="landing">
@@ -18,7 +18,7 @@
 
     <div class="card">
       <h2>Sign in / Sign up</h2>
-      <p>Enter your email and we’ll send you a magic link.</p>
+      <p>Enter your email and we’ll send you a magic link to your profile.</p>
       <form id="login-form">
         <input type="email" id="email" placeholder="you@example.com" required />
         <button type="submit">Send magic link</button>
@@ -31,37 +31,9 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const statusEl = document.getElementById('status');
     const form = document.getElementById('login-form');
+    const statusEl = document.getElementById('status');
 
-    // --- 1) Exchange magic link code for a session ---
-    async function handleRedirect() {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-      if (error) {
-        console.warn('No session from redirect:', error.message);
-      }
-      if (data?.session) {
-        // success → redirect
-        window.location.replace('profile.html');
-      }
-    }
-
-    // --- 2) If already logged in, skip login page ---
-    async function checkSession() {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        window.location.replace('profile.html');
-      }
-    }
-
-    // --- 3) Listen for new login events ---
-    supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        window.location.replace('profile.html');
-      }
-    });
-
-    // --- 4) Handle form submit ---
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
@@ -70,7 +42,8 @@
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/login.html`
+          // 🚀 direct users to profile.html
+          emailRedirectTo: `${window.location.origin}/profile.html`
         }
       });
 
@@ -81,10 +54,6 @@
         form.reset();
       }
     });
-
-    // Run on page load
-    await handleRedirect();   // first handle redirect params if present
-    await checkSession();     // then check if session exists
   </script>
 </body>
 </html>
