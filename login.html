@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login</title>
-  <link rel="stylesheet" href="brand.css?v=4">
+  <link rel="stylesheet" href="brand.css?v=5" />
 </head>
 <body>
   <main class="landing">
-    <!-- Reuse same small logo -->
+    <!-- Logo (replace SVG with <img src="logo.png"> if you have your own) -->
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
@@ -20,7 +20,7 @@
       <h2>Sign in / Sign up</h2>
       <p>Enter your email and we’ll send you a magic link.</p>
       <form id="login-form">
-        <input type="email" id="email" placeholder="you@example.com" required>
+        <input type="email" id="email" placeholder="you@example.com" required />
         <button type="submit">Send magic link</button>
       </form>
       <p id="status" style="margin-top:8px;font-size:.9rem;color:#1f357a;"></p>
@@ -31,20 +31,20 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // If user is already signed in, bounce to profile
+    // 1) Check session immediately (handles return from magic link)
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       window.location.replace('profile.html');
     }
 
-    // Listen for auth changes (when user clicks magic link and returns)
-    supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
+    // 2) Watch for login event (fires when link completes)
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
         window.location.replace('profile.html');
       }
     });
 
-    // Handle submit
+    // 3) Handle form submit
     const form = document.getElementById('login-form');
     const statusEl = document.getElementById('status');
 
@@ -53,12 +53,10 @@
       const email = document.getElementById('email').value.trim();
       statusEl.textContent = 'Sending link...';
 
-      const redirect = `${window.location.origin}/profile.html`;
-
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: redirect
+          emailRedirectTo: `${window.location.origin}/profile.html`
         }
       });
 
