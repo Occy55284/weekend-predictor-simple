@@ -1,15 +1,20 @@
-/* Page background */
-html, body {
-  height: 100%;
-}
+/* --- Base reset (helps remove the mysterious gap above the banner) --- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+html, body { height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+img { display: block; max-width: 100%; height: auto; border: 0; }
+h1, h2, h3, p { margin: 0; }
+
+/* --- Page background (deep blue gradient like your screenshot) --- */
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   background: radial-gradient(1200px 600px at 50% -100px, #274796 0%, #1f357a 40%, #162d66 100%);
   color: #0f172a;
 }
 
-/* Layout: center everything vertically */
+/* --- Center the landing content vertically --- */
 .landing {
   min-height: 100vh;
   display: flex;
@@ -19,16 +24,14 @@ body {
   padding: 24px;
 }
 
-/* Logo above the panel */
+/* --- Logo above the banner (no extra top gap) --- */
 .logo {
-  width: 120px;               /* adjust if needed */
-  height: auto;
-  margin-bottom: 18px;
-  display: block;
+  width: 120px;            /* tweak if needed */
+  margin: 0 auto 16px;     /* removes top gap, keeps a small space above banner */
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
 }
 
-/* White rounded panel (the “box”) */
+/* --- White rounded banner/panel --- */
 .hero {
   width: 100%;
   max-width: 980px;
@@ -41,19 +44,19 @@ body {
   text-align: center;
 }
 
-/* Title: bold gold */
+/* --- Title in gold --- */
 .hero-title {
-  margin: 0 0 18px;
   font-weight: 800;
   line-height: 1.1;
-  color: #ffd200;             /* gold */
+  color: #ffd200;
   font-size: clamp(26px, 4.2vw, 44px);
+  margin-bottom: 18px;
 }
 
-/* CTA button */
+/* --- Blue pill CTA button --- */
 .cta {
   display: inline-block;
-  background: #28428f;        /* deep blue */
+  background: #28428f;
   color: #ffffff;
   text-decoration: none;
   font-weight: 600;
@@ -67,15 +70,14 @@ body {
   box-shadow: 0 10px 20px rgba(0,0,0,0.22);
   transform: translateY(-1px);
 }
-.cta:active {
-  transform: translateY(0);
-}
-.cta:focus-visible {
-  outline: 3px solid #ffd200;
-  outline-offset: 3px;
-}
+.cta:active { transform: translateY(0); }
+.cta:focus-visible { outline: 3px solid #ffd200; outline-offset: 3px; }
 
-/* Small screens */
+/* --- Utility (if you still see spacing) --- */
+header, nav { margin: 0; padding: 0; }
+main { margin: 0; }
+
+/* --- Small screens --- */
 @media (max-width: 480px) {
   .logo { width: 96px; margin-bottom: 14px; }
   .hero { border-radius: 16px; }
