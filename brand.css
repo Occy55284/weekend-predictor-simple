@@ -119,6 +119,7 @@ h1, h2, h3, p { margin: 0; }
   .logo { width: 96px; margin-bottom: 14px; }
   .hero { border-radius: 16px; }
 }
+
 /* === Mini top-right nav === */
 .topnav {
   position: fixed;
@@ -152,3 +153,4 @@ h1, h2, h3, p { margin: 0; }
 .topnav .active { background: #28428f; color: #fff; }
 .topnav .logout { color: #b91c1c; }
 .topnav .logout:hover { background: #fee2e2; }
+}
