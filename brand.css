@@ -1,20 +1,19 @@
-/* --- Base reset (helps remove the mysterious gap above the banner) --- */
+/* --- Reset & base --- */
 *,
 *::before,
 *::after { box-sizing: border-box; }
 html, body { height: 100%; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-img { display: block; max-width: 100%; height: auto; border: 0; }
-h1, h2, h3, p { margin: 0; }
-
-/* --- Page background (deep blue gradient like your screenshot) --- */
 body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   background: radial-gradient(1200px 600px at 50% -100px, #274796 0%, #1f357a 40%, #162d66 100%);
   color: #0f172a;
 }
+img { display: block; max-width: 100%; height: auto; border: 0; }
+h1, h2, h3, p { margin: 0; }
 
-/* --- Center the landing content vertically --- */
+/* --- Center layout --- */
 .landing {
   min-height: 100vh;
   display: flex;
@@ -24,14 +23,15 @@ body {
   padding: 24px;
 }
 
-/* --- Logo above the banner (no extra top gap) --- */
+/* --- Logo --- */
 .logo {
-  width: 120px;            /* tweak if needed */
-  margin: 0 auto 16px;     /* removes top gap, keeps a small space above banner */
+  width: 120px;   /* keeps it small */
+  height: auto;
+  margin: 0 auto 20px;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
 }
 
-/* --- White rounded banner/panel --- */
+/* --- Hero banner (home page) --- */
 .hero {
   width: 100%;
   max-width: 980px;
@@ -44,7 +44,6 @@ body {
   text-align: center;
 }
 
-/* --- Title in gold --- */
 .hero-title {
   font-weight: 800;
   line-height: 1.1;
@@ -53,7 +52,7 @@ body {
   margin-bottom: 18px;
 }
 
-/* --- Blue pill CTA button --- */
+/* --- CTA button --- */
 .cta {
   display: inline-block;
   background: #28428f;
@@ -73,9 +72,47 @@ body {
 .cta:active { transform: translateY(0); }
 .cta:focus-visible { outline: 3px solid #ffd200; outline-offset: 3px; }
 
-/* --- Utility (if you still see spacing) --- */
-header, nav { margin: 0; padding: 0; }
-main { margin: 0; }
+/* --- Login page card --- */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.card h2 {
+  margin-bottom: 12px;
+  color: #1f357a;
+}
+
+.card p {
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  color: #444;
+}
+
+.card input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.card button {
+  background: #28428f;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.card button:hover {
+  background: #1f357a;
+}
 
 /* --- Small screens --- */
 @media (max-width: 480px) {
