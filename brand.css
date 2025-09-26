@@ -119,3 +119,36 @@ h1, h2, h3, p { margin: 0; }
   .logo { width: 96px; margin-bottom: 14px; }
   .hero { border-radius: 16px; }
 }
+/* === Mini top-right nav === */
+.topnav {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 6px 8px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  z-index: 50;
+}
+
+.topnav a, .topnav button {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: none;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #1f2937;
+  background: transparent;
+}
+
+.topnav a:hover { background: #eef2ff; }
+.topnav .active { background: #28428f; color: #fff; }
+.topnav .logout { color: #b91c1c; }
+.topnav .logout:hover { background: #fee2e2; }
