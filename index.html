@@ -4,12 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Occy Weekend Football</title>
-  <link rel="stylesheet" href="brand.css" />
+  <link rel="stylesheet" href="brand.css?v=4" />
 </head>
 <body>
   <main class="landing">
-    <!-- Replace logo.png with your actual logo file if different -->
-    <img src="logo.png" alt="Occy Weekend Football logo" class="logo" />
+    <!-- Inline SVG logo (works even if you don't have logo.png) -->
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
+      <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
+      <path d="M32 16 l6 6 -6 4 -6 -4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
+            fill="#0E3E2A"></path>
+    </svg>
 
     <section class="hero">
       <h1 class="hero-title">Occy Weekend Football</h1>
@@ -18,6 +23,7 @@
   </main>
 </body>
 </html>
+
 
 
 
