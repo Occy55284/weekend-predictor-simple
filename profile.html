@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Profile</title>
-  <link rel="stylesheet" href="brand.css?v=10" />
+  <link rel="stylesheet" href="brand.css?v=11" />
 </head>
 <body>
   <main class="landing">
+    <!-- Logo -->
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
@@ -18,19 +19,36 @@
     <div class="card">
       <h2>My Profile</h2>
       <form id="profile-form">
-        <label>Nickname:<br />
+        <label>
+          Nickname:<br />
           <input type="text" id="nickname" required />
         </label>
         <br /><br />
-        <label>Favourite Team:<br />
+        <label>
+          Favourite Team:<br />
           <select id="team" required>
             <option value="">Select your team</option>
-            <option value="Arsenal">Arsenal</option>
-            <option value="Chelsea">Chelsea</option>
-            <option value="Liverpool">Liverpool</option>
-            <option value="Man City">Man City</option>
-            <option value="Man United">Man United</option>
-            <option value="Tottenham">Tottenham</option>
+            <!-- Premier League (current) -->
+            <option>Arsenal</option>
+            <option>Aston Villa</option>
+            <option>Bournemouth</option>
+            <option>Brentford</option>
+            <option>Brighton</option>
+            <option>Chelsea</option>
+            <option>Crystal Palace</option>
+            <option>Everton</option>
+            <option>Fulham</option>
+            <option>Ipswich Town</option>
+            <option>Leicester City</option>
+            <option>Liverpool</option>
+            <option>Manchester City</option>
+            <option>Manchester United</option>
+            <option>Newcastle United</option>
+            <option>Nottingham Forest</option>
+            <option>Southampton</option>
+            <option>Tottenham Hotspur</option>
+            <option>West Ham United</option>
+            <option>Wolverhampton Wanderers</option>
           </select>
         </label>
         <br /><br />
@@ -53,32 +71,51 @@
     const statusEl = document.getElementById('status');
     const logoutBtn = document.getElementById('logout');
 
-    // 1) Supabase will auto-parse #access_token and store session
+    // 1) Get session (Supabase auto-parses #access_token on first load)
     const { data: { session } } = await supabase.auth.getSession();
-
     if (!session) {
       window.location.replace('login.html');
     }
     const user = session.user;
 
-    // 2) Load profile
+    // 2) Load profile (+ auto-redirects)
     async function loadProfile() {
       const { data, error } = await supabase
         .from('profiles')
-        .select('display_name, favorite_team')
+        .select('display_name, favorite_team, is_admin')
         .eq('id', user.id)
         .single();
 
       if (error && error.code !== 'PGRST116') {
         console.error(error);
         statusEl.textContent = 'Error loading profile';
-      } else if (data) {
-        nicknameEl.value = data.display_name || '';
-        teamEl.value = data.favorite_team || '';
+        return;
+      }
+
+      const display_name = data?.display_name ?? '';
+      const favorite_team = data?.favorite_team ?? '';
+      const is_admin = !!data?.is_admin;
+
+      // Admins go straight to admin
+      if (is_admin) {
+        window.location.replace('admin.html');
+        return;
+      }
+
+      // If profile exists & looks complete, go predict
+      if (display_name && favorite_team) {
+        window.location.replace('predict.html');
+        return;
+      }
+
+      // Otherwise, fill the fields so user can complete and save
+      nicknameEl.value = display_name;
+      if ([...teamEl.options].some(o => o.value === favorite_team)) {
+        teamEl.value = favorite_team;
       }
     }
 
-    // 3) Save profile
+    // 3) Save profile -> go to predict.html
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       statusEl.textContent = 'Saving...';
@@ -97,7 +134,7 @@
         console.error(error);
         statusEl.textContent = 'Error saving profile';
       } else {
-        statusEl.textContent = 'Profile saved ✅';
+        window.location.replace('predict.html');
       }
     });
 
