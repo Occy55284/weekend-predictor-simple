@@ -4,28 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Profile</title>
-  <link rel="stylesheet" href="brand.css?v=8" />
+  <link rel="stylesheet" href="brand.css?v=10" />
 </head>
 <body>
   <main class="landing">
-    <!-- Logo -->
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-      <path d="M32 16 l6 6 -6 4 -6 -4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
+      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
             fill="#0E3E2A"></path>
     </svg>
 
     <div class="card">
       <h2>My Profile</h2>
       <form id="profile-form">
-        <label>
-          Nickname:<br />
+        <label>Nickname:<br />
           <input type="text" id="nickname" required />
         </label>
         <br /><br />
-        <label>
-          Favourite Team:<br />
+        <label>Favourite Team:<br />
           <select id="team" required>
             <option value="">Select your team</option>
             <option value="Arsenal">Arsenal</option>
@@ -56,17 +53,15 @@
     const statusEl = document.getElementById('status');
     const logoutBtn = document.getElementById('logout');
 
-    // 1) Exchange code from magic link (if present)
-    await supabase.auth.exchangeCodeForSession(window.location.href);
-
-    // 2) Ensure user is signed in
+    // 1) Supabase will auto-parse #access_token and store session
     const { data: { session } } = await supabase.auth.getSession();
+
     if (!session) {
       window.location.replace('login.html');
     }
     const user = session.user;
 
-    // 3) Load profile
+    // 2) Load profile
     async function loadProfile() {
       const { data, error } = await supabase
         .from('profiles')
@@ -83,7 +78,7 @@
       }
     }
 
-    // 4) Save profile
+    // 3) Save profile
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       statusEl.textContent = 'Saving...';
@@ -106,7 +101,7 @@
       }
     });
 
-    // 5) Logout
+    // 4) Logout
     logoutBtn.addEventListener('click', async () => {
       await supabase.auth.signOut();
       window.location.replace('login.html');
