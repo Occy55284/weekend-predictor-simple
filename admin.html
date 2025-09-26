@@ -2,43 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Occy Weekend Football — Admin</title>
+  <title>Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/logo-burst.png" />
   <link rel="stylesheet" href="brand.css" />
 </head>
 <body>
   <div class="container">
-    <div class="header"><h1>Admin</h1></div>
+    <div class="header">
+      <h1><img class="brand-logo" src="assets/logo-burst.png" alt="">Admin</h1>
+      <p class="muted">Fixture control + Submissions list</p>
+    </div>
 
     <div class="card">
-      <div id="who" class="muted">—</div>
-      <div id="ok" class="ok" style="display:block; margin-top:10px;">Checking permissions…</div>
-      <div id="err" class="error" style="margin-top:10px;"></div>
+      <p id="who" class="muted">—</p>
+      <div id="ok" class="ok"></div>
+      <div id="err" class="error"></div>
 
-      <div class="btn-row" style="margin-top:12px">
+      <div class="btn-row">
         <button id="sync" class="btn">🔄 Sync fixtures now</button>
-        <button id="earliest" class="btn">Pick earliest 5 upcoming</button>
-        <button id="save" class="btn">Save selected as featured</button>
-        <a id="home" class="btn btn-dark" href="index.html">← Home</a>
+        <button id="earliest" class="btn">Pick earliest 5</button>
+        <button id="save" class="btn">Save featured</button>
+        <a class="btn btn-dark" href="index.html">← Home</a>
       </div>
 
-      <p id="msg" class="muted" style="margin-top:10px;"></p>
-
-      <table style="margin-top:10px">
-        <thead>
-          <tr><th>Use?</th><th>Date</th><th>Home</th><th>Away</th></tr>
-        </thead>
+      <p id="msg"></p>
+      <table>
+        <thead><tr><th>Use?</th><th>Date</th><th>Home</th><th>Away</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
 
-    <!-- Submissions list -->
-    <div class="card" style="margin-top:14px">
-      <h2 style="margin:0 0 6px;">This Weekend — Submissions</h2>
-      <p id="week" class="muted">—</p>
-      <ul id="submitted" style="margin:8px 0 0 18px; color:var(--muted-ink)"></ul>
-      <p id="msgSub" class="muted">Loading…</p>
+    <div class="card">
+      <h3>Submissions this weekend</h3>
+      <ul id="subs"></ul>
     </div>
   </div>
 
@@ -46,174 +43,86 @@
   <script src="supabase-config.js"></script>
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const who = document.getElementById('who');
-    const err = document.getElementById('err');
-    const ok  = document.getElementById('ok');
-    const rows= document.getElementById('rows');
-    const msg = document.getElementById('msg');
+    const who=document.getElementById('who'), ok=document.getElementById('ok'), err=document.getElementById('err'),
+          rows=document.getElementById('rows'), msg=document.getElementById('msg'), subs=document.getElementById('subs');
 
     function showErr(t){ err.textContent=t; err.style.display='block'; }
     function showOk(t){ ok.textContent=t; ok.style.display='block'; }
-    function fmt(dt){ return new Date(dt).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
-
-    async function ensureOwnProfile(u){
-      const { data: prof } = await client.from('profiles').select('id').eq('id', u.id).maybeSingle();
-      if (!prof){ await client.from('profiles').insert({ id: u.id, display_name: (u.email||'').split('@')[0] || 'User' }); }
-    }
-    async function isAdmin(u){
-      const { data, error } = await client.from('profiles').select('is_admin').eq('id', u.id).single();
-      if (error){ showErr('Profile check failed: '+error.message); return false; }
-      return !!data?.is_admin;
-    }
 
     async function gate(){
-      const { data: ur, error } = await client.auth.getUser();
-      if (error){ showErr('Auth error: '+error.message); return null; }
-      const u = ur?.user;
-      if (!u){ location.replace('login.html'); return null; }
-
-      who.textContent = `Signed in as ${u.email}`;
-      await ensureOwnProfile(u);
-
-      if (!await isAdmin(u)){ location.replace('index.html'); return null; }
-      showOk('Admin verified.');
-      return u;
+      const { data: ur } = await client.auth.getUser(); const u=ur?.user;
+      if(!u){ location.replace('login.html'); return null; }
+      who.textContent=`Signed in as ${u.email}`;
+      const { data } = await client.from('profiles').select('is_admin').eq('id',u.id).single();
+      if(!data?.is_admin){ location.replace('index.html'); return null; }
+      showOk('Admin verified'); return u;
     }
 
     async function loadFixtures(){
       msg.textContent='Loading fixtures…';
-      const { data, error } = await client
-        .from('fixtures')
-        .select('id,home_team,away_team,utc_date,featured')
-        .order('utc_date',{ascending:true});
-      if (error){ showErr(error.message); msg.textContent=''; return; }
-
+      const { data, error } = await client.from('fixtures')
+        .select('id,home_team,away_team,utc_date,featured').order('utc_date',{ascending:true});
+      if(error){ showErr(error.message); msg.textContent=''; return; }
       rows.innerHTML='';
       (data||[]).forEach(f=>{
-        const tr=document.createElement('tr');
         const d=new Date(f.utc_date);
-        tr.innerHTML = `
+        rows.innerHTML+=`<tr>
           <td><input type="checkbox" data-id="${f.id}" ${f.featured?'checked':''}></td>
-          <td>${fmt(f.utc_date)}</td>
-          <td>${f.home_team}</td>
-          <td>${f.away_team}</td>
-        `;
-        rows.appendChild(tr);
+          <td>${d.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td>${f.home_team}</td><td>${f.away_team}</td>
+        </tr>`;
       });
-      msg.textContent = `Loaded ${data?.length||0} fixtures.`;
-      return data||[];
-    }
-
-    async function loadSubmissions(){
-      const msgS = document.getElementById('msgSub');
-      const ul = document.getElementById('submitted');
-      const weekEl = document.getElementById('week');
-      ul.innerHTML=''; msgS.textContent='Loading…';
-
-      // Use earliest upcoming featured fixture date as week key
-      const nowIso = new Date().toISOString();
-      const { data: fixes } = await client.from('fixtures')
-        .select('id,utc_date').eq('featured', true).gt('utc_date', nowIso).order('utc_date');
-
-      if (!fixes || !fixes.length){
-        weekEl.textContent = 'No upcoming featured fixtures picked yet.';
-        msgS.textContent = '';
-        return;
-      }
-      const weekStart = fixes[0].utc_date.slice(0,10);
-      weekEl.textContent = `Weekend starting ${new Date(weekStart).toLocaleDateString()}`;
-
-      // Who has a lock row for that week?
-      const { data: locks, error: lerr } = await client.from('week_locks')
-        .select('user_id')
-        .eq('week_start', weekStart);
-      if (lerr){ msgS.textContent = 'Error: '+lerr.message; return; }
-
-      if (!locks || !locks.length){
-        msgS.textContent = 'No submissions yet.';
-        return;
-      }
-
-      const ids = [...new Set(locks.map(l=>l.user_id))];
-      const { data: profs } = await client.from('profiles')
-        .select('id,display_name')
-        .in('id', ids);
-
-      const nameById = Object.fromEntries((profs||[]).map(p=>[p.id, p.display_name || 'User']));
-      ids.forEach(id=>{
-        const li = document.createElement('li');
-        li.textContent = nameById[id] || 'User';
-        ul.appendChild(li);
-      });
-      msgS.textContent = `${ids.length} submission${ids.length===1?'':'s'}.`;
+      msg.textContent=`Loaded ${data?.length||0} fixtures.`;
     }
 
     async function syncNow(){
-      const msgEl = document.getElementById('msg');
-      msgEl.textContent='Syncing…';
+      msg.textContent='Syncing…';
       try{
         const { data: sess } = await client.auth.getSession();
-        const token = sess?.session?.access_token || '';
-        const res = await fetch(`${window.SUPABASE_URL}/functions/v1/sync_fixtures`,{
-          method:'POST',
-          headers:{ 'Authorization':`Bearer ${token}`, 'Content-Type':'application/json' },
-          body: JSON.stringify({ trigger:'admin' })
+        const token=sess?.session?.access_token||'';
+        const res=await fetch(`${window.SUPABASE_URL}/functions/v1/sync_fixtures`,{
+          method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
+          body:JSON.stringify({trigger:'admin'})
         });
-        const txt = await res.text();
-        if (!res.ok) { showErr('Sync failed: '+txt); msgEl.textContent=''; return; }
-        showOk('Sync complete.');
-        msgEl.textContent = txt;
-        await loadFixtures();
-        await loadSubmissions();
-      }catch(e){ showErr(e.message||String(e)); msgEl.textContent=''; }
+        if(!res.ok){ showErr('Sync failed'); msg.textContent=''; return; }
+        showOk('Sync complete.'); await loadFixtures();
+      }catch(e){ showErr(e.message||String(e)); msg.textContent=''; }
     }
 
     function pickEarliest5(){
-      const checks = rows.querySelectorAll('input[type=checkbox]');
-      let count=0;
-      checks.forEach(c=>{
-        if(count<5){ c.checked=true; count++; } else { c.checked=false; }
-      });
+      const checks=rows.querySelectorAll('input[type=checkbox]');
+      let count=0; checks.forEach(c=>{ if(count<5){ c.checked=true; count++; } else c.checked=false; });
       msg.textContent='Earliest 5 marked. Click Save.';
     }
 
     async function saveFeatured(){
-      const checks = rows.querySelectorAll('input[type=checkbox]');
-      const yes=[], no=[];
-      checks.forEach(c => (c.checked ? yes : no).push(c.dataset.id));
+      const yes=[],no=[]; rows.querySelectorAll('input[type=checkbox]').forEach(c=>(c.checked?yes:no).push(c.dataset.id));
       msg.textContent='Saving…';
-      let errMsg='';
-      if (yes.length){
-        const { error } = await client.from('fixtures').update({ featured:true }).in('id', yes);
-        if (error) errMsg += 'Set featured: '+error.message+' ';
-      }
-      if (no.length){
-        const { error } = await client.from('fixtures').update({ featured:false }).in('id', no);
-        if (error) errMsg += 'Unset featured: '+error.message;
-      }
-      msg.textContent = errMsg ? ('Error: '+errMsg) : 'Saved!';
-      await loadSubmissions(); // update list just in case
+      if(yes.length) await client.from('fixtures').update({featured:true}).in('id',yes);
+      if(no.length) await client.from('fixtures').update({featured:false}).in('id',no);
+      msg.textContent='Saved!'; await loadFixtures();
     }
 
-    document.getElementById('sync').addEventListener('click', syncNow);
-    document.getElementById('earliest').addEventListener('click', pickEarliest5);
-    document.getElementById('save').addEventListener('click', saveFeatured);
+    async function loadSubs(){
+      subs.innerHTML='';
+      const { data: feats } = await client.from('fixtures').select('id,utc_date').eq('featured',true).order('utc_date').limit(1);
+      if(!feats?.length) return;
+      const weekStart=new Date(feats[0].utc_date).toISOString().split('T')[0];
+      const { data: locks } = await client.from('week_locks').select('user_id').eq('week_start',weekStart);
+      if(!locks?.length){ subs.innerHTML='<li>No submissions yet</li>'; return; }
+      const ids=locks.map(l=>l.user_id);
+      const { data: profs } = await client.from('profiles').select('id,display_name').in('id',ids);
+      profs.forEach(p=>{ subs.innerHTML+=`<li>${p.display_name||p.id}</li>`; });
+    }
 
-    (async function init(){
-      const u = await gate();
-      if (!u) return;
-      await loadFixtures();
-      await loadSubmissions();
-    })();
+    document.getElementById('sync').addEventListener('click',syncNow);
+    document.getElementById('earliest').addEventListener('click',pickEarliest5);
+    document.getElementById('save').addEventListener('click',saveFeatured);
+
+    (async()=>{ const u=await gate(); if(u){ await loadFixtures(); await loadSubs(); } })();
   </script>
 </body>
 </html>
-
-
-
-
-
-
 
 
 
