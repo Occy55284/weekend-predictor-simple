@@ -1,125 +1,68 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Admin</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="assets/logo-burst.png" />
-  <link rel="stylesheet" href="brand.css" />
+  <title>Admin</title>
+  <link rel="stylesheet" href="brand.css?v=11" />
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1><img class="brand-logo" src="assets/logo-burst.png" alt="">Admin</h1>
-      <p class="muted">Fixture control + Submissions list</p>
-    </div>
+  <main class="landing">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
+      <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
+      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
+            fill="#0E3E2A"></path>
+    </svg>
 
-    <div class="card">
-      <p id="who" class="muted">—</p>
-      <div id="ok" class="ok"></div>
-      <div id="err" class="error"></div>
-
-      <div class="btn-row">
-        <button id="sync" class="btn">🔄 Sync fixtures now</button>
-        <button id="earliest" class="btn">Pick earliest 5</button>
-        <button id="save" class="btn">Save featured</button>
-        <a class="btn btn-dark" href="index.html">← Home</a>
+    <div class="card" style="max-width:680px">
+      <h2>Admin Dashboard</h2>
+      <p style="margin:10px 0 18px;color:#444">Welcome. Choose an action:</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <a class="cta" href="leaderboard.html">View Leaderboard</a>
+        <a class="cta" href="predict.html">Impersonate Picks</a>
+        <!-- Add more admin links as you build (fixtures editor, lock week, etc.) -->
       </div>
-
-      <p id="msg"></p>
-      <table>
-        <thead><tr><th>Use?</th><th>Date</th><th>Home</th><th>Away</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
+      <button id="logout" style="margin-top:18px;background:#999;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">
+        Logout
+      </button>
+      <p id="status" style="margin-top:10px;font-size:.9rem;color:#1f357a;"></p>
     </div>
+  </main>
 
-    <div class="card">
-      <h3>Submissions this weekend</h3>
-      <ul id="subs"></ul>
-    </div>
-  </div>
+  <script type="module" src="supabase-config.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-config.js';
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const who=document.getElementById('who'), ok=document.getElementById('ok'), err=document.getElementById('err'),
-          rows=document.getElementById('rows'), msg=document.getElementById('msg'), subs=document.getElementById('subs');
+    const statusEl = document.getElementById('status');
+    const logoutBtn = document.getElementById('logout');
 
-    function showErr(t){ err.textContent=t; err.style.display='block'; }
-    function showOk(t){ ok.textContent=t; ok.style.display='block'; }
-
-    async function gate(){
-      const { data: ur } = await client.auth.getUser(); const u=ur?.user;
-      if(!u){ location.replace('login.html'); return null; }
-      who.textContent=`Signed in as ${u.email}`;
-      const { data } = await client.from('profiles').select('is_admin').eq('id',u.id).single();
-      if(!data?.is_admin){ location.replace('index.html'); return null; }
-      showOk('Admin verified'); return u;
+    // Require session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.replace('login.html');
     }
 
-    async function loadFixtures(){
-      msg.textContent='Loading fixtures…';
-      const { data, error } = await client.from('fixtures')
-        .select('id,home_team,away_team,utc_date,featured').order('utc_date',{ascending:true});
-      if(error){ showErr(error.message); msg.textContent=''; return; }
-      rows.innerHTML='';
-      (data||[]).forEach(f=>{
-        const d=new Date(f.utc_date);
-        rows.innerHTML+=`<tr>
-          <td><input type="checkbox" data-id="${f.id}" ${f.featured?'checked':''}></td>
-          <td>${d.toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
-          <td>${f.home_team}</td><td>${f.away_team}</td>
-        </tr>`;
-      });
-      msg.textContent=`Loaded ${data?.length||0} fixtures.`;
+    // Check admin
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error) {
+      console.error(error);
+      statusEl.textContent = 'Error checking access';
+    } else if (!data?.is_admin) {
+      // Not admin → send away
+      window.location.replace('profile.html');
     }
 
-    async function syncNow(){
-      msg.textContent='Syncing…';
-      try{
-        const { data: sess } = await client.auth.getSession();
-        const token=sess?.session?.access_token||'';
-        const res=await fetch(`${window.SUPABASE_URL}/functions/v1/sync_fixtures`,{
-          method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
-          body:JSON.stringify({trigger:'admin'})
-        });
-        if(!res.ok){ showErr('Sync failed'); msg.textContent=''; return; }
-        showOk('Sync complete.'); await loadFixtures();
-      }catch(e){ showErr(e.message||String(e)); msg.textContent=''; }
-    }
-
-    function pickEarliest5(){
-      const checks=rows.querySelectorAll('input[type=checkbox]');
-      let count=0; checks.forEach(c=>{ if(count<5){ c.checked=true; count++; } else c.checked=false; });
-      msg.textContent='Earliest 5 marked. Click Save.';
-    }
-
-    async function saveFeatured(){
-      const yes=[],no=[]; rows.querySelectorAll('input[type=checkbox]').forEach(c=>(c.checked?yes:no).push(c.dataset.id));
-      msg.textContent='Saving…';
-      if(yes.length) await client.from('fixtures').update({featured:true}).in('id',yes);
-      if(no.length) await client.from('fixtures').update({featured:false}).in('id',no);
-      msg.textContent='Saved!'; await loadFixtures();
-    }
-
-    async function loadSubs(){
-      subs.innerHTML='';
-      const { data: feats } = await client.from('fixtures').select('id,utc_date').eq('featured',true).order('utc_date').limit(1);
-      if(!feats?.length) return;
-      const weekStart=new Date(feats[0].utc_date).toISOString().split('T')[0];
-      const { data: locks } = await client.from('week_locks').select('user_id').eq('week_start',weekStart);
-      if(!locks?.length){ subs.innerHTML='<li>No submissions yet</li>'; return; }
-      const ids=locks.map(l=>l.user_id);
-      const { data: profs } = await client.from('profiles').select('id,display_name').in('id',ids);
-      profs.forEach(p=>{ subs.innerHTML+=`<li>${p.display_name||p.id}</li>`; });
-    }
-
-    document.getElementById('sync').addEventListener('click',syncNow);
-    document.getElementById('earliest').addEventListener('click',pickEarliest5);
-    document.getElementById('save').addEventListener('click',saveFeatured);
-
-    (async()=>{ const u=await gate(); if(u){ await loadFixtures(); await loadSubs(); } })();
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.replace('login.html');
+    });
   </script>
 </body>
 </html>
