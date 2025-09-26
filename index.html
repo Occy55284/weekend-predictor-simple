@@ -4,28 +4,27 @@
   <meta charset="utf-8" />
   <title>Occy Weekend Football — Home</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/logo-pick.png" />
   <link rel="stylesheet" href="brand.css" />
 </head>
 <body class="center-screen">
   <div class="container" style="max-width:720px; text-align:center;">
     <div class="header">
-      <h1>⚽ Occy Weekend Football <span id="roleTag" class="tag" style="display:none">Admin mode</span></h1>
+      <h1><img class="brand-logo" src="assets/logo-pick.png" alt="">Occy Weekend Football 
+        <span id="roleTag" class="tag" style="display:none">Admin mode</span>
+      </h1>
       <div id="who" class="muted"></div>
     </div>
 
-    <!-- Logged OUT -->
     <div id="loggedOut" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="login.html">Sign in / Sign up</a>
     </div>
 
-    <!-- Logged IN: ADMIN -->
     <div id="adminOnly" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="admin.html">Admin</a>
       <button id="logoutAdmin" class="btn btn-dark">Sign out</button>
     </div>
 
-    <!-- Logged IN: USER — PROFILE INCOMPLETE -->
     <div id="userNeedsProfile" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="profile.html">My Profile</a>
       <button id="logoutNeeds" class="btn btn-dark">Sign out</button>
@@ -34,7 +33,6 @@
       </p>
     </div>
 
-    <!-- Logged IN: USER — PROFILE COMPLETE -->
     <div id="userReady" class="btn-row" style="justify-content:center; display:none">
       <a class="btn" href="predict.html">Make Predictions</a>
       <a class="btn" href="leaderboard.html">Leaderboard</a>
@@ -47,10 +45,8 @@
   <script src="supabase-config.js"></script>
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
     const who = document.getElementById('who');
     const tag = document.getElementById('roleTag');
-
     const loggedOut = document.getElementById('loggedOut');
     const adminOnly = document.getElementById('adminOnly');
     const userNeeds = document.getElementById('userNeedsProfile');
@@ -90,33 +86,15 @@
     async function init(){
       const { data: ur } = await client.auth.getUser();
       const u = ur?.user;
-
-      if (!u){
-        who.textContent = '';
-        tag.style.display='none';
-        show('out');
-        return;
-      }
-
+      if (!u){ show('out'); who.textContent=''; tag.style.display='none'; return; }
       who.textContent = `Signed in as ${u.email}`;
       await ensureOwnProfile(u.id, u.email);
-
-      if (await isAdmin(u.id)){
-        tag.style.display='inline-block';
-        show('admin');
-        return;
-      }
-
-      // Regular user: gate on profile completeness
+      if (await isAdmin(u.id)){ tag.style.display='inline-block'; show('admin'); return; }
       tag.style.display='none';
-      const ready = await profileComplete(u.id);
-      show(ready ? 'ready' : 'needs');
+      show(await profileComplete(u.id) ? 'ready' : 'needs');
     }
 
-    async function logout(){
-      await client.auth.signOut();
-      location.replace('index.html');
-    }
+    async function logout(){ await client.auth.signOut(); location.replace('index.html'); }
     document.getElementById('logoutAdmin')?.addEventListener('click', logout);
     document.getElementById('logoutNeeds')?.addEventListener('click', logout);
     document.getElementById('logoutUser')?.addEventListener('click', logout);
@@ -125,6 +103,7 @@
   </script>
 </body>
 </html>
+
 
 
 
