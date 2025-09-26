@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login</title>
-  <link rel="stylesheet" href="brand.css?v=6" />
+  <link rel="stylesheet" href="brand.css?v=7" />
 </head>
 <body>
   <main class="landing">
@@ -34,23 +34,34 @@
     const statusEl = document.getElementById('status');
     const form = document.getElementById('login-form');
 
-    // --- Handle redirect from Supabase magic link ---
-    async function checkRedirectSession() {
-      const { data, error } = await supabase.auth.getSession();
-      if (data.session) {
-        // user already has a valid session → send to profile
+    // --- 1) Exchange magic link code for a session ---
+    async function handleRedirect() {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+      if (error) {
+        console.warn('No session from redirect:', error.message);
+      }
+      if (data?.session) {
+        // success → redirect
         window.location.replace('profile.html');
       }
     }
 
-    // --- Listen for new login events (fires when magic link completes) ---
+    // --- 2) If already logged in, skip login page ---
+    async function checkSession() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        window.location.replace('profile.html');
+      }
+    }
+
+    // --- 3) Listen for new login events ---
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         window.location.replace('profile.html');
       }
     });
 
-    // --- Form submit handler ---
+    // --- 4) Handle form submit ---
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
@@ -59,8 +70,7 @@
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/login.html` 
-          // NOTE: Redirects here, where we catch the session and forward to profile
+          emailRedirectTo: `${window.location.origin}/login.html`
         }
       });
 
@@ -72,8 +82,9 @@
       }
     });
 
-    // Run immediately when page loads
-    checkRedirectSession();
+    // Run on page load
+    await handleRedirect();   // first handle redirect params if present
+    await checkSession();     // then check if session exists
   </script>
 </body>
 </html>
