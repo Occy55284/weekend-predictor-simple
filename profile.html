@@ -2,41 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>My Profile · Occy Weekend Football</title>
+  <title>My Profile</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/logo-pick.png" />
   <link rel="stylesheet" href="brand.css" />
 </head>
-<body class="center-screen">
-  <div class="container" style="max-width:520px;">
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><img class="brand-logo" src="assets/logo-pick.png" alt="">My Profile</h1>
+      <p class="muted">Set your nickname and favourite team.</p>
+    </div>
+
     <div class="card">
-      <h1 style="margin:0 0 10px;">My Profile</h1>
-      <p class="muted">Set a <b>display name</b> and your <b>favourite team</b> (both required).</p>
+      <form id="form">
+        <label for="name">Nickname</label>
+        <input type="text" id="name" />
 
-      <label for="name">Display name / nickname</label>
-      <input id="name" type="text" placeholder="e.g., Occy" />
-      <div id="nameReq" class="error" style="display:none; margin-top:8px;">Display name is required.</div>
+        <label for="team">Favourite Team Badge URL</label>
+        <input type="text" id="team" placeholder="Paste image URL" />
 
-      <label for="team" style="margin-top:12px;">Favourite team</label>
-      <select id="team">
-        <option value="">— Pick a team —</option>
-        <option>Arsenal</option><option>Aston Villa</option><option>AFC Bournemouth</option>
-        <option>Brentford</option><option>Brighton & Hove Albion</option><option>Chelsea</option>
-        <option>Crystal Palace</option><option>Everton</option><option>Fulham</option>
-        <option>Ipswich Town</option><option>Leicester City</option><option>Liverpool</option>
-        <option>Manchester City</option><option>Manchester United</option><option>Newcastle United</option>
-        <option>Nottingham Forest</option><option>Southampton</option><option>Tottenham Hotspur</option>
-        <option>West Ham United</option><option>Wolverhampton Wanderers</option>
-      </select>
-      <div id="teamReq" class="error" style="display:none; margin-top:8px;">Favourite team is required.</div>
-
-      <div class="btn-row" style="margin-top:14px">
-        <button id="save" class="btn">Save</button>
-        <a id="home" class="btn btn-dark" href="index.html">← Home</a>
-      </div>
-
-      <div id="ok" class="ok" style="margin-top:10px;">Saved! You can now make predictions.</div>
-      <p id="msg" class="muted" style="margin-top:8px;"></p>
+        <button type="submit" class="btn">Save Profile</button>
+      </form>
+      <div id="msg" class="muted"></div>
     </div>
   </div>
 
@@ -44,56 +32,32 @@
   <script src="supabase-config.js"></script>
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const nameEl = document.getElementById('name');
-    const teamEl = document.getElementById('team');
-    const nameReq = document.getElementById('nameReq');
-    const teamReq = document.getElementById('teamReq');
-    const okEl = document.getElementById('ok');
-    const msg = document.getElementById('msg');
+    const nameEl=document.getElementById('name');
+    const teamEl=document.getElementById('team');
+    const msg=document.getElementById('msg');
 
-    async function init(){
+    async function load(){
       const { data: ur } = await client.auth.getUser();
-      const u = ur?.user;
-      if (!u){ location.replace('login.html'); return; }
-
-      const { data: prof } = await client
-        .from('profiles')
-        .select('display_name, favorite_team')
-        .eq('id', u.id)
-        .maybeSingle();
-
-      if (prof){
-        if (prof.display_name) nameEl.value = prof.display_name;
-        if (prof.favorite_team) teamEl.value = prof.favorite_team;
-      }
+      const u=ur?.user; if(!u){ location.replace('login.html'); return; }
+      const { data } = await client.from('profiles')
+        .select('display_name,favorite_team').eq('id',u.id).maybeSingle();
+      if(data){ nameEl.value=data.display_name||''; teamEl.value=data.favorite_team||''; }
     }
 
-    document.getElementById('save').addEventListener('click', async ()=>{
-      nameReq.style.display = 'none';
-      teamReq.style.display = 'none';
-      okEl.style.display = 'none';
-      msg.textContent = '';
-
-      const display_name = nameEl.value.trim();
-      const favorite_team = teamEl.value;
-
-      if (!display_name) nameReq.style.display = 'block';
-      if (!favorite_team) teamReq.style.display = 'block';
-      if (!display_name || !favorite_team) return;
-
+    async function save(e){
+      e.preventDefault();
       const { data: ur } = await client.auth.getUser();
-      const u = ur?.user; if (!u){ location.replace('login.html'); return; }
+      const u=ur?.user;
+      if(!u){ location.replace('login.html'); return; }
+      const { error } = await client.from('profiles').upsert({
+        id:u.id, display_name:nameEl.value, favorite_team:teamEl.value
+      });
+      if(error){ msg.textContent='Error: '+error.message; }
+      else { msg.textContent='Saved ✔'; }
+    }
 
-      const { error } = await client.from('profiles').upsert({ id: u.id, display_name, favorite_team });
-      if (error){
-        msg.textContent = 'Error: ' + error.message;
-        return;
-      }
-      okEl.style.display = 'block';
-      msg.textContent = 'All set. Head to Make Predictions!';
-    });
-
-    init();
+    document.getElementById('form').addEventListener('submit',save);
+    load();
   </script>
 </body>
 </html>
