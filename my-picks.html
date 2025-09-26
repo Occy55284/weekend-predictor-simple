@@ -1,56 +1,119 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>My Picks · Occy Weekend Football</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="assets/brand-logo.png" />
-  <link rel="stylesheet" href="brand.css" />
-  <style>.wrap{max-width:900px;margin:0 auto}</style>
+  <title>My Picks</title>
+  <link rel="stylesheet" href="brand.css?v=13" />
+  <style>
+    .panel{background:#fff;border-radius:16px;padding:20px;max-width:900px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+    table.pk{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden}
+    .pk th,.pk td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center}
+    .pk th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
+    .ok{color:#065f46;font-weight:700}
+    .exact{color:#0f766e;font-weight:800}
+    .miss{color:#b91c1c;font-weight:700}
+  </style>
 </head>
 <body>
-  <div class="brand-header"><img src="assets/brand-logo.png" alt="Occy Weekend Football"></div>
+  <main class="landing">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
+      <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
+      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
+    </svg>
 
-  <div class="container wrap">
-    <div class="card">
-      <div class="header"><h1>My Picks</h1><p class="muted">Read-only view of your submitted predictions.</p></div>
-      <div id="box"></div>
-      <div class="btn-row" style="margin-top:8px"><a class="btn btn-dark" href="index.html">← Home</a></div>
-    </div>
-  </div>
+    <section class="panel">
+      <h2 style="color:#1f357a;margin-bottom:10px">My Picks (This Week)</h2>
+      <table class="pk" id="table">
+        <thead><tr><th>#</th><th>Fixture</th><th>Kick-off</th><th>My Pick</th><th>Result</th><th>Points</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="6" style="padding:18px;color:#64748b;">Loading…</td></tr></tbody>
+      </table>
+      <p id="status" class="help"></p>
+    </section>
+  </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const box = document.getElementById('box');
+  <script type="module" src="supabase-config.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    const tbody = document.getElementById('tbody');
+    const statusEl = document.getElementById('status');
 
-    function fmt(dt){ return new Date(dt).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) window.location.replace('login.html');
+    const user = session.user;
+
+    function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
+    const weekStart = startOfWeek();
+
+    function calcPoints(h,a,ph,pa){
+      if (h==null || a==null || ph==null || pa==null) return 0;      // no result yet
+      if (h===ph && a===pa) return 3;                                // exact
+      const outcome = Math.sign(h-a), pickOut = Math.sign(ph-pa);
+      return outcome===pickOut ? 1 : 0;                              // correct outcome
+    }
 
     async function load(){
-      const { data: ur } = await client.auth.getUser();
-      const u = ur?.user; if(!u){ location.replace('login.html'); return; }
+      // Get my predictions for fixtures this week (featured OR upcoming fallback)
+      let { data: fixtures } = await supabase
+        .from('fixtures')
+        .select('id, home_team, away_team, utc_date, home_score, away_score, featured')
+        .eq('featured', true)
+        .order('utc_date', { ascending: true });
 
-      const nowIso = new Date().toISOString();
-      const { data: fixes } = await client.from('fixtures').select('id,home_team,away_team,utc_date').eq('featured',true).gt('utc_date',nowIso).order('utc_date');
-      if (!fixes?.length){ box.textContent='No upcoming featured fixtures.'; return; }
+      if (!fixtures || fixtures.length===0){
+        const nowISO = new Date().toISOString();
+        const res = await supabase
+          .from('fixtures')
+          .select('id, home_team, away_team, utc_date, home_score, away_score')
+          .gt('utc_date', nowISO)
+          .order('utc_date', { ascending: true })
+          .limit(10);
+        fixtures = res.data || [];
+      }
 
-      const ids = fixes.map(f=>f.id);
-      const { data: picks } = await client.from('predictions').select('fixture_id,home_goals,away_goals').eq('user_id',u.id).in('fixture_id',ids);
-      const map = Object.fromEntries((picks||[]).map(p=>[p.fixture_id,p]));
-      box.innerHTML = `<table>
-        <thead><tr><th class="left">Fixture</th><th>Kickoff</th><th>Your Pick</th><th>Status</th></tr></thead>
-        <tbody>${fixes.map(f=>{
-          const p = map[f.id];
-          const locked = Date.now() >= new Date(f.utc_date).getTime();
-          return `<tr>
-            <td class="left">${f.home_team} vs ${f.away_team}</td>
-            <td>${fmt(f.utc_date)}</td>
-            <td>${p ? `${p.home_goals} – ${p.away_goals}` : '<span class="muted">—</span>'}</td>
-            <td>${locked?'<span class="pill lock">Locked 🔒</span>':'Open'}</td>
-          </tr>`;
-        }).join('')}</tbody></table>`;
+      const ids = fixtures.map(f=>f.id);
+      const { data: preds } = await supabase
+        .from('predictions')
+        .select('fixture_id, home_goals, away_goals')
+        .eq('user_id', user.id)
+        .in('fixture_id', ids);
+
+      const predMap = new Map((preds||[]).map(p=>[p.fixture_id,p]));
+
+      tbody.innerHTML='';
+      let total=0;
+      fixtures.forEach((fx, i)=>{
+        const p = predMap.get(fx.id);
+        const pts = calcPoints(
+          fx.home_score, fx.away_score,
+          p?.home_goals ?? null, p?.away_goals ?? null
+        );
+        total += pts;
+
+        const resTxt = (fx.home_score==null || fx.away_score==null)
+          ? '—'
+          : `${fx.home_score} : ${fx.away_score}`;
+
+        const ptsClass = pts===3 ? 'exact' : (pts===1 ? 'ok' : 'miss');
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
+          <td>${new Date(fx.utc_date).toLocaleString()}</td>
+          <td>${p ? `${p.home_goals} : ${p.away_goals}` : '—'}</td>
+          <td>${resTxt}</td>
+          <td class="${ptsClass}">${pts}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const totalRow = document.createElement('tr');
+      totalRow.innerHTML = `<td colspan="5" style="text-align:right;font-weight:700">Total</td><td style="font-weight:800">${total}</td>`;
+      tbody.appendChild(totalRow);
     }
+
     load();
   </script>
 </body>
