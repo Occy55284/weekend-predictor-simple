@@ -1,5 +1,12 @@
 /* ===== Occy Weekend Football – Brand Theme ===== */
-
+.brand-header {
+  text-align: center;
+  margin: 20px 0;
+}
+.brand-header img {
+  max-width: 120px;
+  height: auto;
+}
 :root{
   --bg1:#0f172a; --bg2:#1e3a8a; --gold:#facc15; --ink:#0b1220;
   --card:#fffffff2; --muted:#6b7280; --muted-ink:#444; --line:#e5e7eb;
