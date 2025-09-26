@@ -3,117 +3,160 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin</title>
-  <link rel="stylesheet" href="brand.css?v=11" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="brand.css?v=15" />
+  <style>
+    .panel{background:#fff;border-radius:16px;padding:20px;max-width:1000px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15);margin-bottom:20px}
+    .panel h3{margin-bottom:10px;color:#1f357a}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:center}
+    th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
+    .btn{background:#28428f;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .small{font-size:.85rem;color:#475569}
+  </style>
 </head>
 <body>
+  <!-- Top nav -->
+  <nav class="topnav">
+    <a href="predict.html" data-nav="predict">Predict</a>
+    <a href="my-picks.html" data-nav="mypicks">My Picks</a>
+    <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+    <a href="profile.html" data-nav="profile">Profile</a>
+    <a href="admin.html" class="active" data-nav="admin">Admin</a>
+    <button class="logout" id="navLogout">Logout</button>
+  </nav>
+
   <main class="landing">
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
-            fill="#0E3E2A"></path>
+      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
     </svg>
 
-    <div class="card" style="max-width:680px">
-      <h2>Admin Dashboard</h2>
-      <p style="margin:10px 0 18px;color:#444">Welcome. Choose an action:</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-        <a class="cta" href="leaderboard.html">View Leaderboard</a>
-        <a class="cta" href="predict.html">Impersonate Picks</a>
-        <!-- Add more admin links as you build (fixtures editor, lock week, etc.) -->
-      </div>
-      <button id="logout" style="margin-top:18px;background:#999;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">
-        Logout
-      </button>
-      <p id="status" style="margin-top:10px;font-size:.9rem;color:#1f357a;"></p>
-    </div>
+    <section class="panel">
+      <h3>Choose 5 Featured Fixtures</h3>
+      <p class="small">Select exactly 5 fixtures for this week. These will appear on all players’ prediction page.</p>
+      <table id="allFixtures">
+        <thead><tr><th></th><th>Home</th><th>Away</th><th>Kick-off</th></tr></thead>
+        <tbody><tr><td colspan="4">Loading…</td></tr></tbody>
+      </table>
+      <button id="saveFeatured" class="btn" style="margin-top:12px">Save Featured</button>
+      <p id="saveStatus" class="small"></p>
+    </section>
+
+    <section class="panel">
+      <h3>Current Featured Fixtures</h3>
+      <table id="featuredFixtures">
+        <thead><tr><th>#</th><th>Home</th><th>Away</th><th>Kick-off</th></tr></thead>
+        <tbody><tr><td colspan="4">Loading…</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h3>Who Has Made Predictions</h3>
+      <table id="predMakers">
+        <thead><tr><th>#</th><th>Name</th></tr></thead>
+        <tbody><tr><td colspan="2">Loading…</td></tr></tbody>
+      </table>
+    </section>
   </main>
 
   <script type="module" src="supabase-config.js"></script>
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const statusEl = document.getElementById('status');
-    const logoutBtn = document.getElementById('logout');
+    const saveBtn = document.getElementById('saveFeatured');
+    const saveStatus = document.getElementById('saveStatus');
+    const allTbody = document.querySelector('#allFixtures tbody');
+    const featTbody = document.querySelector('#featuredFixtures tbody');
+    const makersTbody = document.querySelector('#predMakers tbody');
 
-    // Require session
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.replace('login.html');
-    }
+    if (!session) window.location.replace('login.html');
+    const user = session.user;
 
     // Check admin
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', session.user.id)
-      .single();
+    const { data: me } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+    if (!me?.is_admin) window.location.replace('predict.html');
 
-    if (error) {
-      console.error(error);
-      statusEl.textContent = 'Error checking access';
-    } else if (!data?.is_admin) {
-      // Not admin → send away
-      window.location.replace('profile.html');
+    // 1) Load all upcoming fixtures
+    async function loadAllFixtures(){
+      const { data } = await supabase
+        .from('fixtures')
+        .select('id, home_team, away_team, utc_date, featured')
+        .gt('utc_date', new Date().toISOString())
+        .order('utc_date', { ascending: true })
+        .limit(20);
+      allTbody.innerHTML='';
+      data.forEach(fx=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+          <td><input type="checkbox" data-id="${fx.id}" ${fx.featured?'checked':''}></td>
+          <td>${fx.home_team}</td>
+          <td>${fx.away_team}</td>
+          <td>${new Date(fx.utc_date).toLocaleString()}</td>
+        `;
+        allTbody.appendChild(tr);
+      });
     }
 
-    // Logout
-    logoutBtn.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      window.location.replace('login.html');
+    // 2) Save featured (exactly 5)
+    saveBtn.addEventListener('click', async ()=>{
+      const selected=[...allTbody.querySelectorAll('input[type=checkbox]:checked')].map(cb=>Number(cb.dataset.id));
+      if(selected.length!==5){
+        saveStatus.textContent='Please select exactly 5 fixtures.';return;
+      }
+      saveStatus.textContent='Saving…';
+      // Clear all featured
+      await supabase.from('fixtures').update({featured:false}).neq('id',0);
+      // Mark 5 as featured
+      const { error } = await supabase.from('fixtures').update({featured:true}).in('id',selected);
+      if(error){saveStatus.textContent='Error saving.';console.error(error);}
+      else {saveStatus.textContent='Featured fixtures updated ✅'; loadFeatured();}
     });
+
+    // 3) Load featured fixtures
+    async function loadFeatured(){
+      const { data } = await supabase
+        .from('fixtures')
+        .select('home_team, away_team, utc_date')
+        .eq('featured', true)
+        .order('utc_date',{ascending:true});
+      featTbody.innerHTML='';
+      if(!data||data.length===0){featTbody.innerHTML='<tr><td colspan="4">None set</td></tr>';return;}
+      data.forEach((fx,i)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${i+1}</td><td>${fx.home_team}</td><td>${fx.away_team}</td><td>${new Date(fx.utc_date).toLocaleString()}</td>`;
+        featTbody.appendChild(tr);
+      });
+    }
+
+    // 4) List who has made predictions for current featured fixtures
+    async function loadMakers(){
+      const { data: feats } = await supabase.from('fixtures').select('id').eq('featured',true);
+      if(!feats||feats.length===0){makersTbody.innerHTML='<tr><td colspan="2">No featured fixtures yet</td></tr>';return;}
+      const ids=feats.map(f=>f.id);
+      const { data } = await supabase
+        .from('predictions')
+        .select('user_id')
+        .in('fixture_id', ids);
+      const unique=[...new Set(data.map(r=>r.user_id))];
+      if(unique.length===0){makersTbody.innerHTML='<tr><td colspan="2">No predictions yet</td></tr>';return;}
+      const { data: names } = await supabase.from('profiles').select('id, display_name').in('id', unique);
+      makersTbody.innerHTML='';
+      names.forEach((n,i)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${i+1}</td><td>${n.display_name||'Anon'}</td>`;
+        makersTbody.appendChild(tr);
+      });
+    }
+
+    loadAllFixtures();
+    loadFeatured();
+    loadMakers();
   </script>
 </body>
-  <!-- Mini top-right nav -->
-<nav class="topnav">
-  <a href="predict.html" data-nav="predict">Predict</a>
-  <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-  <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-  <a href="profile.html" data-nav="profile">Profile</a>
-  <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
-  <button class="logout" id="navLogout" title="Sign out">Logout</button>
-</nav>
-
-<script type="module">
-  import { supabase } from './supabase-config.js';
-
-  // Highlight the current page
-  const path = location.pathname.toLowerCase();
-  const markActive = (key) => {
-    const el = document.querySelector(`.topnav [data-nav="${key}"]`);
-    if (el) el.classList.add('active');
-  };
-  if (path.endsWith('/predict.html')) markActive('predict');
-  else if (path.endsWith('/my-picks.html')) markActive('mypicks');
-  else if (path.endsWith('/leaderboard.html')) markActive('leaderboard');
-  else if (path.endsWith('/profile.html')) markActive('profile');
-  else if (path.endsWith('/admin.html')) markActive('admin');
-
-  // Show Admin link for admins
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      if (!error && data?.is_admin) {
-        document.getElementById('navAdmin').style.display = '';
-      }
-    }
-  } catch (e) {
-    console.warn('Nav init warning:', e?.message || e);
-  }
-
-  // Logout
-  document.getElementById('navLogout').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    location.replace('login.html');
-  });
-</script>
-
 </html>
 
 
