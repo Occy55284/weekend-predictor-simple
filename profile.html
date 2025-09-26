@@ -1,79 +1,105 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>My Profile · Occy Weekend Football</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="assets/brand-logo.png" />
-  <link rel="stylesheet" href="brand.css" />
-  <style>.wrap{max-width:560px;margin:0 auto}</style>
+  <title>My Profile</title>
+  <link rel="stylesheet" href="brand.css?v=5" />
 </head>
 <body>
-  <div class="brand-header"><img src="assets/brand-logo.png" alt="Occy Weekend Football"></div>
+  <main class="landing">
+    <!-- Logo -->
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
+      <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
+      <path d="M32 16 l6 6 -6 4 -6 -4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
+            fill="#0E3E2A"></path>
+    </svg>
 
-  <div class="container wrap">
     <div class="card">
-      <div class="header"><h1>My Profile</h1><p class="muted">Set your nickname and favourite team (both required).</p></div>
-      <label for="name">Display name / nickname</label>
-      <input id="name" type="text" />
-      <div id="nameReq" class="error" style="display:none; margin-top:8px;">Display name is required.</div>
-
-      <label for="team" style="margin-top:12px;">Favourite team</label>
-      <select id="team">
-        <option value="">— Pick a team —</option>
-        <option>Arsenal</option><option>Aston Villa</option><option>AFC Bournemouth</option>
-        <option>Brentford</option><option>Brighton & Hove Albion</option><option>Chelsea</option>
-        <option>Crystal Palace</option><option>Everton</option><option>Fulham</option>
-        <option>Ipswich Town</option><option>Leicester City</option><option>Liverpool</option>
-        <option>Manchester City</option><option>Manchester United</option><option>Newcastle United</option>
-        <option>Nottingham Forest</option><option>Southampton</option><option>Tottenham Hotspur</option>
-        <option>West Ham United</option><option>Wolverhampton Wanderers</option>
-      </select>
-      <div id="teamReq" class="error" style="display:none; margin-top:8px;">Favourite team is required.</div>
-
-      <div class="btn-row" style="margin-top:14px">
-        <button id="save" class="btn">Save</button>
-        <a class="btn btn-dark" href="index.html">← Home</a>
-      </div>
-
-      <div id="ok" class="ok" style="margin-top:10px;">Saved! You can now make predictions.</div>
-      <p id="msg" class="muted" style="margin-top:8px;"></p>
+      <h2>My Profile</h2>
+      <form id="profile-form">
+        <label>
+          Nickname:<br />
+          <input type="text" id="nickname" required />
+        </label>
+        <br /><br />
+        <label>
+          Favourite Team:<br />
+          <select id="team" required>
+            <option value="">Select your team</option>
+            <option value="Arsenal">Arsenal</option>
+            <option value="Chelsea">Chelsea</option>
+            <option value="Liverpool">Liverpool</option>
+            <option value="Man City">Man City</option>
+            <option value="Man United">Man United</option>
+            <option value="Tottenham">Tottenham</option>
+          </select>
+        </label>
+        <br /><br />
+        <button type="submit">Save Profile</button>
+      </form>
+      <p id="status" style="margin-top:10px;font-size:.9rem;color:#1f357a;"></p>
     </div>
-  </div>
+  </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const nameEl = document.getElementById('name');
+  <script type="module" src="supabase-config.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const form = document.getElementById('profile-form');
+    const nicknameEl = document.getElementById('nickname');
     const teamEl = document.getElementById('team');
-    const nameReq = document.getElementById('nameReq');
-    const teamReq = document.getElementById('teamReq');
-    const okEl = document.getElementById('ok');
-    const msg = document.getElementById('msg');
+    const statusEl = document.getElementById('status');
 
-    async function init(){
-      const { data: ur } = await client.auth.getUser();
-      const u = ur?.user; if (!u){ location.replace('login.html'); return; }
-      const { data: prof } = await client.from('profiles').select('display_name,favorite_team').eq('id', u.id).maybeSingle();
-      if (prof){ if (prof.display_name) nameEl.value = prof.display_name; if (prof.favorite_team) teamEl.value = prof.favorite_team; }
+    // 1) Ensure user is signed in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.replace('login.html');
+    }
+    const user = session.user;
+
+    // 2) Load existing profile
+    async function loadProfile() {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name, favorite_team')
+        .eq('id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // ignore "no rows" error
+        console.error(error);
+        statusEl.textContent = 'Error loading profile';
+      } else if (data) {
+        nicknameEl.value = data.display_name || '';
+        teamEl.value = data.favorite_team || '';
+      }
     }
 
-    document.getElementById('save').addEventListener('click', async ()=>{
-      nameReq.style.display='none'; teamReq.style.display='none'; okEl.style.display='none'; msg.textContent='';
-      const display_name = nameEl.value.trim(); const favorite_team = teamEl.value;
-      if (!display_name) nameReq.style.display='block';
-      if (!favorite_team) teamReq.style.display='block';
-      if (!display_name || !favorite_team) return;
+    // 3) Save profile
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = 'Saving...';
 
-      const { data: ur } = await client.auth.getUser();
-      const u = ur?.user; if (!u){ location.replace('login.html'); return; }
-      const { error } = await client.from('profiles').upsert({ id:u.id, display_name, favorite_team });
-      if (error){ msg.textContent='Error: '+error.message; return; }
-      okEl.style.display='block'; msg.textContent='All set. Head to Make Predictions!';
+      const updates = {
+        id: user.id,
+        display_name: nicknameEl.value.trim(),
+        favorite_team: teamEl.value
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(updates, { onConflict: 'id' });
+
+      if (error) {
+        console.error(error);
+        statusEl.textContent = 'Error saving profile';
+      } else {
+        statusEl.textContent = 'Profile saved ✅';
+      }
     });
 
-    init();
+    loadProfile();
   </script>
 </body>
 </html>
