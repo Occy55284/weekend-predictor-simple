@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Make Your Predictions</title>
-  <link rel="stylesheet" href="brand.css?v=14" />
+  <link rel="stylesheet" href="brand.css?v=16" />
   <style>
     .panel{background:#fff;border-radius:16px;padding:20px;max-width:900px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
     .panel h2{margin-bottom:10px;color:#1f357a}
@@ -20,7 +20,7 @@
     .actions{margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
     .btn{background:#28428f;color:#fff;border:none;padding:10px 18px;border-radius:10px;cursor:pointer;font-weight:600}
     .btn.secondary{background:#475569}
-    .btn.nav{background:#16a34a} /* green nav buttons */
+    .btn.nav{background:#16a34a}
     .btn:disabled{opacity:.6;cursor:not-allowed}
 
     .locked-banner{background:#0f766e;color:#ecfeff;border-radius:10px;padding:6px 10px;display:inline-block;margin-left:8px;font-size:.9rem;font-weight:700}
@@ -28,6 +28,16 @@
   </style>
 </head>
 <body>
+  <!-- Top nav -->
+  <nav class="topnav">
+    <a href="predict.html" class="active" data-nav="predict">Predict</a>
+    <a href="my-picks.html" data-nav="mypicks">My Picks</a>
+    <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+    <a href="profile.html" data-nav="profile">Profile</a>
+    <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
+    <button class="logout" id="navLogout">Logout</button>
+  </nav>
+
   <main class="landing">
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
@@ -49,7 +59,6 @@
         <tbody id="fixturesBody">
           <tr><td colspan="6" style="padding:18px;color:#64748b;">Fetching fixtures…</td></tr>
         </tbody>
-        
       </table>
 
       <div class="actions">
@@ -72,9 +81,20 @@
     const lockBtn=document.getElementById('lockBtn');
     const weekLabel=document.getElementById('weekLabel');
 
+    // --- Require session ---
     const { data:{session} } = await supabase.auth.getSession();
     if(!session) window.location.replace('login.html');
     const user=session.user;
+
+    // --- Admin block: redirect admins away ---
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+    if (prof?.is_admin) {
+      window.location.replace('admin.html');
+    }
 
     function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
     function nextMonday(d=new Date()){const x=new Date(d);const day=x.getDay();const add=((8-day)%7)||7;x.setDate(x.getDate()+add);x.setHours(0,0,0,0);return x}
@@ -171,53 +191,4 @@
     render(fixtures,predsMap);
   </script>
 </body>
-  <!-- Mini top-right nav -->
-<nav class="topnav">
-  <a href="predict.html" data-nav="predict">Predict</a>
-  <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-  <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-  <a href="profile.html" data-nav="profile">Profile</a>
-  <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
-  <button class="logout" id="navLogout" title="Sign out">Logout</button>
-</nav>
-
-<script type="module">
-  import { supabase } from './supabase-config.js';
-
-  // Highlight the current page
-  const path = location.pathname.toLowerCase();
-  const markActive = (key) => {
-    const el = document.querySelector(`.topnav [data-nav="${key}"]`);
-    if (el) el.classList.add('active');
-  };
-  if (path.endsWith('/predict.html')) markActive('predict');
-  else if (path.endsWith('/my-picks.html')) markActive('mypicks');
-  else if (path.endsWith('/leaderboard.html')) markActive('leaderboard');
-  else if (path.endsWith('/profile.html')) markActive('profile');
-  else if (path.endsWith('/admin.html')) markActive('admin');
-
-  // Show Admin link for admins
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      if (!error && data?.is_admin) {
-        document.getElementById('navAdmin').style.display = '';
-      }
-    }
-  } catch (e) {
-    console.warn('Nav init warning:', e?.message || e);
-  }
-
-  // Logout
-  document.getElementById('navLogout').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    location.replace('login.html');
-  });
-</script>
-
 </html>
