@@ -2,67 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Make Predictions · Occy Weekend Football</title>
+  <title>Make Predictions</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/logo-burst.png" />
   <link rel="stylesheet" href="brand.css" />
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Make Predictions</h1>
+      <h1><img class="brand-logo" src="assets/logo-burst.png" alt="">Make Predictions</h1>
       <p class="muted">Only upcoming, featured fixtures are shown. Submit to lock your week.</p>
     </div>
 
-    <!-- Gate: profile incomplete -->
-    <div id="gateProfile" class="card" style="display:none">
-      <div class="error" style="display:block">
-        You need to complete your profile before predicting.
-        <ul style="margin:8px 0 0 18px; color:var(--muted-ink);">
-          <li>Set a <b>display name</b></li>
-          <li>Pick your <b>favourite team</b></li>
-        </ul>
-      </div>
-      <div class="btn-row" style="margin-top:10px">
-        <a class="btn" href="profile.html">Go to My Profile</a>
-        <a class="btn btn-dark" href="index.html">← Home</a>
-      </div>
-    </div>
-
-    <!-- Gate: week locked -->
-    <div id="gateLocked" class="card" style="display:none">
-      <div class="ok" style="display:block">Your picks for this weekend are <b>locked</b>.</div>
-      <p class="muted" style="margin-top:8px">You can view them here:</p>
-      <div class="btn-row" style="margin-top:8px">
-        <a class="btn" href="my-picks.html">View My Picks</a>
-        <a class="btn btn-dark" href="index.html">← Home</a>
-      </div>
-    </div>
-
-    <!-- Prediction UI -->
-    <div id="app" class="card" style="display:none">
-      <p class="muted" id="who">—</p>
-      <p id="week" class="muted">—</p>
-
-      <table>
-        <thead>
-          <tr>
-            <th class="left">Fixture</th>
-            <th>Kickoff</th>
-            <th>Your Pick</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-
-      <div class="btn-row" style="margin-top:10px">
-        <button id="submitLock" class="btn">Submit & Lock week</button>
-        <button id="clearLocal" class="btn btn-dark">Clear my device</button>
-        <a id="homeBtn" class="btn btn-dark" href="index.html">← Home</a>
-      </div>
-      <div id="ok" class="ok" style="margin-top:10px;">Saved!</div>
-      <p id="msg" class="muted" style="margin-top:8px;"></p>
+    <div class="card">
+      <div id="fixtures"></div>
+      <div id="msg" class="muted"></div>
+      <button id="saveBtn" class="btn">Submit & Lock week</button>
+      <a class="btn btn-dark" href="my-picks.html">My Picks</a>
     </div>
   </div>
 
@@ -70,133 +26,63 @@
   <script src="supabase-config.js"></script>
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const fixturesDiv = document.getElementById('fixtures');
+    const msg = document.getElementById('msg');
+    const saveBtn = document.getElementById('saveBtn');
 
-    const gateProfile = document.getElementById('gateProfile');
-    const gateLocked  = document.getElementById('gateLocked');
-    const app  = document.getElementById('app');
-    const who  = document.getElementById('who');
-    const week = document.getElementById('week');
-    const rows = document.getElementById('rows');
-    const msg  = document.getElementById('msg');
-    const okEl = document.getElementById('ok');
+    let user = null; let weekStart = null;
 
-    document.getElementById('clearLocal').onclick = ()=> { localStorage.removeItem('localPicks'); location.reload(); };
-
-    function fmt(dt){ return new Date(dt).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
-    function getLocalPicks(){ try{ return JSON.parse(localStorage.getItem('localPicks')||'{}'); }catch{ return {}; } }
-    function setLocalPicks(obj){ localStorage.setItem('localPicks', JSON.stringify(obj)); }
-    function lockedByKickoff(iso){ return Date.now() >= new Date(iso).getTime(); }
-
-    async function ensureProfile(id, email){
-      const { data: prof } = await client.from('profiles').select('id').eq('id', id).maybeSingle();
-      if (!prof){ await client.from('profiles').insert({ id, display_name: (email||'').split('@')[0] || 'User' }); }
-    }
-    async function profileComplete(id){
-      const { data, error } = await client.from('profiles').select('display_name,favorite_team').eq('id', id).single();
-      if (error) return false; return !!(data?.display_name && data?.favorite_team);
-    }
-
-    async function load(){
+    async function gate(){
       const { data: ur } = await client.auth.getUser();
-      const u = ur?.user; if (!u){ location.replace('login.html'); return; }
-      who.textContent = `Signed in as ${u.email}`;
-      await ensureProfile(u.id, u.email);
-
-      // Require name + team
-      if (!await profileComplete(u.id)){
-        gateProfile.style.display='block'; gateLocked.style.display='none'; app.style.display='none'; return;
-      }
-
-      // Load upcoming featured fixtures
-      const nowIso = new Date().toISOString();
-      const { data: fixes, error } = await client.from('fixtures')
-        .select('id,home_team,away_team,utc_date')
-        .eq('featured', true)
-        .gt('utc_date', nowIso)
-        .order('utc_date');
-      if (error){ msg.textContent = 'Error loading fixtures: ' + error.message; return; }
-
-      if (!fixes || !fixes.length){
-        gateProfile.style.display='none'; gateLocked.style.display='none'; app.style.display='block';
-        week.textContent = 'No upcoming featured fixtures yet.';
-        rows.innerHTML = ''; msg.textContent=''; document.getElementById('submitLock').disabled = true;
-        return;
-      }
-
-      // Define week key = earliest featured fixture date (YYYY-MM-DD)
-      const weekStart = fixes[0].utc_date.slice(0,10);
-      week.textContent = `Weekend starting ${new Date(weekStart).toLocaleDateString()}`;
-
-      // Is my week locked already?
-      const { data: lock } = await client.from('week_locks')
-        .select('user_id, week_start')
-        .eq('user_id', u.id)
-        .eq('week_start', weekStart)
-        .maybeSingle();
-
-      if (lock){
-        // Already locked → block editing and send to My Picks
-        gateProfile.style.display='none'; gateLocked.style.display='block'; app.style.display='none';
-        return;
-      }
-
-      // Show editable table until user submits & locks
-      gateProfile.style.display='none'; gateLocked.style.display='none'; app.style.display='block';
-
-      const picks = getLocalPicks();
-      rows.innerHTML='';
-
-      fixes.forEach(f=>{
-        const p = picks[f.id] || {};
-        const tr = document.createElement('tr');
-        const byKickoffLock = lockedByKickoff(f.utc_date);
-        tr.innerHTML = `
-          <td class="left">${f.home_team} vs ${f.away_team}</td>
-          <td>${fmt(f.utc_date)}</td>
-          <td>
-            <input type="number" min="0" id="h_${f.id}" value="${p.home_goals??''}" ${byKickoffLock?'disabled':''} />
-            -
-            <input type="number" min="0" id="a_${f.id}" value="${p.away_goals??''}" ${byKickoffLock?'disabled':''} />
-          </td>
-          <td>${byKickoffLock?'<span class="pill lock">Locked 🔒</span>':'Open'}</td>
-        `;
-        rows.appendChild(tr);
-
-        const h = tr.querySelector('#h_'+f.id);
-        const a = tr.querySelector('#a_'+f.id);
-        if (h) h.addEventListener('input', ()=>{ picks[f.id] = picks[f.id]||{}; picks[f.id].home_goals = h.value===''? null : +h.value; setLocalPicks(picks); });
-        if (a) a.addEventListener('input', ()=>{ picks[f.id] = picks[f.id]||{}; picks[f.id].away_goals = a.value===''? null : +a.value; setLocalPicks(picks); });
-      });
-
-      // Submit & Lock the week
-      document.getElementById('submitLock').onclick = async ()=>{
-        okEl.style.display='none'; msg.textContent='Submitting…';
-        // Build payload only for fixtures that are still open
-        const payload = [];
-        fixes.forEach(f=>{
-          if (lockedByKickoff(f.utc_date)) return;
-          const p = picks[f.id];
-          if (p && Number.isInteger(p.home_goals) && Number.isInteger(p.away_goals)){
-            payload.push({ fixture_id:f.id, user_id:u.id, home_goals:p.home_goals, away_goals:p.away_goals });
-          }
-        });
-
-        // Save predictions first
-        if (payload.length){
-          const { error: e1 } = await client.from('predictions').upsert(payload, { onConflict:'user_id,fixture_id' });
-          if (e1){ msg.textContent = 'Save error: ' + e1.message; return; }
-        }
-
-        // Then write the lock (prevents further editing this weekend)
-        const { error: e2 } = await client.from('week_locks').insert({ user_id:u.id, week_start: weekStart });
-        if (e2){ msg.textContent = 'Lock error: ' + e2.message; return; }
-
-        okEl.style.display='block';
-        msg.textContent = 'Submitted and locked. Redirecting to My Picks…';
-        setTimeout(()=> location.href='my-picks.html', 900);
-      };
+      user = ur?.user;
+      if (!user){ location.replace('login.html'); return; }
+      const { data: locks } = await client.from('week_locks')
+        .select('*').eq('user_id', user.id).maybeSingle();
+      if (locks){ msg.textContent='You already submitted this week.'; saveBtn.disabled=true; return false; }
+      return true;
     }
-    load();
+
+    async function loadFixtures(){
+      const { data, error } = await client
+        .from('fixtures')
+        .select('*')
+        .eq('featured', true)
+        .order('utc_date',{ascending:true});
+      if (error){ fixturesDiv.textContent='Error loading fixtures'; return; }
+      if (!data.length){ fixturesDiv.textContent='No upcoming fixtures yet'; return; }
+      const start = new Date(data[0].utc_date);
+      weekStart = start.toISOString().split('T')[0];
+      fixturesDiv.innerHTML = `<table><tr><th>Date</th><th>Home</th><th></th><th>Away</th></tr>` +
+        data.map(f=>{
+          const d=new Date(f.utc_date).toLocaleString(undefined,{weekday:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+          return `<tr>
+            <td>${d}</td>
+            <td>${f.home_team}<br><input type="number" min="0" data-fid="${f.id}" data-side="home"></td>
+            <td>vs</td>
+            <td><input type="number" min="0" data-fid="${f.id}" data-side="away"><br>${f.away_team}</td>
+          </tr>`;
+        }).join('') + `</table>`;
+    }
+
+    async function savePredictions(){
+      const inputs=document.querySelectorAll('input[type=number]');
+      const rows={};
+      inputs.forEach(i=>{
+        const fid=i.dataset.fid;
+        if(!rows[fid]) rows[fid]={ fixture_id:fid, user_id:user.id };
+        rows[fid][i.dataset.side+'_score']=parseInt(i.value)||0;
+      });
+      const arr=Object.values(rows);
+      if(!arr.length){ msg.textContent='No predictions entered.'; return; }
+      const { error } = await client.from('predictions').upsert(arr);
+      if(error){ msg.textContent='Save error: '+error.message; return; }
+      await client.from('week_locks').insert({ user_id:user.id, week_start });
+      msg.textContent='Submitted & locked. Redirecting…';
+      setTimeout(()=>location.replace('my-picks.html'),1200);
+    }
+
+    saveBtn.addEventListener('click', savePredictions);
+    (async()=>{ if(await gate()) await loadFixtures(); })();
   </script>
 </body>
 </html>
