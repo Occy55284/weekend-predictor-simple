@@ -1,51 +1,139 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Occy Weekend Football</title>
-  <link rel="stylesheet" href="brand.css">
+  <meta charset="utf-8" />
+  <title>Occy Weekend Football — Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="assets/brand-logo.png" />
+  <link rel="stylesheet" href="brand.css" />
 </head>
 <body>
+  <!-- Brand header -->
   <div class="brand-header">
     <img src="assets/brand-logo.png" alt="Occy Weekend Football">
   </div>
 
-  <div class="container card">
-    <div class="header">
-      <h1>Occy Weekend Football</h1>
-      <div id="who" class="muted"></div>
-    </div>
-    <div class="btn-row" id="navBtns">
-      <!-- JS will decide which buttons show -->
+  <div class="container" style="max-width:720px;">
+    <div class="card">
+      <div class="header" style="text-align:center;">
+        <h1>Occy Weekend Football <span id="roleTag" class="tag" style="display:none">Admin</span></h1>
+        <div id="who" class="muted"></div>
+      </div>
+
+      <!-- Logged OUT -->
+      <div id="loggedOut" class="btn-row" style="justify-content:center; display:none">
+        <a class="btn" href="login.html">Sign in / Sign up</a>
+      </div>
+
+      <!-- Logged IN: ADMIN -->
+      <div id="adminOnly" class="btn-row" style="justify-content:center; display:none">
+        <a class="btn" href="admin.html">Admin</a>
+        <button id="logoutAdmin" class="btn btn-dark">Sign out</button>
+      </div>
+
+      <!-- Logged IN: USER — PROFILE INCOMPLETE -->
+      <div id="userNeedsProfile" class="btn-row" style="justify-content:center; display:none">
+        <a class="btn" href="profile.html">My Profile</a>
+        <button id="logoutNeeds" class="btn btn-dark">Sign out</button>
+        <p class="muted" style="width:100%; margin-top:8px; text-align:center;">
+          Please complete your profile (nickname + favourite team) to unlock predictions.
+        </p>
+      </div>
+
+      <!-- Logged IN: USER — PROFILE COMPLETE -->
+      <div id="userReady" class="btn-row" style="justify-content:center; display:none">
+        <a class="btn" href="predict.html">Make Predictions</a>
+        <a class="btn" href="leaderboard.html">Leaderboard</a>
+        <a class="btn" href="profile.html">My Profile</a>
+        <button id="logoutUser" class="btn btn-dark">Sign out</button>
+      </div>
     </div>
   </div>
 
+  <!-- Supabase SDK + your config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
+
   <script>
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      const nav = document.getElementById("navBtns");
-      nav.innerHTML = "";
-      if (!user) {
-        nav.innerHTML = `<a class="btn" href="login.html">Sign in / Sign up</a>`;
-        return;
-      }
-      document.getElementById("who").textContent = user.email;
+    // Create client from values defined in supabase-config.js
+    const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-      // Show profile always
-      nav.innerHTML += `<a class="btn" href="profile.html">My Profile</a>`;
+    const who = document.getElementById('who');
+    const tag = document.getElementById('roleTag');
 
-      // If admin
-      let { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-      if (prof?.is_admin) {
-        nav.innerHTML += `<a class="btn" href="admin.html">Admin</a>`;
-      } else {
-        nav.innerHTML += `<a class="btn" href="predict.html">Make Predictions</a>`;
-        nav.innerHTML += `<a class="btn" href="leaderboard.html">Leaderboard</a>`;
-      }
-      nav.innerHTML += `<button class="btn btn-dark" onclick="supabase.auth.signOut().then(()=>location.href='index.html')">Sign out</button>`;
+    const loggedOut = document.getElementById('loggedOut');
+    const adminOnly = document.getElementById('adminOnly');
+    const userNeeds = document.getElementById('userNeedsProfile');
+    const userReady = document.getElementById('userReady');
+
+    function show(view){
+      loggedOut.style.display = (view==='out') ? 'flex' : 'none';
+      adminOnly.style.display = (view==='admin') ? 'flex' : 'none';
+      userNeeds.style.display = (view==='needs') ? 'flex' : 'none';
+      userReady.style.display = (view==='ready') ? 'flex' : 'none';
     }
+
+    async function ensureOwnProfile(id, email){
+      const { data: prof } = await client.from('profiles').select('id').eq('id', id).maybeSingle();
+      if (!prof){
+        const display_name = (email||'').split('@')[0] || 'User';
+        await client.from('profiles').insert({ id, display_name });
+      }
+    }
+
+    async function isAdmin(id){
+      const { data, error } = await client.from('profiles').select('is_admin').eq('id', id).single();
+      if (error) return false;
+      return !!data?.is_admin;
+    }
+
+    async function profileComplete(id){
+      const { data, error } = await client
+        .from('profiles')
+        .select('display_name,favorite_team')
+        .eq('id', id)
+        .single();
+      if (error) return false;
+      return !!(data?.display_name && data?.favorite_team);
+    }
+
+    async function init(){
+      try{
+        const { data: ur } = await client.auth.getUser();
+        const u = ur?.user;
+
+        if (!u){
+          who.textContent = '';
+          tag.style.display='none';
+          show('out');
+          return;
+        }
+
+        who.textContent = `Signed in as ${u.email}`;
+        await ensureOwnProfile(u.id, u.email);
+
+        if (await isAdmin(u.id)){
+          tag.style.display='inline-block';
+          show('admin');
+          return;
+        }
+
+        tag.style.display='none';
+        show(await profileComplete(u.id) ? 'ready' : 'needs');
+      }catch(e){
+        // If anything fails, at least show Sign in
+        show('out');
+      }
+    }
+
+    async function logout(){
+      await client.auth.signOut();
+      location.replace('index.html');
+    }
+    document.getElementById('logoutAdmin')?.addEventListener('click', logout);
+    document.getElementById('logoutNeeds')?.addEventListener('click', logout);
+    document.getElementById('logoutUser')?.addEventListener('click', logout);
+
     init();
   </script>
 </body>
