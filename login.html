@@ -6,92 +6,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="assets/brand-logo.png" />
   <link rel="stylesheet" href="brand.css" />
-  <style>
-    /* keep the form a nice small card in the middle */
-    .login-wrap { max-width: 480px; margin: 0 auto; }
-  </style>
+  <style>.login-wrap{max-width:480px;margin:0 auto}</style>
 </head>
-<body class="center-screen">
-  <!-- Brand header -->
-  <div class="brand-header">
-    <img src="assets/brand-logo.png" alt="Occy Weekend Football">
-  </div>
+<body>
+  <div class="brand-header"><img src="assets/brand-logo.png" alt="Occy Weekend Football"></div>
 
   <div class="container login-wrap">
     <div class="card">
-      <div class="header" style="text-align:center;">
-        <h1>Sign in / Sign up</h1>
-        <p class="muted">Enter your email and we’ll send you a magic link.</p>
-      </div>
-
+      <div class="header"><h1>Sign in / Sign up</h1><p class="muted">Enter your email and we’ll send a magic link.</p></div>
       <form id="form">
         <label for="email">Email address</label>
         <input id="email" type="email" placeholder="you@example.com" required />
-
         <div class="btn-row" style="margin-top:12px; justify-content:center;">
           <button id="send" class="btn" type="submit">Send magic link</button>
-          <a class="btn btn-dark" href="index.html" type="button">← Home</a>
+          <a class="btn btn-dark" href="index.html">← Home</a>
         </div>
       </form>
-
       <div id="ok" class="ok" style="margin-top:12px;">Magic link sent — check your inbox!</div>
       <div id="err" class="error" style="margin-top:12px;"></div>
       <p id="msg" class="muted" style="margin-top:8px; text-align:center;"></p>
     </div>
   </div>
 
-  <!-- Supabase SDK + your config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    // Create Supabase client using keys from supabase-config.js
-    const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-    const form = document.getElementById('form');
-    const emailEl = document.getElementById('email');
-    const btn = document.getElementById('send');
-    const ok = document.getElementById('ok');
-    const err = document.getElementById('err');
-    const msg = document.getElementById('msg');
-
-    // If already logged in, bounce to home
-    client.auth.getUser().then(({ data }) => {
-      if (data?.user) location.replace('index.html');
-    });
+    client.auth.getUser().then(({data}) => { if (data?.user) location.replace('index.html'); });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      ok.style.display = 'none';
-      err.style.display = 'none';
-      msg.textContent = '';
-
-      const email = emailEl.value.trim();
-      if (!email) { err.textContent = 'Please enter your email.'; err.style.display='block'; return; }
-
-      btn.disabled = true;
-      msg.textContent = 'Sending…';
-
+      ok.style.display='none'; err.style.display='none'; msg.textContent='';
+      const email = email.value.trim();
+      if (!email) { err.textContent='Please enter your email.'; err.style.display='block'; return; }
+      send.disabled = true; msg.textContent='Sending…';
       const { error } = await client.auth.signInWithOtp({
         email,
-        options: {
-          // After clicking the email link, user returns to home (already signed in)
-          emailRedirectTo: window.location.origin + '/index.html'
-        }
+        options:{ emailRedirectTo: window.location.origin + '/index.html' }
       });
-
-      btn.disabled = false;
-      msg.textContent = '';
-
-      if (error) {
-        err.textContent = 'Error: ' + error.message;
-        err.style.display = 'block';
-      } else {
-        ok.style.display = 'block';
-        msg.textContent = 'Tip: check your spam folder if you don’t see it in a minute.';
-      }
+      send.disabled = false; msg.textContent='';
+      if (error){ err.textContent='Error: '+error.message; err.style.display='block'; }
+      else { ok.style.display='block'; msg.textContent='(Check spam if you don’t see it)'; }
     });
   </script>
 </body>
 </html>
-
-
