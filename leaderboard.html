@@ -1,99 +1,31 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Leaderboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="assets/logo-net.png" />
-  <link rel="stylesheet" href="brand.css" />
+  <meta charset="UTF-8">
+  <title>Leaderboard – Occy Weekend Football</title>
+  <link rel="stylesheet" href="brand.css">
+  <link rel="icon" href="assets/brand-logo.png" />
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1><img class="brand-logo" src="assets/logo-net.png" alt="">Leaderboard</h1>
-      <p class="muted">Weekly winner & Season standings</p>
-    </div>
-
-    <div class="card">
-      <div class="tabs">
-        <div class="tab active" data-tab="week">This Weekend</div>
-        <div class="tab" data-tab="season">Season</div>
-      </div>
-
-      <div id="week" class="pane active">
-        <table id="weekTable"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Played</th><th>Exact</th><th>GD</th><th>Result</th></tr></thead><tbody></tbody></table>
-      </div>
-      <div id="season" class="pane">
-        <table id="seasonTable"><thead><tr><th>#</th><th>Name</th><th>Rank</th><th>Points</th><th>Played</th><th>Exact</th><th>GD</th><th>Result</th></tr></thead><tbody></tbody></table>
-      </div>
-    </div>
+  <div class="brand-header">
+    <img src="assets/brand-logo.png" alt="Occy Weekend Football">
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <div class="container card">
+    <div class="header"><h1>Leaderboard</h1></div>
+    <div id="board">Loading…</div>
+  </div>
+
   <script src="supabase-config.js"></script>
   <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-    function tabSetup(){
-      document.querySelectorAll('.tab').forEach(t=>{
-        t.addEventListener('click',()=>{
-          document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-          document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
-          t.classList.add('active');
-          document.getElementById(t.dataset.tab).classList.add('active');
-        });
-      });
+    async function loadLeaderboard() {
+      const { data } = await supabase.from("predictions").select("*");
+      if(!data) { document.getElementById("board").textContent="No data"; return; }
+      document.getElementById("board").textContent = JSON.stringify(data,null,2);
     }
-
-    async function load(){
-      // Season standings (just example logic — you may refine)
-      const { data: preds } = await client.from('predictions').select('*');
-      const { data: fixes } = await client.from('fixtures').select('*');
-      if(!preds||!fixes) return;
-      const scores={};
-      fixes.filter(f=>f.home_score!==null).forEach(f=>{
-        preds.filter(p=>p.fixture_id===f.id).forEach(p=>{
-          const u=p.user_id;
-          if(!scores[u]) scores[u]={pts:0,pld:0,ex:0,gd:0,res:0};
-          scores[u].pld++;
-          if(p.home_score==f.home_score && p.away_score==f.away_score){ scores[u].pts+=3; scores[u].ex++; }
-          else if((p.home_score-p.away_score)==(f.home_score-f.away_score)){ scores[u].pts+=2; scores[u].gd++; }
-          else if((p.home_score>p.away_score)==(f.home_score>f.away_score)){ scores[u].pts+=1; scores[u].res++; }
-        });
-      });
-      const arr=Object.entries(scores).map(([u,s])=>({id:u,...s})).sort((a,b)=>b.pts-a.pts);
-      const { data: profs } = await client.from('profiles').select('id,display_name,favorite_team');
-      const map={}; profs.forEach(p=>map[p.id]=p);
-
-      const tbody=document.querySelector('#seasonTable tbody'); tbody.innerHTML='';
-      arr.forEach((r,i)=>{
-        const prof=map[r.id]||{};
-        tbody.innerHTML+=`<tr>
-          <td>${i+1}</td><td class="left"><div class="pname">
-            ${prof.favorite_team?`<img class="crest" src="${prof.favorite_team}" alt="">`:''}
-            ${prof.display_name||'anon'}</div></td>
-          <td>Rookie</td>
-          <td>${r.pts}</td><td>${r.pld}</td><td>${r.ex}</td><td>${r.gd}</td><td>${r.res}</td>
-        </tr>`;
-      });
-    }
-
-    tabSetup(); load();
+    loadLeaderboard();
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
