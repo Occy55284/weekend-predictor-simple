@@ -2,38 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>My Picks · Occy Weekend Football</title>
+  <title>My Picks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/logo-burst.png" />
   <link rel="stylesheet" href="brand.css" />
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>My Picks</h1>
-      <p class="muted">Read-only view of your submitted predictions for the current weekend.</p>
+      <h1><img class="brand-logo" src="assets/logo-burst.png" alt="">My Picks</h1>
+      <p class="muted">Read-only view of your submitted predictions.</p>
     </div>
 
     <div class="card">
-      <div id="who" class="muted">—</div>
-      <p id="week" class="muted">—</p>
-
-      <table id="tbl" style="display:none">
-        <thead>
-          <tr>
-            <th class="left">Fixture</th>
-            <th>Kickoff</th>
-            <th>Your Pick</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-
-      <p id="msg" class="muted">Loading…</p>
-      <div class="btn-row" style="margin-top:10px">
-        <a class="btn btn-dark" href="index.html">← Home</a>
-      </div>
+      <div id="fixtures"></div>
+      <a class="btn btn-dark" href="index.html">← Home</a>
     </div>
   </div>
 
@@ -41,59 +24,31 @@
   <script src="supabase-config.js"></script>
   <script>
     const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-    function fmt(dt){ return new Date(dt).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+    const fixturesDiv=document.getElementById('fixtures');
 
     async function load(){
       const { data: ur } = await client.auth.getUser();
-      const u = ur?.user; if(!u){ location.replace('login.html'); return; }
-
-      document.getElementById('who').textContent = `Signed in as ${u.email}`;
-
-      // Find this weekend’s featured fixtures (earliest date is our week key)
-      const nowIso = new Date().toISOString();
-      const { data: fixes } = await client.from('fixtures')
-        .select('id,home_team,away_team,utc_date')
-        .eq('featured', true)
-        .gt('utc_date', nowIso)
-        .order('utc_date');
-
-      if (!fixes || !fixes.length){
-        document.getElementById('msg').textContent = 'No upcoming featured fixtures yet.';
-        return;
-      }
-
-      const weekStart = fixes[0].utc_date.slice(0,10);
-      document.getElementById('week').textContent = `Weekend starting ${new Date(weekStart).toLocaleDateString()}`;
-
-      // Pull my predictions for these fixtures
-      const ids = fixes.map(f=>f.id);
-      const { data: picks } = await client.from('predictions')
-        .select('fixture_id,home_goals,away_goals')
-        .eq('user_id', u.id)
-        .in('fixture_id', ids);
-
-      const pickByFx = Object.fromEntries((picks||[]).map(p=>[p.fixture_id, p]));
-      const rows = document.getElementById('rows');
-      rows.innerHTML='';
-
-      fixes.forEach(f=>{
-        const p = pickByFx[f.id];
-        const tr = document.createElement('tr');
-        const locked = Date.now() >= new Date(f.utc_date).getTime();
-        tr.innerHTML = `
-          <td class="left">${f.home_team} vs ${f.away_team}</td>
-          <td>${fmt(f.utc_date)}</td>
-          <td>${p ? `${p.home_goals} – ${p.away_goals}` : '<span class="muted">—</span>'}</td>
-          <td>${locked?'<span class="pill lock">Locked 🔒</span>':'Open'}</td>
-        `;
-        rows.appendChild(tr);
-      });
-
-      document.getElementById('tbl').style.display='';
-      document.getElementById('msg').textContent='';
+      const u=ur?.user; if(!u){ location.replace('login.html'); return; }
+      const { data: feats } = await client.from('fixtures').select('*').eq('featured',true).order('utc_date');
+      if(!feats?.length){ fixturesDiv.textContent='No fixtures yet'; return; }
+      const ids=feats.map(f=>f.id);
+      const { data: preds } = await client.from('predictions').select('*').eq('user_id',u.id).in('fixture_id',ids);
+      const map={}; preds.forEach(p=>map[p.fixture_id]=p);
+      fixturesDiv.innerHTML='<table><tr><th>Date</th><th>Home</th><th>Score</th><th>Away</th></tr>'+
+        feats.map(f=>{
+          const p=map[f.id]||{};
+          const d=new Date(f.utc_date).toLocaleString(undefined,{weekday:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+          return `<tr>
+            <td>${d}</td>
+            <td>${f.home_team}</td>
+            <td>${p.home_score??'-'} : ${p.away_score??'-'}</td>
+            <td>${f.away_team}</td>
+          </tr>`;
+        }).join('')+'</table>';
     }
+
     load();
   </script>
 </body>
 </html>
+
