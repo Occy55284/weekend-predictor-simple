@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Profile</title>
-  <link rel="stylesheet" href="brand.css?v=5" />
+  <link rel="stylesheet" href="brand.css?v=8" />
 </head>
 <body>
   <main class="landing">
@@ -39,6 +39,9 @@
         <br /><br />
         <button type="submit">Save Profile</button>
       </form>
+      <button id="logout" style="margin-top:15px;background:#999;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">
+        Logout
+      </button>
       <p id="status" style="margin-top:10px;font-size:.9rem;color:#1f357a;"></p>
     </div>
   </main>
@@ -51,15 +54,19 @@
     const nicknameEl = document.getElementById('nickname');
     const teamEl = document.getElementById('team');
     const statusEl = document.getElementById('status');
+    const logoutBtn = document.getElementById('logout');
 
-    // 1) Ensure user is signed in
+    // 1) Exchange code from magic link (if present)
+    await supabase.auth.exchangeCodeForSession(window.location.href);
+
+    // 2) Ensure user is signed in
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       window.location.replace('login.html');
     }
     const user = session.user;
 
-    // 2) Load existing profile
+    // 3) Load profile
     async function loadProfile() {
       const { data, error } = await supabase
         .from('profiles')
@@ -67,7 +74,7 @@
         .eq('id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // ignore "no rows" error
+      if (error && error.code !== 'PGRST116') {
         console.error(error);
         statusEl.textContent = 'Error loading profile';
       } else if (data) {
@@ -76,7 +83,7 @@
       }
     }
 
-    // 3) Save profile
+    // 4) Save profile
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       statusEl.textContent = 'Saving...';
@@ -97,6 +104,12 @@
       } else {
         statusEl.textContent = 'Profile saved ✅';
       }
+    });
+
+    // 5) Logout
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.replace('login.html');
     });
 
     loadProfile();
