@@ -1,57 +1,106 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Make Predictions – Occy Weekend Football</title>
-  <link rel="stylesheet" href="brand.css">
+  <meta charset="utf-8" />
+  <title>Make Predictions · Occy Weekend Football</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="assets/brand-logo.png" />
+  <link rel="stylesheet" href="brand.css" />
+  <style>.wrap{max-width:900px;margin:0 auto}</style>
 </head>
 <body>
-  <div class="brand-header">
-    <img src="assets/brand-logo.png" alt="Occy Weekend Football">
+  <div class="brand-header"><img src="assets/brand-logo.png" alt="Occy Weekend Football"></div>
+
+  <div class="container wrap">
+    <!-- Locked gate -->
+    <div id="locked" class="card" style="display:none">
+      <div class="ok" style="display:block">Your picks for this weekend are <b>locked</b>.</div>
+      <div class="btn-row" style="margin-top:8px">
+        <a class="btn" href="my-picks.html">View My Picks</a>
+        <a class="btn btn-dark" href="index.html">← Home</a>
+      </div>
+    </div>
+
+    <!-- App -->
+    <div id="app" class="card" style="display:none">
+      <div class="header"><h1>Make Predictions</h1><p class="muted">Only upcoming, featured fixtures are shown. Submit to lock your week.</p></div>
+      <p id="week" class="muted">—</p>
+      <div id="box"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="submitLock" class="btn">Submit & Lock week</button>
+        <a class="btn btn-dark" href="index.html">← Home</a>
+      </div>
+      <div id="ok" class="ok" style="margin-top:10px;">Saved!</div>
+      <div id="err" class="error" style="margin-top:10px;"></div>
+    </div>
   </div>
 
-  <div class="container card">
-    <div class="header"><h1>Make Predictions</h1></div>
-    <div id="fixtures"></div>
-    <button class="btn" id="saveBtn">Save Predictions</button>
-    <div id="msg" class="muted"></div>
-  </div>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script>
-    async function loadFixtures() {
-      let { data } = await supabase.from("fixtures").select("*").eq("featured", true);
-      const box = document.getElementById("fixtures");
-      if (!data || !data.length) { box.innerHTML = "No fixtures yet."; return; }
-      box.innerHTML = `<table><tr><th>Match</th><th>Home</th><th>Away</th></tr>` +
-        data.map(f => `<tr>
-          <td>${f.home_team} vs ${f.away_team}</td>
-          <td><input type="number" id="h${f.id}" min="0"></td>
-          <td><input type="number" id="a${f.id}" min="0"></td>
-        </tr>`).join("") + `</table>`;
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const locked = document.getElementById('locked');
+    const app = document.getElementById('app');
+    const weekEl = document.getElementById('week');
+    const box = document.getElementById('box');
+    const okEl = document.getElementById('ok');
+    const errEl = document.getElementById('err');
+    let user, fixes=[], weekStart;
+
+    function fmt(dt){ return new Date(dt).toLocaleString(undefined,{weekday:'short',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+
+    async function init(){
+      const { data: ur } = await client.auth.getUser();
+      user = ur?.user; if(!user){ location.replace('login.html'); return; }
+
+      const nowIso = new Date().toISOString();
+      const { data: list } = await client.from('fixtures').select('id,home_team,away_team,utc_date').eq('featured',true).gt('utc_date', nowIso).order('utc_date');
+      if (!list?.length){ app.style.display='block'; weekEl.textContent='No upcoming featured fixtures yet.'; document.getElementById('submitLock').disabled=true; return; }
+      fixes = list;
+      weekStart = fixes[0].utc_date.slice(0,10);
+      weekEl.textContent = `Weekend starting ${new Date(weekStart).toLocaleDateString()}`;
+
+      const { data: lock } = await client.from('week_locks').select('user_id').eq('user_id', user.id).eq('week_start', weekStart).maybeSingle();
+      if (lock){ locked.style.display='block'; return; }
+
+      app.style.display='block';
+      box.innerHTML = `<table>
+        <thead><tr><th class="left">Fixture</th><th>Kickoff</th><th>Your Pick</th><th>Status</th></tr></thead>
+        <tbody>${fixes.map(f=>{
+          const l = Date.now() >= new Date(f.utc_date).getTime();
+          return `<tr>
+            <td class="left">${f.home_team} vs ${f.away_team}</td>
+            <td>${fmt(f.utc_date)}</td>
+            <td>${l?'-':'<input type="number" min="0" id="h_'+f.id+'" style="width:64px"> - <input type="number" min="0" id="a_'+f.id+'" style="width:64px">'}</td>
+            <td>${l?'<span class="pill lock">Locked 🔒</span>':'Open'}</td>
+          </tr>`;
+        }).join('')}</tbody></table>`;
     }
-    document.getElementById("saveBtn").onclick = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      let { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-      let rows = [];
-      document.querySelectorAll("input[type=number]").forEach(inp=>{
-        if(inp.value!==""){
-          const fid = inp.id.substring(1);
-          const isHome = inp.id.startsWith("h");
-          let existing = rows.find(r=>r.fixture_id==fid);
-          if(!existing) { existing = { fixture_id: fid, user_id: user.id, nickname: prof?.nickname||"" }; rows.push(existing); }
-          if(isHome) existing.home_pred = parseInt(inp.value);
-          else existing.away_pred = parseInt(inp.value);
+
+    document.getElementById('submitLock').addEventListener('click', async ()=>{
+      okEl.style.display='none'; errEl.style.display='none';
+      const payload=[];
+      fixes.forEach(f=>{
+        const byKickoff = Date.now() >= new Date(f.utc_date).getTime();
+        if (byKickoff) return;
+        const h=document.getElementById('h_'+f.id), a=document.getElementById('a_'+f.id);
+        if (h && a && h.value!=='' && a.value!==''){
+          payload.push({ user_id:user.id, fixture_id:f.id, home_goals:+h.value, away_goals:+a.value });
         }
       });
-      if(rows.length) {
-        await supabase.from("predictions").upsert(rows);
-        document.getElementById("msg").textContent="Saved!";
-      }
-    }
-    loadFixtures();
+      if (!payload.length){ errEl.textContent='Enter at least one score for open fixtures.'; errEl.style.display='block'; return; }
+
+      const { error: e1 } = await client.from('predictions').upsert(payload, { onConflict:'user_id,fixture_id' });
+      if (e1){ errEl.textContent='Save error: '+e1.message; errEl.style.display='block'; return; }
+
+      const { error: e2 } = await client.from('week_locks').insert({ user_id:user.id, week_start:weekStart });
+      if (e2){ errEl.textContent='Lock error: '+e2.message; errEl.style.display='block'; return; }
+
+      okEl.style.display='block';
+      setTimeout(()=> location.href='my-picks.html', 900);
+    });
+
+    init();
   </script>
 </body>
 </html>
