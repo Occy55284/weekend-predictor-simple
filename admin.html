@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="brand.css?v=17" />
+  <link rel="stylesheet" href="brand.css?v=19" />
   <style>
     .panel{background:#fff;border-radius:16px;padding:20px;max-width:1000px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15);margin-bottom:20px}
     .panel h3{margin-bottom:10px;color:#1f357a}
@@ -43,7 +43,7 @@
       <p id="lockGlobalStatus" class="small"></p>
     </section>
 
-    <!-- Existing panels: choose featured, current featured, who has predicted -->
+    <!-- Choose featured fixtures -->
     <section class="panel">
       <h3>Choose 5 Featured Fixtures</h3>
       <p class="small">Select exactly 5 fixtures for this week.</p>
@@ -55,6 +55,7 @@
       <p id="saveStatus" class="small"></p>
     </section>
 
+    <!-- Current featured fixtures -->
     <section class="panel">
       <h3>Current Featured Fixtures</h3>
       <table id="featuredFixtures">
@@ -63,6 +64,7 @@
       </table>
     </section>
 
+    <!-- Who has made predictions -->
     <section class="panel">
       <h3>Who Has Made Predictions</h3>
       <table id="predMakers">
@@ -83,6 +85,7 @@
     const makersTbody = document.querySelector('#predMakers tbody');
     const saveBtn = document.getElementById('saveFeatured');
     const saveStatus = document.getElementById('saveStatus');
+    const logoutBtn = document.getElementById('navLogout');
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) window.location.replace('login.html');
@@ -95,7 +98,13 @@
     function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
     const weekStart=startOfWeek();
 
-    // Global lock action
+    // --- Logout handler (fixed) ---
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.replace('login.html');
+    });
+
+    // --- Global lock action ---
     lockBtn.addEventListener('click', async ()=>{
       if(!confirm('Lock predictions for ALL players this week?')) return;
       lockStatus.textContent='Locking…';
@@ -107,7 +116,7 @@
       else { lockStatus.textContent='Week is now locked for everyone ✅'; }
     });
 
-    // === Existing fixture selection + makers (same as before) ===
+    // === Fixture selection + makers ===
     async function loadAllFixtures(){
       const { data } = await supabase.from('fixtures')
         .select('id, home_team, away_team, utc_date, featured')
@@ -124,6 +133,7 @@
         allTbody.appendChild(tr);
       });
     }
+
     saveBtn.addEventListener('click', async ()=>{
       const selected=[...allTbody.querySelectorAll('input[type=checkbox]:checked')].map(cb=>Number(cb.dataset.id));
       if(selected.length!==5){saveStatus.textContent='Select exactly 5.';return;}
@@ -133,6 +143,7 @@
       saveStatus.textContent=error?'Error':'Featured updated ✅';
       loadFeatured();
     });
+
     async function loadFeatured(){
       const { data } = await supabase.from('fixtures')
         .select('home_team,away_team,utc_date').eq('featured',true).order('utc_date');
@@ -144,6 +155,7 @@
         featTbody.appendChild(tr);
       });
     }
+
     async function loadMakers(){
       const { data: feats } = await supabase.from('fixtures').select('id').eq('featured',true);
       if(!feats||feats.length===0){makersTbody.innerHTML='<tr><td colspan="2">No featured fixtures</td></tr>';return;}
@@ -166,7 +178,6 @@
   </script>
 </body>
 </html>
-
 
 
 
