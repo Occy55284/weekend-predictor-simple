@@ -1,91 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Make Predictions</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="assets/logo-burst.png" />
-  <link rel="stylesheet" href="brand.css" />
+  <meta charset="UTF-8">
+  <title>Make Predictions – Occy Weekend Football</title>
+  <link rel="stylesheet" href="brand.css">
+  <link rel="icon" href="assets/brand-logo.png" />
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1><img class="brand-logo" src="assets/logo-burst.png" alt="">Make Predictions</h1>
-      <p class="muted">Only upcoming, featured fixtures are shown. Submit to lock your week.</p>
-    </div>
-
-    <div class="card">
-      <div id="fixtures"></div>
-      <div id="msg" class="muted"></div>
-      <button id="saveBtn" class="btn">Submit & Lock week</button>
-      <a class="btn btn-dark" href="my-picks.html">My Picks</a>
-    </div>
+  <div class="brand-header">
+    <img src="assets/brand-logo.png" alt="Occy Weekend Football">
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <div class="container card">
+    <div class="header"><h1>Make Predictions</h1></div>
+    <div id="fixtures"></div>
+    <button class="btn" id="saveBtn">Save Predictions</button>
+    <div id="msg" class="muted"></div>
+  </div>
+
   <script src="supabase-config.js"></script>
   <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const fixturesDiv = document.getElementById('fixtures');
-    const msg = document.getElementById('msg');
-    const saveBtn = document.getElementById('saveBtn');
-
-    let user = null; let weekStart = null;
-
-    async function gate(){
-      const { data: ur } = await client.auth.getUser();
-      user = ur?.user;
-      if (!user){ location.replace('login.html'); return; }
-      const { data: locks } = await client.from('week_locks')
-        .select('*').eq('user_id', user.id).maybeSingle();
-      if (locks){ msg.textContent='You already submitted this week.'; saveBtn.disabled=true; return false; }
-      return true;
+    async function loadFixtures() {
+      let { data } = await supabase.from("fixtures").select("*").eq("featured", true);
+      const box = document.getElementById("fixtures");
+      if (!data || !data.length) { box.innerHTML = "No fixtures yet."; return; }
+      box.innerHTML = `<table><tr><th>Match</th><th>Home</th><th>Away</th></tr>` +
+        data.map(f => `<tr>
+          <td>${f.home_team} vs ${f.away_team}</td>
+          <td><input type="number" id="h${f.id}" min="0"></td>
+          <td><input type="number" id="a${f.id}" min="0"></td>
+        </tr>`).join("") + `</table>`;
     }
-
-    async function loadFixtures(){
-      const { data, error } = await client
-        .from('fixtures')
-        .select('*')
-        .eq('featured', true)
-        .order('utc_date',{ascending:true});
-      if (error){ fixturesDiv.textContent='Error loading fixtures'; return; }
-      if (!data.length){ fixturesDiv.textContent='No upcoming fixtures yet'; return; }
-      const start = new Date(data[0].utc_date);
-      weekStart = start.toISOString().split('T')[0];
-      fixturesDiv.innerHTML = `<table><tr><th>Date</th><th>Home</th><th></th><th>Away</th></tr>` +
-        data.map(f=>{
-          const d=new Date(f.utc_date).toLocaleString(undefined,{weekday:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-          return `<tr>
-            <td>${d}</td>
-            <td>${f.home_team}<br><input type="number" min="0" data-fid="${f.id}" data-side="home"></td>
-            <td>vs</td>
-            <td><input type="number" min="0" data-fid="${f.id}" data-side="away"><br>${f.away_team}</td>
-          </tr>`;
-        }).join('') + `</table>`;
-    }
-
-    async function savePredictions(){
-      const inputs=document.querySelectorAll('input[type=number]');
-      const rows={};
-      inputs.forEach(i=>{
-        const fid=i.dataset.fid;
-        if(!rows[fid]) rows[fid]={ fixture_id:fid, user_id:user.id };
-        rows[fid][i.dataset.side+'_score']=parseInt(i.value)||0;
+    document.getElementById("saveBtn").onclick = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      let { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      let rows = [];
+      document.querySelectorAll("input[type=number]").forEach(inp=>{
+        if(inp.value!==""){
+          const fid = inp.id.substring(1);
+          const isHome = inp.id.startsWith("h");
+          let existing = rows.find(r=>r.fixture_id==fid);
+          if(!existing) { existing = { fixture_id: fid, user_id: user.id, nickname: prof?.nickname||"" }; rows.push(existing); }
+          if(isHome) existing.home_pred = parseInt(inp.value);
+          else existing.away_pred = parseInt(inp.value);
+        }
       });
-      const arr=Object.values(rows);
-      if(!arr.length){ msg.textContent='No predictions entered.'; return; }
-      const { error } = await client.from('predictions').upsert(arr);
-      if(error){ msg.textContent='Save error: '+error.message; return; }
-      await client.from('week_locks').insert({ user_id:user.id, week_start });
-      msg.textContent='Submitted & locked. Redirecting…';
-      setTimeout(()=>location.replace('my-picks.html'),1200);
+      if(rows.length) {
+        await supabase.from("predictions").upsert(rows);
+        document.getElementById("msg").textContent="Saved!";
+      }
     }
-
-    saveBtn.addEventListener('click', savePredictions);
-    (async()=>{ if(await gate()) await loadFixtures(); })();
+    loadFixtures();
   </script>
 </body>
 </html>
-
-
-
