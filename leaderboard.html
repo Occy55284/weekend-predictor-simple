@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard</title>
-  <link rel="stylesheet" href="brand.css?v=13" />
+  <link rel="stylesheet" href="brand.css?v=21" />
   <style>
     .panel{background:#fff;border-radius:16px;padding:20px;max-width:900px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
     .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
@@ -14,10 +14,25 @@
     .lb th,.lb td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center}
     .lb th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
     .me{background:#fff8dc}
+    .toolbar{display:flex;gap:10px;justify-content:center;align-items:center;margin:10px 0 6px}
+    .btn{background:#28428f;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .meta{font-size:.85rem;color:#475569;text-align:center;margin-top:6px}
   </style>
 </head>
 <body>
+  <!-- Top nav -->
+  <nav class="topnav">
+    <a href="predict.html" data-nav="predict">Predict</a>
+    <a href="my-picks.html" data-nav="mypicks">My Picks</a>
+    <a href="leaderboard.html" class="active" data-nav="leaderboard">Leaderboard</a>
+    <a href="profile.html" data-nav="profile">Profile</a>
+    <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
+    <button class="logout" id="navLogout">Logout</button>
+  </nav>
+
   <main class="landing">
+    <!-- Small logo -->
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
@@ -25,19 +40,28 @@
     </svg>
 
     <section class="panel">
-      <h2 style="color:#1f357a;margin-bottom:6px">Leaderboard</h2>
+      <h2 style="color:#1f357a;margin-bottom:6px;text-align:center">Leaderboard</h2>
+
       <div class="tabs">
         <button id="tabWeek" class="tab active">This Week</button>
         <button id="tabSeason" class="tab">Season</button>
       </div>
-      <p id="range" class="help" style="text-align:center;margin-bottom:10px"></p>
+
+      <div class="toolbar">
+        <span id="range">Loading…</span>
+        <button id="refreshBtn" class="btn" title="Reload scores">Refresh</button>
+      </div>
 
       <table class="lb" id="table">
         <thead><tr><th>#</th><th>Player</th><th>Points</th></tr></thead>
         <tbody id="tbody"><tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr></tbody>
       </table>
 
-      <p id="status" class="help"></p>
+      <p class="meta">
+        Last updated: <span id="lastUpdated">—</span>
+      </p>
+
+      <p id="status" class="meta"></p>
     </section>
   </main>
 
@@ -45,45 +69,86 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
+    // --- Navbar admin visibility + logout ---
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.replace('login.html');
+        return;
+      }
+      document.getElementById('navLogout').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        window.location.replace('login.html');
+      });
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        if (!error && data?.is_admin) {
+          document.getElementById('navAdmin').style.display = '';
+        }
+      } catch {}
+    })();
+
+    // --- Elements ---
     const tbody = document.getElementById('tbody');
     const statusEl = document.getElementById('status');
     const tabWeek = document.getElementById('tabWeek');
     const tabSeason = document.getElementById('tabSeason');
     const rangeEl = document.getElementById('range');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const lastUpdatedEl = document.getElementById('lastUpdated');
 
-    // Require session (so we can highlight "me")
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) window.location.replace('login.html');
-    const myId = session.user.id;
-
+    // --- Time helpers ---
     function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
-    function nextMonday(d=new Date()){const x=new Date(d);const day=x.getDay();const add=((8-day)%7)||7;x.setDate(x.getDate()+add);x.setHours(0,0,0,0);return x}
     const weekStart = startOfWeek();
 
-    async function load(kind='week'){
+    // --- State ---
+    let currentTab = 'week';
+    let myId = null;
+    let timerId = null;
+
+    // get my user id for highlighting
+    const { data: { session } } = await supabase.auth.getSession();
+    myId = session?.user?.id || null;
+
+    // --- Loading function ---
+    async function load(kind='week') {
+      currentTab = kind;
       tabWeek.classList.toggle('active', kind==='week');
       tabSeason.classList.toggle('active', kind!=='week');
-
-      tbody.innerHTML = '<tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr>';
       statusEl.textContent = '';
+      tbody.innerHTML = '<tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr>';
 
-      const params = (kind==='week') ? { week_start: weekStart.toISOString().slice(0,10) } : {};
-      if (kind==='week'){
+      // range label
+      if (kind === 'week') {
         rangeEl.textContent = `Week of ${weekStart.toDateString()}`;
-      }else{
-        rangeEl.textContent = `Season to date`;
+      } else {
+        rangeEl.textContent = 'Season to date';
       }
 
+      // call RPC
+      const params = (kind==='week') ? { week_start: weekStart.toISOString().slice(0,10) } : {};
       const { data, error } = await supabase.rpc('get_leaderboard', params);
-      if (error){ statusEl.textContent = 'Error loading leaderboard'; console.error(error); return; }
 
-      if (!data || data.length===0){
+      // update timestamp
+      lastUpdatedEl.textContent = new Date().toLocaleTimeString();
+
+      if (error) {
+        console.error(error);
+        statusEl.textContent = 'Error loading leaderboard';
+        return;
+      }
+
+      if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="padding:18px;color:#64748b;">No results yet.</td></tr>';
         return;
       }
 
       tbody.innerHTML = '';
-      data.forEach((row, idx)=>{
+      data.forEach((row, idx) => {
         const tr = document.createElement('tr');
         if (row.user_id === myId) tr.classList.add('me');
         tr.innerHTML = `<td>${idx+1}</td><td>${row.display_name || 'Anon'}</td><td>${row.points}</td>`;
@@ -91,58 +156,25 @@
       });
     }
 
-    tabWeek.addEventListener('click', ()=>load('week'));
-    tabSeason.addEventListener('click', ()=>load('season'));
-    load('week');
+    // --- Auto refresh every 60s ---
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      timerId = setInterval(() => load(currentTab), 60000);
+    }
+    function stopAutoRefresh() { if (timerId) { clearInterval(timerId); timerId = null; } }
+    window.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopAutoRefresh(); else startAutoRefresh();
+    });
+    window.addEventListener('beforeunload', stopAutoRefresh);
+
+    // --- Wire UI ---
+    tabWeek.addEventListener('click', () => load('week'));
+    tabSeason.addEventListener('click', () => load('season'));
+    refreshBtn.addEventListener('click', () => load(currentTab));
+
+    // --- Initial load ---
+    await load('week');
+    startAutoRefresh();
   </script>
 </body>
-  <!-- Mini top-right nav -->
-<nav class="topnav">
-  <a href="predict.html" data-nav="predict">Predict</a>
-  <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-  <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-  <a href="profile.html" data-nav="profile">Profile</a>
-  <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
-  <button class="logout" id="navLogout" title="Sign out">Logout</button>
-</nav>
-
-<script type="module">
-  import { supabase } from './supabase-config.js';
-
-  // Highlight the current page
-  const path = location.pathname.toLowerCase();
-  const markActive = (key) => {
-    const el = document.querySelector(`.topnav [data-nav="${key}"]`);
-    if (el) el.classList.add('active');
-  };
-  if (path.endsWith('/predict.html')) markActive('predict');
-  else if (path.endsWith('/my-picks.html')) markActive('mypicks');
-  else if (path.endsWith('/leaderboard.html')) markActive('leaderboard');
-  else if (path.endsWith('/profile.html')) markActive('profile');
-  else if (path.endsWith('/admin.html')) markActive('admin');
-
-  // Show Admin link for admins
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      if (!error && data?.is_admin) {
-        document.getElementById('navAdmin').style.display = '';
-      }
-    }
-  } catch (e) {
-    console.warn('Nav init warning:', e?.message || e);
-  }
-
-  // Logout
-  document.getElementById('navLogout').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    location.replace('login.html');
-  });
-</script>
-
 </html>
