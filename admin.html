@@ -4,17 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="brand.css?v=19" />
+  <link rel="stylesheet" href="brand.css?v=22" />
   <style>
-    .panel{background:#fff;border-radius:16px;padding:20px;max-width:1000px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15);margin-bottom:20px}
+    .panel{background:#fff;border-radius:16px;padding:20px;max-width:1100px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15);margin-bottom:20px}
     .panel h3{margin-bottom:10px;color:#1f357a}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:center}
-    th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
-    .btn{background:#28428f;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .small{font-size:.85rem;color:#475569}
+    .small{font-size:.9rem;color:#475569}
+    .tiny{font-size:.8rem;color:#64748b}
+    .rowok{background:#f0fdf4}
     .danger{background:#b91c1c}
+    .muted{opacity:.65}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#1f357a;font-weight:700;font-size:.75rem}
+    .tag.ok{background:#dcfce7;color:#166534}
+    .tag.bad{background:#fee2e2;color:#991b1b}
+    .counter{font-weight:800}
+
+    table{width:100%;border-collapse:collapse;margin-top:10px;border-radius:12px;overflow:hidden}
+    th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:center}
+    th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
+    td.left{text-align:left}
+    .w60{width:60px}
+    .kick{color:#64748b;font-size:.9rem}
+
+    .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .spacer{flex:1 1 auto}
+
+    .btn{background:#28428f;color:#fff;border:none;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:700}
+    .btn.secondary{background:#475569}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .grid2{display:grid;grid-template-columns:1fr;gap:16px}
+    @media (min-width: 960px){ .grid2{grid-template-columns: 1fr 1fr;} }
+
+    .statusline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
   </style>
 </head>
 <body>
@@ -29,47 +49,74 @@
   </nav>
 
   <main class="landing">
+    <!-- Small logo -->
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
       <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
     </svg>
 
-    <!-- Global Lock Panel -->
+    <!-- Global controls -->
     <section class="panel">
-      <h3>Lock Week for Everyone</h3>
-      <p class="small">Force-close predictions for all players for this week.</p>
-      <button id="lockGlobal" class="btn danger">Lock Week Now</button>
-      <p id="lockGlobalStatus" class="small"></p>
+      <h3>Week Controls</h3>
+      <div class="toolbar">
+        <span class="small">Week of <strong id="weekLabel">Loading…</strong></span>
+        <span class="tag" id="globalState">Checking…</span>
+        <div class="spacer"></div>
+        <button id="lockGlobal" class="btn danger">Lock Week for Everyone</button>
+      </div>
+      <div class="statusline tiny" id="lockGlobalStatus"></div>
     </section>
 
-    <!-- Choose featured fixtures -->
+    <!-- Featured selection + Current featured side-by-side -->
     <section class="panel">
-      <h3>Choose 5 Featured Fixtures</h3>
-      <p class="small">Select exactly 5 fixtures for this week.</p>
-      <table id="allFixtures">
-        <thead><tr><th></th><th>Home</th><th>Away</th><th>Kick-off</th></tr></thead>
-        <tbody><tr><td colspan="4">Loading…</td></tr></tbody>
-      </table>
-      <button id="saveFeatured" class="btn" style="margin-top:12px">Save Featured</button>
-      <p id="saveStatus" class="small"></p>
+      <div class="grid2">
+        <div>
+          <h3>Select Weekly Fixtures <span class="tiny">(choose <span class="counter" id="selCount">0</span>/5)</span></h3>
+          <p class="small">Tick up to 5 upcoming fixtures. Players will see only these.</p>
+          <div class="toolbar" style="margin-top:6px">
+            <button id="saveFeatured" class="btn">Save Featured</button>
+            <button id="clearFeatured" class="btn secondary">Clear Featured</button>
+            <div class="spacer"></div>
+            <span class="tiny">Showing next 25 fixtures</span>
+          </div>
+          <table id="allFixtures">
+            <thead>
+              <tr>
+                <th class="w60"></th>
+                <th>Fixture</th>
+                <th>Status</th>
+                <th>Kick-off</th>
+              </tr>
+            </thead>
+            <tbody><tr><td colspan="4">Loading…</td></tr></tbody>
+          </table>
+          <p id="saveStatus" class="tiny" style="margin-top:6px"></p>
+        </div>
+
+        <div>
+          <h3>Current Featured (What players see)</h3>
+          <table id="featuredFixtures">
+            <thead>
+              <tr>
+                <th class="w60">#</th>
+                <th>Fixture</th>
+                <th>Kick-off</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody><tr><td colspan="4">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
-    <!-- Current featured fixtures -->
+    <!-- Who has submitted -->
     <section class="panel">
-      <h3>Current Featured Fixtures</h3>
-      <table id="featuredFixtures">
-        <thead><tr><th>#</th><th>Home</th><th>Away</th><th>Kick-off</th></tr></thead>
-        <tbody><tr><td colspan="4">Loading…</td></tr></tbody>
-      </table>
-    </section>
-
-    <!-- Who has made predictions -->
-    <section class="panel">
-      <h3>Who Has Made Predictions</h3>
+      <h3>Who Has Submitted Picks (This Week)</h3>
       <table id="predMakers">
-        <thead><tr><th>#</th><th>Name</th></tr></thead>
-        <tbody><tr><td colspan="2">Loading…</td></tr></tbody>
+        <thead><tr><th class="w60">#</th><th>Player</th><th>Locked?</th></tr></thead>
+        <tbody><tr><td colspan="3">Loading…</td></tr></tbody>
       </table>
     </section>
   </main>
@@ -78,111 +125,226 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
+    // --- Helpers ---
+    function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
+    const weekStart = startOfWeek();
+    const weekKey = weekStart.toISOString().slice(0,10);
+
+    // --- Elements ---
+    const logoutBtn = document.getElementById('navLogout');
+    const weekLabel = document.getElementById('weekLabel');
+    const globalState = document.getElementById('globalState');
     const lockBtn = document.getElementById('lockGlobal');
     const lockStatus = document.getElementById('lockGlobalStatus');
+
     const allTbody = document.querySelector('#allFixtures tbody');
     const featTbody = document.querySelector('#featuredFixtures tbody');
     const makersTbody = document.querySelector('#predMakers tbody');
-    const saveBtn = document.getElementById('saveFeatured');
-    const saveStatus = document.getElementById('saveStatus');
-    const logoutBtn = document.getElementById('navLogout');
 
+    const saveBtn = document.getElementById('saveFeatured');
+    const clearBtn = document.getElementById('clearFeatured');
+    const saveStatus = document.getElementById('saveStatus');
+    const selCount = document.getElementById('selCount');
+
+    // --- Auth guard + admin check ---
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) window.location.replace('login.html');
+    if (!session) { window.location.replace('login.html'); throw new Error('no session'); }
     const user = session.user;
 
-    // check admin
     const { data: me } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-    if (!me?.is_admin) window.location.replace('predict.html');
+    if (!me?.is_admin) { window.location.replace('predict.html'); throw new Error('not admin'); }
 
-    function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
-    const weekStart=startOfWeek();
-
-    // --- Logout handler (fixed) ---
+    // logout
     logoutBtn.addEventListener('click', async () => {
       await supabase.auth.signOut();
       window.location.replace('login.html');
     });
 
-    // --- Global lock action ---
+    // Week label
+    weekLabel.textContent = weekStart.toDateString();
+
+    // ===== Global lock status & action =====
+    async function refreshGlobalLock(){
+      const { data } = await supabase
+        .from('global_locks')
+        .select('locked')
+        .eq('week_start', weekKey)
+        .maybeSingle();
+      if (data?.locked) {
+        globalState.textContent = 'Globally Locked';
+        globalState.classList.add('ok');
+        lockBtn.disabled = true;
+      } else {
+        globalState.textContent = 'Open';
+        globalState.classList.remove('ok');
+        lockBtn.disabled = false;
+      }
+    }
+
     lockBtn.addEventListener('click', async ()=>{
       if(!confirm('Lock predictions for ALL players this week?')) return;
       lockStatus.textContent='Locking…';
       const { error } = await supabase.from('global_locks').upsert({
-        week_start: weekStart.toISOString().slice(0,10),
+        week_start: weekKey,
         locked: true
       }, { onConflict: 'week_start' });
-      if(error){ lockStatus.textContent='Error locking.'; console.error(error);}
-      else { lockStatus.textContent='Week is now locked for everyone ✅'; }
+      lockStatus.textContent = error ? 'Error locking week.' : 'Week locked for everyone ✅';
+      await refreshGlobalLock();
     });
 
-    // === Fixture selection + makers ===
-    async function loadAllFixtures(){
-      const { data } = await supabase.from('fixtures')
-        .select('id, home_team, away_team, utc_date, featured')
-        .gt('utc_date', new Date().toISOString())
-        .order('utc_date',{ascending:true}).limit(20);
-      allTbody.innerHTML='';
-      data.forEach(fx=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`
-          <td><input type="checkbox" data-id="${fx.id}" ${fx.featured?'checked':''}></td>
-          <td>${fx.home_team}</td>
-          <td>${fx.away_team}</td>
-          <td>${new Date(fx.utc_date).toLocaleString()}</td>`;
-        allTbody.appendChild(tr);
+    // ===== Load upcoming fixtures (select up to 5) =====
+    function updateSelectedCounter(){
+      const count = allTbody.querySelectorAll('input[type=checkbox]:checked').length;
+      selCount.textContent = count;
+      // hard-limit: disable other checkboxes after 5
+      const boxes = allTbody.querySelectorAll('input[type=checkbox]');
+      boxes.forEach(cb => {
+        if (!cb.checked) cb.disabled = (count >= 5);
       });
     }
 
+    async function loadAllFixtures(){
+      // Next 25 fixtures (any competition) ordered
+      const { data } = await supabase
+        .from('fixtures')
+        .select('id, home_team, away_team, utc_date, featured, status')
+        .gt('utc_date', new Date().toISOString())
+        .order('utc_date', { ascending: true })
+        .limit(25);
+
+      allTbody.innerHTML = '';
+      if (!data || data.length === 0) {
+        allTbody.innerHTML = '<tr><td colspan="4">No upcoming fixtures</td></tr>';
+        return;
+      }
+
+      data.forEach(fx => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="checkbox" data-id="${fx.id}" ${fx.featured ? 'checked' : ''}></td>
+          <td class="left"><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
+          <td>${fx.status}</td>
+          <td class="kick">${new Date(fx.utc_date).toLocaleString()}</td>
+        `;
+        allTbody.appendChild(tr);
+      });
+
+      // wire limits
+      allTbody.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+        cb.addEventListener('change', updateSelectedCounter);
+      });
+      updateSelectedCounter();
+    }
+
     saveBtn.addEventListener('click', async ()=>{
-      const selected=[...allTbody.querySelectorAll('input[type=checkbox]:checked')].map(cb=>Number(cb.dataset.id));
-      if(selected.length!==5){saveStatus.textContent='Select exactly 5.';return;}
-      saveStatus.textContent='Saving…';
-      await supabase.from('fixtures').update({featured:false}).neq('id',0);
-      const { error } = await supabase.from('fixtures').update({featured:true}).in('id',selected);
-      saveStatus.textContent=error?'Error':'Featured updated ✅';
-      loadFeatured();
+      const selected=[...allTbody.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.dataset.id);
+      if(selected.length !== 5){
+        saveStatus.textContent = 'Please select exactly 5 fixtures.'; return;
+      }
+      saveStatus.textContent = 'Saving…';
+      await supabase.from('fixtures').update({ featured: false }).neq('id', ''); // clear all
+      const { error } = await supabase.from('fixtures').update({ featured: true }).in('id', selected);
+      saveStatus.textContent = error ? 'Error saving featured.' : 'Featured fixtures updated ✅';
+      await loadFeatured();
+      await loadMakers();
+      await loadAllFixtures(); // to reflect lock/checked & disable state
     });
 
+    clearBtn.addEventListener('click', async ()=>{
+      if(!confirm('Clear all featured fixtures?')) return;
+      await supabase.from('fixtures').update({ featured: false }).neq('id','');
+      saveStatus.textContent = 'Cleared.';
+      selCount.textContent = '0';
+      await loadFeatured();
+      await loadMakers();
+      await loadAllFixtures();
+    });
+
+    // ===== Current featured =====
     async function loadFeatured(){
-      const { data } = await supabase.from('fixtures')
-        .select('home_team,away_team,utc_date').eq('featured',true).order('utc_date');
-      featTbody.innerHTML='';
-      if(!data||data.length===0){featTbody.innerHTML='<tr><td colspan="4">None</td></tr>';return;}
-      data.forEach((fx,i)=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${i+1}</td><td>${fx.home_team}</td><td>${fx.away_team}</td><td>${new Date(fx.utc_date).toLocaleString()}</td>`;
+      const { data } = await supabase
+        .from('fixtures')
+        .select('home_team, away_team, utc_date, home_score, away_score, status')
+        .eq('featured', true)
+        .order('utc_date', { ascending: true });
+
+      featTbody.innerHTML = '';
+      if (!data || data.length === 0) {
+        featTbody.innerHTML = '<tr><td colspan="4">No featured fixtures set</td></tr>';
+        return;
+      }
+
+      data.forEach((fx, i)=>{
+        const tr = document.createElement('tr');
+        const score = (fx.home_score == null || fx.away_score == null) ? '—' : `${fx.home_score} : ${fx.away_score}`;
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td class="left"><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
+          <td class="kick">${new Date(fx.utc_date).toLocaleString()}</td>
+          <td>${score} <span class="tiny">(${fx.status})</span></td>
+        `;
         featTbody.appendChild(tr);
       });
     }
 
+    // ===== Who has submitted (any pick on featured fixtures) + whether locked this week =====
+    async function loadMersHelper(){
+      const { data: feats } = await supabase.from('fixtures').select('id').eq('featured', true);
+      if (!feats || feats.length === 0) return { ids: [], names: [] };
+
+      const ids = feats.map(f => f.id);
+      const { data: preds } = await supabase
+        .from('predictions')
+        .select('user_id')
+        .in('fixture_id', ids);
+
+      const uniqueIds = [...new Set((preds || []).map(p => p.user_id))];
+      if (uniqueIds.length === 0) return { ids: [], names: [] };
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', uniqueIds);
+
+      return { ids: uniqueIds, names: profiles || [] };
+    }
+
     async function loadMakers(){
-      const { data: feats } = await supabase.from('fixtures').select('id').eq('featured',true);
-      if(!feats||feats.length===0){makersTbody.innerHTML='<tr><td colspan="2">No featured fixtures</td></tr>';return;}
-      const ids=feats.map(f=>f.id);
-      const { data } = await supabase.from('predictions').select('user_id').in('fixture_id',ids);
-      const unique=[...new Set(data.map(r=>r.user_id))];
-      if(unique.length===0){makersTbody.innerHTML='<tr><td colspan="2">No predictions yet</td></tr>';return;}
-      const { data: names } = await supabase.from('profiles').select('id,display_name').in('id',unique);
-      makersTbody.innerHTML='';
-      names.forEach((n,i)=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${i+1}</td><td>${n.display_name||'Anon'}</td>`;
+      makersTbody.innerHTML = '<tr><td colspan="3">Loading…</td></tr>';
+      const { ids, names } = await loadMersHelper();
+      makersTbody.innerHTML = '';
+
+      if (!ids.length) {
+        makersTbody.innerHTML = '<tr><td colspan="3">No submissions yet</td></tr>';
+        return;
+      }
+
+      // who locked this week?
+      const { data: locks } = await supabase
+        .from('week_locks')
+        .select('user_id')
+        .eq('week_start', weekKey);
+
+      const lockedSet = new Set((locks || []).map(l => l.user_id));
+
+      names.sort((a,b)=> (a.display_name||'').localeCompare(b.display_name||''));
+      names.forEach((n, i)=>{
+        const locked = lockedSet.has(n.id);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td class="left">${n.display_name || 'Anon'}</td>
+          <td>${locked ? '<span class="tag ok">Locked</span>' : '<span class="tag bad">Open</span>'}</td>
+        `;
         makersTbody.appendChild(tr);
       });
     }
 
-    loadAllFixtures();
-    loadFeatured();
-    loadMakers();
+    // ===== Boot =====
+    await refreshGlobalLock();
+    await loadAllFixtures();
+    await loadFeatured();
+    await loadMakers();
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
