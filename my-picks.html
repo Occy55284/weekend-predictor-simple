@@ -4,19 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks</title>
-  <link rel="stylesheet" href="brand.css?v=13" />
+  <link rel="stylesheet" href="brand.css?v=23" />
   <style>
-    .panel{background:#fff;border-radius:16px;padding:20px;max-width:900px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+    .panel{background:#fff;border-radius:16px;padding:20px;max-width:1000px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+    .toolbar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:10px}
+    .btn{background:#28428f;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:#475569}
+    .meta{font-size:.9rem;color:#475569;text-align:center;margin-top:6px}
+
     table.pk{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden}
     .pk th,.pk td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center}
     .pk th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
     .ok{color:#065f46;font-weight:700}
     .exact{color:#0f766e;font-weight:800}
     .miss{color:#b91c1c;font-weight:700}
+    .left{text-align:left}
+    .kick{color:#64748b;font-size:.9rem}
   </style>
 </head>
 <body>
+  <!-- Top nav -->
+  <nav class="topnav">
+    <a href="predict.html" data-nav="predict">Predict</a>
+    <a href="my-picks.html" class="active" data-nav="mypicks">My Picks</a>
+    <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+    <a href="profile.html" data-nav="profile">Profile</a>
+    <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
+    <button class="logout" id="navLogout">Logout</button>
+  </nav>
+
   <main class="landing">
+    <!-- Small logo -->
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
@@ -24,71 +42,138 @@
     </svg>
 
     <section class="panel">
-      <h2 style="color:#1f357a;margin-bottom:10px">My Picks (This Week)</h2>
+      <h2 style="color:#1f357a;margin-bottom:8px;text-align:center">My Picks</h2>
+
+      <div class="toolbar">
+        <button id="prevBtn" class="btn secondary" title="Previous week">← Prev</button>
+        <div id="weekLabel" class="meta" style="min-width:260px;text-align:center">Week loading…</div>
+        <button id="thisWeekBtn" class="btn secondary" title="Jump to this week">This Week</button>
+        <button id="nextBtn" class="btn secondary" title="Next week">Next →</button>
+      </div>
+
       <table class="pk" id="table">
-        <thead><tr><th>#</th><th>Fixture</th><th>Kick-off</th><th>My Pick</th><th>Result</th><th>Points</th></tr></thead>
-        <tbody id="tbody"><tr><td colspan="6" style="padding:18px;color:#64748b;">Loading…</td></tr></tbody>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fixture</th>
+            <th>Kick-off</th>
+            <th>Your Pick</th>
+            <th>Result</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="6" style="padding:18px;color:#64748b;">Loading…</td></tr>
+        </tbody>
       </table>
-      <p id="status" class="help"></p>
+
+      <p id="totalLine" class="meta"></p>
+      <p id="status" class="meta"></p>
     </section>
   </main>
 
   <script type="module" src="supabase-config.js"></script>
   <script type="module">
     import { supabase } from './supabase-config.js';
+
+    // --- Navbar admin visibility + logout ---
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.replace('login.html');
+        return;
+      }
+      document.getElementById('navLogout').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        window.location.replace('login.html');
+      });
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        if (!error && data?.is_admin) {
+          document.getElementById('navAdmin').style.display = '';
+        }
+      } catch {}
+    })();
+
+    // --- Elements ---
     const tbody = document.getElementById('tbody');
     const statusEl = document.getElementById('status');
+    const totalLine = document.getElementById('totalLine');
+    const weekLabel = document.getElementById('weekLabel');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const thisWeekBtn = document.getElementById('thisWeekBtn');
 
+    // --- Time helpers ---
+    function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
+    function nextMonday(d){const x=new Date(d);const day=x.getDay();const add=((8-day)%7)||7;x.setDate(x.getDate()+add);x.setHours(0,0,0,0);return x}
+    function isoDate(d){return d.toISOString().slice(0,10)}
+
+    // --- State ---
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) window.location.replace('login.html');
     const user = session.user;
 
-    function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
-    const weekStart = startOfWeek();
+    let currentWeekStart = startOfWeek(new Date());
 
+    // Points logic (3 exact, 1 outcome)
     function calcPoints(h,a,ph,pa){
-      if (h==null || a==null || ph==null || pa==null) return 0;      // no result yet
-      if (h===ph && a===pa) return 3;                                // exact
+      if (h==null || a==null || ph==null || pa==null) return 0;
+      if (h===ph && a===pa) return 3;
       const outcome = Math.sign(h-a), pickOut = Math.sign(ph-pa);
-      return outcome===pickOut ? 1 : 0;                              // correct outcome
+      return outcome===pickOut ? 1 : 0;
     }
 
-    async function load(){
-      // Get my predictions for fixtures this week (featured OR upcoming fallback)
-      let { data: fixtures } = await supabase
+    // Load fixtures + your picks for the selected week
+    async function loadWeek(){
+      statusEl.textContent = '';
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:18px;color:#64748b;">Loading…</td></tr>';
+
+      const weekEnd = nextMonday(new Date(currentWeekStart));
+      weekLabel.textContent = `${currentWeekStart.toDateString()} → ${weekEnd.toDateString()}`;
+
+      // Get fixtures in week; prefer featured for that week (they remain flagged after the week)
+      let { data: fixtures, error: fxErr } = await supabase
         .from('fixtures')
         .select('id, home_team, away_team, utc_date, home_score, away_score, featured')
-        .eq('featured', true)
+        .gte('utc_date', currentWeekStart.toISOString())
+        .lt('utc_date', weekEnd.toISOString())
         .order('utc_date', { ascending: true });
 
-      if (!fixtures || fixtures.length===0){
-        const nowISO = new Date().toISOString();
-        const res = await supabase
-          .from('fixtures')
-          .select('id, home_team, away_team, utc_date, home_score, away_score')
-          .gt('utc_date', nowISO)
-          .order('utc_date', { ascending: true })
-          .limit(10);
-        fixtures = res.data || [];
+      if (fxErr) { statusEl.textContent='Error loading fixtures.'; console.error(fxErr); return; }
+
+      // If some weeks had no "featured" flag (early testing), still show whatever exists
+      const featured = (fixtures||[]).filter(f => f.featured);
+      const list = featured.length ? featured : (fixtures || []);
+
+      if (!list.length){
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:18px;color:#64748b;">No fixtures this week.</td></tr>';
+        totalLine.textContent = '';
+        return;
       }
 
-      const ids = fixtures.map(f=>f.id);
-      const { data: preds } = await supabase
+      // Your predictions for those fixtures
+      const ids = list.map(f=>f.id);
+      const { data: preds, error: pErr } = await supabase
         .from('predictions')
         .select('fixture_id, home_goals, away_goals')
         .eq('user_id', user.id)
         .in('fixture_id', ids);
 
+      if (pErr) { statusEl.textContent='Error loading your picks.'; console.error(pErr); return; }
+
       const predMap = new Map((preds||[]).map(p=>[p.fixture_id,p]));
 
+      // Render
       tbody.innerHTML='';
       let total=0;
-      fixtures.forEach((fx, i)=>{
+      list.forEach((fx, i)=>{
         const p = predMap.get(fx.id);
-        const pts = calcPoints(
-          fx.home_score, fx.away_score,
-          p?.home_goals ?? null, p?.away_goals ?? null
-        );
+        const pts = calcPoints(fx.home_score, fx.away_score, p?.home_goals ?? null, p?.away_goals ?? null);
         total += pts;
 
         const resTxt = (fx.home_score==null || fx.away_score==null)
@@ -96,12 +181,11 @@
           : `${fx.home_score} : ${fx.away_score}`;
 
         const ptsClass = pts===3 ? 'exact' : (pts===1 ? 'ok' : 'miss');
-
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${i+1}</td>
-          <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
-          <td>${new Date(fx.utc_date).toLocaleString()}</td>
+          <td class="left"><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
+          <td class="kick">${new Date(fx.utc_date).toLocaleString()}</td>
           <td>${p ? `${p.home_goals} : ${p.away_goals}` : '—'}</td>
           <td>${resTxt}</td>
           <td class="${ptsClass}">${pts}</td>
@@ -109,61 +193,16 @@
         tbody.appendChild(tr);
       });
 
-      const totalRow = document.createElement('tr');
-      totalRow.innerHTML = `<td colspan="5" style="text-align:right;font-weight:700">Total</td><td style="font-weight:800">${total}</td>`;
-      tbody.appendChild(totalRow);
+      totalLine.textContent = `Total points for the week: ${total}`;
     }
 
-    load();
+    // Week navigation
+    prevBtn.addEventListener('click', ()=>{ currentWeekStart = new Date(currentWeekStart.getTime() - 7*24*60*60*1000); loadWeek(); });
+    nextBtn.addEventListener('click', ()=>{ currentWeekStart = new Date(currentWeekStart.getTime() + 7*24*60*60*1000); loadWeek(); });
+    thisWeekBtn.addEventListener('click', ()=>{ currentWeekStart = startOfWeek(new Date()); loadWeek(); });
+
+    // Initial load
+    await loadWeek();
   </script>
 </body>
-  <!-- Mini top-right nav -->
-<nav class="topnav">
-  <a href="predict.html" data-nav="predict">Predict</a>
-  <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-  <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-  <a href="profile.html" data-nav="profile">Profile</a>
-  <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
-  <button class="logout" id="navLogout" title="Sign out">Logout</button>
-</nav>
-
-<script type="module">
-  import { supabase } from './supabase-config.js';
-
-  // Highlight the current page
-  const path = location.pathname.toLowerCase();
-  const markActive = (key) => {
-    const el = document.querySelector(`.topnav [data-nav="${key}"]`);
-    if (el) el.classList.add('active');
-  };
-  if (path.endsWith('/predict.html')) markActive('predict');
-  else if (path.endsWith('/my-picks.html')) markActive('mypicks');
-  else if (path.endsWith('/leaderboard.html')) markActive('leaderboard');
-  else if (path.endsWith('/profile.html')) markActive('profile');
-  else if (path.endsWith('/admin.html')) markActive('admin');
-
-  // Show Admin link for admins
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      if (!error && data?.is_admin) {
-        document.getElementById('navAdmin').style.display = '';
-      }
-    }
-  } catch (e) {
-    console.warn('Nav init warning:', e?.message || e);
-  }
-
-  // Logout
-  document.getElementById('navLogout').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    location.replace('login.html');
-  });
-</script>
-
 </html>
