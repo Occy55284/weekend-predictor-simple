@@ -123,3 +123,62 @@
       <div class="kicker">Pick. Lock. Brag.</div>
       <h1>The easiest way to play a weekly football predictor with friends</h1>
       <p class="lead">
+        Choose the five featured fixtures, lock your scorelines, and track your points live as results roll in.
+        Zero spreadsheets. Zero hassle. Just weekend glory.
+      </p>
+      <div class="cta">
+        <button id="ctaStart" class="btn primary">Get started</button>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="goal"></div>
+      <div class="target">
+        <!-- Target with crosshairs -->
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" stroke="black" stroke-width="4" fill="none"/>
+          <line x1="50" y1="5" x2="50" y2="95" stroke="black" stroke-width="4"/>
+          <line x1="5" y1="50" x2="95" y2="50" stroke="black" stroke-width="4"/>
+          <circle cx="50" cy="50" r="10" fill="black"/>
+        </svg>
+      </div>
+      <div class="turf"></div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="steps">
+    <div class="step">
+      <h3>1. Create your profile</h3>
+      <p>Sign in with a magic link, add a nickname, and choose your favourite team.</p>
+    </div>
+    <div class="step">
+      <h3>2. Make your picks</h3>
+      <p>Admins select five fixtures each week. Predict the score for each one, then lock your picks.</p>
+    </div>
+    <div class="step">
+      <h3>3. Track the bragging rights</h3>
+      <p>As results come in, points update automatically. Check your weekly and season ranks.</p>
+    </div>
+  </section>
+
+  <footer>
+    Built for mates’ leagues. No ads. No faff.
+  </footer>
+
+  <script type="module" src="supabase-config.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    const ctaStart = document.getElementById('ctaStart');
+    async function routeButton(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        ctaStart.onclick = () => location.href = 'predict.html';
+      } else {
+        ctaStart.onclick = () => location.href = 'login.html';
+      }
+    }
+    routeButton();
+  </script>
+</body>
+</html>
