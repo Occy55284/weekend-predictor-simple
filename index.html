@@ -45,9 +45,17 @@
     h1{font-size:clamp(32px,4.2vw,54px); line-height:1.05; margin:8px 0 10px}
     .lead{color:var(--muted); font-size:clamp(16px,2.1vw,18px);}
 
-    .cta{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap}
-    .cta .btn{padding:12px 18px; border-radius:14px; border:none; cursor:pointer; font-weight:800}
-    .btn.primary{background:var(--brand); color:#fff}
+    .cta{display:flex; justify-content:center; margin-top:20px}
+    .cta .btn{
+      padding:16px 28px;
+      font-size:1.2rem;
+      border-radius:14px;
+      border:none;
+      cursor:pointer;
+      font-weight:800;
+      background:var(--brand);
+      color:#fff;
+    }
 
     /* Goal scene card */
     .scene{
@@ -65,18 +73,12 @@
         linear-gradient(90deg, rgba(0,0,0,.08) 1px, transparent 1px) 0 0/22px 18px,
         linear-gradient(0deg, rgba(0,0,0,.08) 1px, transparent 1px) 0 0/22px 18px;
     }
-    .ball{
+    .target{
       position:absolute; bottom:95px; left:14%;
-      width:60px; aspect-ratio:1/1; border-radius:50%;
-      background:#fff; box-shadow:0 10px 18px rgba(0,0,0,.25), inset 0 -6px 10px rgba(0,0,0,.09);
-      display:grid; place-items:center; animation:float 2.8s ease-in-out infinite;
+      width:70px; aspect-ratio:1/1;
+      display:grid; place-items:center;
     }
-    @keyframes float{
-      0%{ transform:translateY(0) }
-      50%{ transform:translateY(-10px) }
-      100%{ transform:translateY(0) }
-    }
-    .ball svg{width:80%; height:80%}
+    .target svg{width:100%; height:100%;}
 
     .turf{position:absolute; inset:auto 0 0 0; height:90px;
       background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.08)),
@@ -121,77 +123,3 @@
       <div class="kicker">Pick. Lock. Brag.</div>
       <h1>The easiest way to play a weekly football predictor with friends</h1>
       <p class="lead">
-        Choose the five featured fixtures, lock your scorelines, and track your points live as results roll in.
-        Zero spreadsheets. Zero hassle. Just weekend glory.
-      </p>
-      <div class="cta">
-        <button id="ctaStart" class="btn primary">Get started</button>
-      </div>
-    </div>
-
-    <div class="scene">
-      <div class="goal"></div>
-      <div class="ball">
-        <!-- Proper football SVG -->
-        <svg viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="48" fill="white" stroke="black" stroke-width="3"/>
-          <polygon points="50,20 65,35 60,55 40,55 35,35" fill="black"/>
-          <polygon points="50,80 65,65 60,45 40,45 35,65" fill="black"/>
-          <polygon points="20,50 35,35 55,40 55,60 35,65" fill="black"/>
-          <polygon points="80,50 65,35 45,40 45,60 65,65" fill="black"/>
-        </svg>
-      </div>
-      <div class="turf"></div>
-    </div>
-  </section>
-
-  <!-- How it works -->
-  <section class="steps">
-    <div class="step">
-      <h3>1. Create your profile</h3>
-      <p>Sign in with a magic link, add a nickname, and choose your favourite team.</p>
-    </div>
-    <div class="step">
-      <h3>2. Make your picks</h3>
-      <p>Admins select five fixtures each week. Predict the score for each one, then lock your picks.</p>
-    </div>
-    <div class="step">
-      <h3>3. Track the bragging rights</h3>
-      <p>As results come in, points update automatically. Check your weekly and season ranks.</p>
-    </div>
-  </section>
-
-  <footer>
-    Built for mates’ leagues. No ads. No faff.
-  </footer>
-
-  <script type="module" src="supabase-config.js"></script>
-  <script type="module">
-    import { supabase } from './supabase-config.js';
-    const ctaStart = document.getElementById('ctaStart');
-    async function routeButton(){
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        ctaStart.onclick = () => location.href = 'predict.html';
-      } else {
-        ctaStart.onclick = () => location.href = 'login.html';
-      }
-    }
-    routeButton();
-  </script>
-</body>
-</html>
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
