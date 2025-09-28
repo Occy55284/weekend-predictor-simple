@@ -3,197 +3,270 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Profile</title>
-  <link rel="stylesheet" href="brand.css?v=11" />
+  <title>Profile • Weekend Predictor</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#0f172a;
+      --muted:#475569;
+      --brand:#2643B3;   /* deep blue */
+      --accent:#16a34a;  /* green */
+      --card:#ffffff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 50% -20%, #e9f0ff 0%, rgba(233,240,255,0) 55%) ,
+        linear-gradient(180deg, #f7faff 0%, #eef4ff 45%, #f8fbff 100%);
+      display:grid; place-items:center;
+      padding:20px 12px;
+    }
+
+    /* Top brand */
+    .brand{
+      display:flex; align-items:center; gap:10px; justify-content:center;
+      margin-bottom:10px; color:#0f172a; font-weight:800;
+    }
+    .logo{width:38px; height:38px}
+
+    /* Card */
+    .card{
+      width:min(720px, 94vw);
+      background:
+        radial-gradient(300px 140px at 20% 10%, rgba(22,163,74,.08), transparent 60%),
+        radial-gradient(380px 170px at 80% 15%, rgba(38,67,179,.10), transparent 60%),
+        linear-gradient(180deg, #fff, #f4f7ff);
+      border:1px solid #e6e9f5;
+      border-radius:20px;
+      padding:28px 22px 22px;
+      box-shadow:0 14px 40px rgba(17,24,39,.12);
+    }
+    h1{
+      text-align:center;
+      font-size:clamp(24px, 3.4vw, 36px);
+      margin:4px 0 2px;
+    }
+    p.lead{color:var(--muted); text-align:center; margin:0 0 14px}
+
+    form{margin-top:6px}
+    .row{display:grid; gap:10px; grid-template-columns:1fr}
+    @media (min-width: 720px){ .row{grid-template-columns:1fr 1fr} }
+
+    label{font-weight:800; font-size:.95rem; margin-bottom:4px; display:block}
+    .field{margin:8px 0 14px}
+
+    input[type="text"], select{
+      width:100%; padding:14px 14px;
+      border:1px solid #cdd6f4; border-radius:12px;
+      font-size:1rem; background:#fff;
+      box-shadow:inset 0 1px 0 rgba(0,0,0,.03);
+    }
+
+    .help{color:#64748b; font-size:.9rem; margin-top:2px}
+    .msg{margin-top:12px; font-size:.95rem; text-align:center}
+    .ok{color:#166534}
+    .err{color:#b91c1c}
+
+    .actions{
+      margin-top:8px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap
+    }
+    .btn{
+      border:none; cursor:pointer; font-weight:900; letter-spacing:.2px;
+      padding:14px 20px; border-radius:12px; font-size:1rem;
+    }
+    .primary{
+      background:linear-gradient(135deg, var(--brand), #1b3186);
+      color:#fff; box-shadow:0 8px 20px rgba(38,67,179,.28);
+    }
+    .secondary{background:#e5e7eb}
+    .link{color:#1f307a; text-decoration:none; font-weight:700}
+
+    .foot{
+      margin-top:14px; color:#64748b; font-size:.9rem; text-align:center
+    }
+  </style>
 </head>
 <body>
-  <main class="landing">
-    <!-- Logo -->
-    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
-      <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
-      <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
-            fill="#0E3E2A"></path>
-    </svg>
 
-    <div class="card">
-      <h2>My Profile</h2>
-      <form id="profile-form">
-        <label>
-          Nickname:<br />
-          <input type="text" id="nickname" required />
-        </label>
-        <br /><br />
-        <label>
-          Favourite Team:<br />
-          <select id="team" required>
-            <option value="">Select your team</option>
-            <!-- Premier League (current) -->
-            <option>Arsenal</option>
-            <option>Aston Villa</option>
-            <option>Bournemouth</option>
-            <option>Brentford</option>
-            <option>Brighton</option>
-            <option>Chelsea</option>
-            <option>Crystal Palace</option>
-            <option>Everton</option>
-            <option>Fulham</option>
-            <option>Ipswich Town</option>
-            <option>Leicester City</option>
-            <option>Liverpool</option>
-            <option>Manchester City</option>
-            <option>Manchester United</option>
-            <option>Newcastle United</option>
-            <option>Nottingham Forest</option>
-            <option>Southampton</option>
-            <option>Tottenham Hotspur</option>
-            <option>West Ham United</option>
-            <option>Wolverhampton Wanderers</option>
-          </select>
-        </label>
-        <br /><br />
-        <button type="submit">Save Profile</button>
-      </form>
-      <button id="logout" style="margin-top:15px;background:#999;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">
-        Logout
-      </button>
-      <p id="status" style="margin-top:10px;font-size:.9rem;color:#1f357a;"></p>
+  <div class="wrap">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
+        <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
+        <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
+              fill="#0E3E2A"></path>
+      </svg>
+      <span>Weekend Predictor</span>
     </div>
-  </main>
+
+    <section class="card" id="card">
+      <h1>Your Profile</h1>
+      <p class="lead">Pick a nickname and your favourite team.</p>
+
+      <form id="form">
+        <div class="row">
+          <div class="field">
+            <label for="nickname">Nickname</label>
+            <input id="nickname" type="text" placeholder="e.g. Mark 2" required />
+            <div class="help">Shown on the leaderboard.</div>
+          </div>
+
+          <div class="field">
+            <label for="team">Favourite team</label>
+            <select id="team">
+              <option value="">Select a team…</option>
+              <!-- options will be injected -->
+              <option value="__other">Other…</option>
+            </select>
+            <div id="otherWrap" class="field" style="display:none; margin-top:8px">
+              <input id="otherTeam" type="text" placeholder="Type your team" />
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="save" type="submit" class="btn primary">Save & continue</button>
+          <button id="logout" type="button" class="btn secondary">Log out</button>
+        </div>
+      </form>
+
+      <div id="message" class="msg"></div>
+
+      <div class="foot">
+        <a class="link" href="index.html">← Back to home</a>
+      </div>
+    </section>
+  </div>
 
   <script type="module" src="supabase-config.js"></script>
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const form = document.getElementById('profile-form');
-    const nicknameEl = document.getElementById('nickname');
-    const teamEl = document.getElementById('team');
-    const statusEl = document.getElementById('status');
+    const nickname = document.getElementById('nickname');
+    const teamSel = document.getElementById('team');
+    const otherWrap = document.getElementById('otherWrap');
+    const otherTeam = document.getElementById('otherTeam');
+    const form = document.getElementById('form');
+    const saveBtn = document.getElementById('save');
     const logoutBtn = document.getElementById('logout');
+    const msg = document.getElementById('message');
 
-    // 1) Get session (Supabase auto-parses #access_token on first load)
+    // Require auth
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    if (!session?.user) {
       window.location.replace('login.html');
+      throw new Error('No session');
     }
     const user = session.user;
 
-    // 2) Load profile (+ auto-redirects)
-    async function loadProfile() {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('display_name, favorite_team, is_admin')
-        .eq('id', user.id)
-        .single();
+    // Populate teams from fixtures (both home and away, distinct)
+    async function loadTeams(){
+      const seen = new Set();
+      const list = [];
 
-      if (error && error.code !== 'PGRST116') {
-        console.error(error);
-        statusEl.textContent = 'Error loading profile';
-        return;
-      }
+      // home teams
+      const { data: h } = await supabase
+        .from('fixtures')
+        .select('home_team')
+        .not('home_team', 'is', null)
+        .order('home_team',{ascending:true})
+        .limit(200);
+      (h||[]).forEach(r => { const t=r.home_team?.trim(); if(t && !seen.has(t)){ seen.add(t); list.push(t);} });
 
-      const display_name = data?.display_name ?? '';
-      const favorite_team = data?.favorite_team ?? '';
-      const is_admin = !!data?.is_admin;
+      // away teams
+      const { data: a } = await supabase
+        .from('fixtures')
+        .select('away_team')
+        .not('away_team', 'is', null)
+        .order('away_team',{ascending:true})
+        .limit(200);
+      (a||[]).forEach(r => { const t=r.away_team?.trim(); if(t && !seen.has(t)){ seen.add(t); list.push(t);} });
 
-      // Admins go straight to admin
-      if (is_admin) {
-        window.location.replace('admin.html');
-        return;
-      }
+      list.sort((x,y)=>x.localeCompare(y));
 
-      // If profile exists & looks complete, go predict
-      if (display_name && favorite_team) {
-        window.location.replace('predict.html');
-        return;
-      }
-
-      // Otherwise, fill the fields so user can complete and save
-      nicknameEl.value = display_name;
-      if ([...teamEl.options].some(o => o.value === favorite_team)) {
-        teamEl.value = favorite_team;
-      }
+      // inject before the "Other…" option
+      const otherOpt = teamSel.querySelector('option[value="__other"]');
+      list.forEach(t=>{
+        const opt = document.createElement('option');
+        opt.value = t; opt.textContent = t;
+        teamSel.insertBefore(opt, otherOpt);
+      });
     }
 
-    // 3) Save profile -> go to predict.html
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      statusEl.textContent = 'Saving...';
-
-      const updates = {
-        id: user.id,
-        display_name: nicknameEl.value.trim(),
-        favorite_team: teamEl.value
-      };
-
-      const { error } = await supabase
+    // Load profile and prefill
+    let isAdmin = false;
+    async function prefill(){
+      const { data: prof } = await supabase
         .from('profiles')
-        .upsert(updates, { onConflict: 'id' });
+        .select('display_name,favorite_team,is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        statusEl.textContent = 'Error saving profile';
-      } else {
-        window.location.replace('predict.html');
+      if (prof?.display_name) nickname.value = prof.display_name;
+      if (prof?.favorite_team) {
+        // if not in dropdown, use Other
+        const opt = [...teamSel.options].find(o=>o.value===prof.favorite_team);
+        if (opt) { teamSel.value = prof.favorite_team; }
+        else { teamSel.value='__other'; otherWrap.style.display='block'; otherTeam.value=prof.favorite_team; }
+      }
+      isAdmin = !!prof?.is_admin;
+    }
+
+    // Other-team toggle
+    teamSel.addEventListener('change', ()=>{
+      const other = teamSel.value === '__other';
+      otherWrap.style.display = other ? 'block' : 'none';
+      if (!other) otherTeam.value = '';
+    });
+
+    // Save/upsert profile
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      msg.textContent = '';
+      const name = nickname.value.trim();
+      if (!name) { msg.innerHTML='<span class="err">Nickname is required.</span>'; return; }
+
+      let fav = teamSel.value;
+      if (fav === '__other') fav = otherTeam.value.trim();
+      if (fav === '') fav = null;
+
+      saveBtn.disabled = true;
+
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({ id: user.id, display_name: name, favorite_team: fav }, { onConflict: 'id' });
+
+        if (error) throw error;
+        msg.innerHTML = '<span class="ok">Saved.</span>';
+
+        // Route: admins to admin, others to predict
+        setTimeout(()=>{
+          window.location.replace(isAdmin ? 'admin.html' : 'predict.html');
+        }, 300);
+      } catch (err) {
+        console.error(err);
+        msg.innerHTML = '<span class="err">Could not save profile. Please try again.</span>';
+      } finally {
+        saveBtn.disabled = false;
       }
     });
 
-    // 4) Logout
-    logoutBtn.addEventListener('click', async () => {
+    // Logout
+    logoutBtn.addEventListener('click', async ()=>{
       await supabase.auth.signOut();
       window.location.replace('login.html');
     });
 
-    loadProfile();
+    // Boot
+    await loadTeams();
+    await prefill();
   </script>
 </body>
-  <!-- Mini top-right nav -->
-<nav class="topnav">
-  <a href="predict.html" data-nav="predict">Predict</a>
-  <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-  <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-  <a href="profile.html" data-nav="profile">Profile</a>
-  <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
-  <button class="logout" id="navLogout" title="Sign out">Logout</button>
-</nav>
-
-<script type="module">
-  import { supabase } from './supabase-config.js';
-
-  // Highlight the current page
-  const path = location.pathname.toLowerCase();
-  const markActive = (key) => {
-    const el = document.querySelector(`.topnav [data-nav="${key}"]`);
-    if (el) el.classList.add('active');
-  };
-  if (path.endsWith('/predict.html')) markActive('predict');
-  else if (path.endsWith('/my-picks.html')) markActive('mypicks');
-  else if (path.endsWith('/leaderboard.html')) markActive('leaderboard');
-  else if (path.endsWith('/profile.html')) markActive('profile');
-  else if (path.endsWith('/admin.html')) markActive('admin');
-
-  // Show Admin link for admins
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      if (!error && data?.is_admin) {
-        document.getElementById('navAdmin').style.display = '';
-      }
-    }
-  } catch (e) {
-    console.warn('Nav init warning:', e?.message || e);
-  }
-
-  // Logout
-  document.getElementById('navLogout').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    location.replace('login.html');
-  });
-</script>
-
 </html>
