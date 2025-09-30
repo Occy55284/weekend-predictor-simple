@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard</title>
-  <link rel="stylesheet" href="brand.css?v=21" />
+  <link rel="stylesheet" href="brand.css?v=40" />
   <style>
-    .panel{background:#fff;border-radius:16px;padding:20px;max-width:900px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+    .panel{background:#fff;border-radius:16px;padding:20px;max-width:960px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15);margin:0 auto}
     .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
     .tab{background:#e2e8f0;border:none;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600}
     .tab.active{background:#28428f;color:#fff}
@@ -18,10 +18,25 @@
     .btn{background:#28428f;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
     .btn:disabled{opacity:.6;cursor:not-allowed}
     .meta{font-size:.85rem;color:#475569;text-align:center;margin-top:6px}
+
+    .namecell{display:flex;align-items:center;gap:10px;justify-content:flex-start}
+    .crest{width:26px;height:26px;border-radius:50%;flex:0 0 26px;object-fit:cover;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+    .crest.fallback{background:#e5e7eb}
+
+    /* Tier chip */
+    .tierchip{font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:999px;line-height:1}
+    .rookie{background:#e0f2fe;color:#075985}
+    .amateur{background:#dcfce7;color:#166534}
+    .pro{background:#fef3c7;color:#92400e}
+    .goat{background:#ede9fe;color:#5b21b6}
+
+    /* Page header logo */
+    .logo{display:block;margin:14px auto 10px;width:52px;height:52px}
+    h2{color:#1f357a;margin:0 0 6px;text-align:center}
   </style>
 </head>
 <body>
-  <!-- Top nav -->
+  <!-- Top nav (from brand.css) -->
   <nav class="topnav">
     <a href="predict.html" data-nav="predict">Predict</a>
     <a href="my-picks.html" data-nav="mypicks">My Picks</a>
@@ -36,11 +51,11 @@
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
       <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
       <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-      <path d="M32 16 l6 6 -6 4 -6 -4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
+      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
     </svg>
 
     <section class="panel">
-      <h2 style="color:#1f357a;margin-bottom:6px;text-align:center">Leaderboard</h2>
+      <h2>Leaderboard</h2>
 
       <div class="tabs">
         <button id="tabWeek" class="tab active">This Week</button>
@@ -53,42 +68,29 @@
       </div>
 
       <table class="lb" id="table">
-        <thead><tr><th>#</th><th>Player</th><th>Points</th></tr></thead>
+        <thead><tr><th>#</th><th style="text-align:left">Player</th><th>Points</th></tr></thead>
         <tbody id="tbody"><tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr></tbody>
       </table>
 
-      <p class="meta">
-        Last updated: <span id="lastUpdated">—</span>
-      </p>
-
+      <p class="meta">Last updated: <span id="lastUpdated">—</span></p>
       <p id="status" class="meta"></p>
     </section>
   </main>
 
   <script type="module" src="supabase-config.js"></script>
   <script type="module">
-    import { supabase } from './supabase-config.js';
+    import { supabase, SUPABASE_URL } from './supabase-config.js';
 
     // --- Navbar admin visibility + logout ---
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.replace('login.html');
-        return;
-      }
+      if (!session) { window.location.replace('login.html'); return; }
       document.getElementById('navLogout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        window.location.replace('login.html');
+        await supabase.auth.signOut(); window.location.replace('login.html');
       });
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-        if (!error && data?.is_admin) {
-          document.getElementById('navAdmin').style.display = '';
-        }
+        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
       } catch {}
     })();
 
@@ -105,76 +107,174 @@
     function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
     const weekStart = startOfWeek();
 
-    // --- State ---
-    let currentTab = 'week';
-    let myId = null;
-    let timerId = null;
+    // --- Initials badge fallback ---
+    function initials(text){ if(!text) return ''; const p=text.replace(/\s+/g,' ').trim().split(' '); const pick=p.length>=2?(p[0][0]+p[1][0]):p[0].slice(0,2); return pick.toUpperCase(); }
+    function colorFrom(text){ let h=0; for(let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0; const hue=h%360; return `hsl(${hue} 70% 45%)`; }
+    function badgeDataUrl(team){
+      const init=initials(team||''); const col=colorFrom(team||'Team');
+      const svg=encodeURIComponent(
+        `<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 64 64'>
+          <defs><filter id='s' x='-50%' y='-50%' width='200%' height='200%'><feDropShadow dx='0' dy='1' stdDeviation='1' flood-opacity='.25'/></filter></defs>
+          <circle cx='32' cy='32' r='30' fill='${col}' filter='url(#s)'/>
+          <text x='32' y='39' font-family='Inter,Arial' font-size='24' font-weight='800' text-anchor='middle' fill='white'>${init}</text>
+        </svg>`
+      );
+      return `data:image/svg+xml;charset=utf-8,${svg}`;
+    }
 
-    // get my user id for highlighting
-    const { data: { session } } = await supabase.auth.getSession();
-    myId = session?.user?.id || null;
+    // --- Logo loader (Supabase Storage: bucket "logos/slug.svg|png") ---
+    function slugify(name){ return (name||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+    function buildLogoUrls(team){
+      const slug = slugify(team);
+      const base = `${SUPABASE_URL}/storage/v1/object/public/logos/${slug}`;
+      return [`${base}.svg`, `${base}.png`, `${base}.jpg`];
+    }
+    async function pickLogoUrl(team){
+      if (!team) return null;
+      const urls = buildLogoUrls(team);
+      for (const u of urls){
+        try {
+          const res = await fetch(u, { method:'HEAD' });
+          if (res.ok) return u;
+        } catch {}
+      }
+      return null;
+    }
 
-    // --- Loading function ---
-    async function load(kind='week') {
-      currentTab = kind;
+    // --- Tier helpers (career exact-score count) ---
+    function tierFor(n){
+      if (n >= 31) return { key:'goat', label:'GOAT' };
+      if (n >= 21) return { key:'pro', label:'Pro' };
+      if (n >= 11) return { key:'amateur', label:'Amateur' };
+      return { key:'rookie', label:'Rookie' };
+    }
+    function tierChip(n){
+      const t = tierFor(n);
+      return `<span class="tierchip ${t.key}" title="Exact scores: ${n}">${t.label}</span>`;
+    }
+
+    // --- Fetch helpers ---
+    async function getFavTeams(userIds){
+      if (!userIds.length) return new Map();
+      const { data, error } = await supabase.from('profiles').select('id,favorite_team').in('id', userIds);
+      if (error) return new Map();
+      const m=new Map(); (data||[]).forEach(r=>m.set(r.id, r.favorite_team)); return m;
+    }
+
+    async function getCareerExacts(userIds){
+      // 1) Finished fixtures (ids & scores)
+      let finished = [];
+      // If your table is huge, you could limit by season; for now we read the lot of finished ones
+      const { data: fxAll } = await supabase
+        .from('fixtures')
+        .select('id,home_score,away_score')
+        .not('home_score','is',null)
+        .not('away_score','is',null)
+        .limit(5000); // safety cap
+      finished = fxAll || [];
+      const fxMap = new Map(finished.map(f=>[f.id, f]));
+      const finishedIds = finished.map(f=>f.id);
+      if (!finishedIds.length) return new Map(userIds.map(id=>[id,0]));
+
+      // 2) All predictions by our users for finished fixtures
+      // chunk fixture ids to avoid payload limits
+      const chunk = (arr,n)=>arr.reduce((a,_,i)=>(i%n?a:[...a,arr.slice(i,i+n)]),[]);
+      const chunks = chunk(finishedIds, 1000);
+      const counts = new Map(userIds.map(id=>[id,0]));
+
+      for (const part of chunks){
+        const { data: preds } = await supabase
+          .from('predictions')
+          .select('user_id, fixture_id, home_goals, away_goals')
+          .in('user_id', userIds)
+          .in('fixture_id', part);
+        (preds||[]).forEach(p=>{
+          const f = fxMap.get(p.fixture_id);
+          if (f && f.home_score === p.home_goals && f.away_score === p.away_goals){
+            counts.set(p.user_id, (counts.get(p.user_id)||0) + 1);
+          }
+        });
+      }
+      return counts;
+    }
+
+    // --- Load leaderboard ---
+    let currentTab='week';
+    async function load(kind='week'){
+      currentTab=kind;
       tabWeek.classList.toggle('active', kind==='week');
       tabSeason.classList.toggle('active', kind!=='week');
-      statusEl.textContent = '';
-      tbody.innerHTML = '<tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr>';
+      statusEl.textContent=''; tbody.innerHTML='<tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr>';
+      rangeEl.textContent = kind==='week' ? `Week of ${weekStart.toDateString()}` : 'Season to date';
 
-      // range label
-      if (kind === 'week') {
-        rangeEl.textContent = `Week of ${weekStart.toDateString()}`;
-      } else {
-        rangeEl.textContent = 'Season to date';
-      }
-
-      // call RPC
       const params = (kind==='week') ? { week_start: weekStart.toISOString().slice(0,10) } : {};
       const { data, error } = await supabase.rpc('get_leaderboard', params);
-
-      // update timestamp
       lastUpdatedEl.textContent = new Date().toLocaleTimeString();
 
-      if (error) {
-        console.error(error);
-        statusEl.textContent = 'Error loading leaderboard';
-        return;
-      }
+      if (error){ console.error(error); statusEl.textContent='Error loading leaderboard'; return; }
+      if (!data || data.length===0){ tbody.innerHTML='<tr><td colspan="3" style="padding:18px;color:#64748b;">No results yet.</td></tr>'; return; }
 
-      if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="padding:18px;color:#64748b;">No results yet.</td></tr>';
-        return;
-      }
+      // Prepare lookups
+      const userIds = data.map(r=>r.user_id);
+      const favMap = await getFavTeams(userIds);
+      const exactMap = await getCareerExacts(userIds);
 
-      tbody.innerHTML = '';
-      data.forEach((row, idx) => {
-        const tr = document.createElement('tr');
-        if (row.user_id === myId) tr.classList.add('me');
-        tr.innerHTML = `<td>${idx+1}</td><td>${row.display_name || 'Anon'}</td><td>${row.points}</td>`;
+      // Render
+      tbody.innerHTML='';
+      const { data: { session } } = await supabase.auth.getSession();
+      const myId = session?.user?.id || null;
+
+      // Build rows sequentially so we can async-resolve crest logos without flicker
+      for (let idx=0; idx<data.length; idx++){
+        const row = data[idx];
+        const fav = favMap.get(row.user_id) || '';
+        const crestFallback = badgeDataUrl(fav || row.display_name || 'Player');
+        const exacts = exactMap.get(row.user_id) || 0;
+
+        const tr=document.createElement('tr');
+        if (row.user_id===myId) tr.classList.add('me');
+
+        // initial render with fallback crest (initials)
+        tr.innerHTML = `
+          <td>${idx+1}</td>
+          <td style="text-align:left">
+            <div class="namecell">
+              <img class="crest fallback" src="${crestFallback}" alt="${fav||'Team'} crest"/>
+              <span>${row.display_name || 'Anon'}</span>
+              ${tierChip(exacts)}
+            </div>
+          </td>
+          <td>${row.points}</td>
+        `;
         tbody.appendChild(tr);
-      });
+
+        // Try to swap in a real logo from Storage (if available)
+        if (fav){
+          const url = await pickLogoUrl(fav);
+          if (url){
+            const img = tr.querySelector('img.crest');
+            img.src = url;
+            img.classList.remove('fallback');
+          }
+        }
+      }
     }
 
-    // --- Auto refresh every 60s ---
-    function startAutoRefresh() {
-      stopAutoRefresh();
-      timerId = setInterval(() => load(currentTab), 60000);
-    }
-    function stopAutoRefresh() { if (timerId) { clearInterval(timerId); timerId = null; } }
-    window.addEventListener('visibilitychange', () => {
-      if (document.hidden) stopAutoRefresh(); else startAutoRefresh();
-    });
-    window.addEventListener('beforeunload', stopAutoRefresh);
+    // Auto refresh each minute
+    let timerId=null;
+    function startAuto(){ stopAuto(); timerId=setInterval(()=>load(currentTab), 60000); }
+    function stopAuto(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+    window.addEventListener('visibilitychange', ()=>{ document.hidden ? stopAuto() : startAuto(); });
+    window.addEventListener('beforeunload', stopAuto);
 
-    // --- Wire UI ---
-    tabWeek.addEventListener('click', () => load('week'));
-    tabSeason.addEventListener('click', () => load('season'));
-    refreshBtn.addEventListener('click', () => load(currentTab));
+    // Wire UI
+    document.getElementById('refreshBtn').addEventListener('click', ()=>load(currentTab));
+    document.getElementById('tabWeek').addEventListener('click', ()=>load('week'));
+    document.getElementById('tabSeason').addEventListener('click', ()=>load('season'));
 
-    // --- Initial load ---
-    await load('week');
-    startAutoRefresh();
+    // Initial
+    await load('week'); startAuto();
   </script>
 </body>
 </html>
+
