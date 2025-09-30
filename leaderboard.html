@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard</title>
-  <link rel="stylesheet" href="brand.css?v=40" />
+  <link rel="stylesheet" href="brand.css?v=41" />
   <style>
     .panel{background:#fff;border-radius:16px;padding:20px;max-width:960px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15);margin:0 auto}
     .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
@@ -36,7 +36,7 @@
   </style>
 </head>
 <body>
-  <!-- Top nav (from brand.css) -->
+  <!-- Top nav -->
   <nav class="topnav">
     <a href="predict.html" data-nav="predict">Predict</a>
     <a href="my-picks.html" data-nav="mypicks">My Picks</a>
@@ -79,11 +79,11 @@
 
   <script type="module" src="supabase-config.js"></script>
   <script type="module">
-    import { supabase, SUPABASE_URL } from './supabase-config.js';
+    import { supabase } from './supabase-config.js';
 
     // --- Navbar admin visibility + logout ---
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session} } = await supabase.auth.getSession();
       if (!session) { window.location.replace('login.html'); return; }
       document.getElementById('navLogout').addEventListener('click', async () => {
         await supabase.auth.signOut(); window.location.replace('login.html');
@@ -122,25 +122,6 @@
       return `data:image/svg+xml;charset=utf-8,${svg}`;
     }
 
-    // --- Logo loader (Supabase Storage: bucket "logos/slug.svg|png") ---
-    function slugify(name){ return (name||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
-    function buildLogoUrls(team){
-      const slug = slugify(team);
-      const base = `${SUPABASE_URL}/storage/v1/object/public/logos/${slug}`;
-      return [`${base}.svg`, `${base}.png`, `${base}.jpg`];
-    }
-    async function pickLogoUrl(team){
-      if (!team) return null;
-      const urls = buildLogoUrls(team);
-      for (const u of urls){
-        try {
-          const res = await fetch(u, { method:'HEAD' });
-          if (res.ok) return u;
-        } catch {}
-      }
-      return null;
-    }
-
     // --- Tier helpers (career exact-score count) ---
     function tierFor(n){
       if (n >= 31) return { key:'goat', label:'GOAT' };
@@ -153,7 +134,7 @@
       return `<span class="tierchip ${t.key}" title="Exact scores: ${n}">${t.label}</span>`;
     }
 
-    // --- Fetch helpers ---
+    // --- Data helpers ---
     async function getFavTeams(userIds){
       if (!userIds.length) return new Map();
       const { data, error } = await supabase.from('profiles').select('id,favorite_team').in('id', userIds);
@@ -161,41 +142,62 @@
       const m=new Map(); (data||[]).forEach(r=>m.set(r.id, r.favorite_team)); return m;
     }
 
-    async function getCareerExacts(userIds){
-      // 1) Finished fixtures (ids & scores)
-      let finished = [];
-      // If your table is huge, you could limit by season; for now we read the lot of finished ones
-      const { data: fxAll } = await supabase
-        .from('fixtures')
-        .select('id,home_score,away_score')
-        .not('home_score','is',null)
-        .not('away_score','is',null)
-        .limit(5000); // safety cap
-      finished = fxAll || [];
-      const fxMap = new Map(finished.map(f=>[f.id, f]));
-      const finishedIds = finished.map(f=>f.id);
-      if (!finishedIds.length) return new Map(userIds.map(id=>[id,0]));
+    // Count exact scores for one user (lightweight & per-user so UI doesn't block)
+    async function countExactsForUser(userId){
+      // Get this user's predictions
+      const { data: preds, error } = await supabase
+        .from('predictions')
+        .select('fixture_id,home_goals,away_goals')
+        .eq('user_id', userId)
+        .limit(2000);
+      if (error || !preds || preds.length===0) return 0;
 
-      // 2) All predictions by our users for finished fixtures
-      // chunk fixture ids to avoid payload limits
+      const ids = [...new Set(preds.map(p=>p.fixture_id))];
+      // Fetch only finished fixtures among those ids (chunked 1000)
       const chunk = (arr,n)=>arr.reduce((a,_,i)=>(i%n?a:[...a,arr.slice(i,i+n)]),[]);
-      const chunks = chunk(finishedIds, 1000);
-      const counts = new Map(userIds.map(id=>[id,0]));
-
-      for (const part of chunks){
-        const { data: preds } = await supabase
-          .from('predictions')
-          .select('user_id, fixture_id, home_goals, away_goals')
-          .in('user_id', userIds)
-          .in('fixture_id', part);
-        (preds||[]).forEach(p=>{
-          const f = fxMap.get(p.fixture_id);
-          if (f && f.home_score === p.home_goals && f.away_score === p.away_goals){
-            counts.set(p.user_id, (counts.get(p.user_id)||0) + 1);
-          }
-        });
+      let finished = [];
+      for (const part of chunk(ids,1000)){
+        const { data: fx } = await supabase
+          .from('fixtures')
+          .select('id,home_score,away_score')
+          .in('id', part)
+          .not('home_score','is',null)
+          .not('away_score','is',null);
+        finished = finished.concat(fx || []);
       }
-      return counts;
+      if (!finished.length) return 0;
+      const fxMap = new Map(finished.map(f=>[f.id,f]));
+      let exacts=0;
+      preds.forEach(p=>{
+        const f=fxMap.get(p.fixture_id);
+        if (f && f.home_score===p.home_goals && f.away_score===p.away_goals) exacts++;
+      });
+      return exacts;
+    }
+
+    // Load a crest from Storage (bucket: logos). Falls back to initials badge.
+    function slugify(name){ return (name||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+    function buildCandidates(team){
+      const slug=slugify(team||'');
+      return [`${slug}.svg`, `${slug}.png`, `${slug}.jpg`];
+    }
+    function setCrestImage(imgEl, team, fallbackUrl){
+      if (!team){ imgEl.src=fallbackUrl; imgEl.classList.add('fallback'); return; }
+      const bucket = supabase.storage.from('logos');
+      const candidates = buildCandidates(team);
+      // Try SVG then PNG then JPG
+      let idx = 0;
+      const tryNext = () => {
+        if (idx >= candidates.length){ imgEl.src=fallbackUrl; imgEl.classList.add('fallback'); return; }
+        const { data } = bucket.getPublicUrl(candidates[idx++]);
+        const url = data?.publicUrl;
+        if (!url){ tryNext(); return; }
+        // try to load; if 404, onerror will try next
+        imgEl.onerror = () => tryNext();
+        imgEl.onload = () => imgEl.classList.remove('fallback');
+        imgEl.src = url;
+      };
+      tryNext();
     }
 
     // --- Load leaderboard ---
@@ -204,59 +206,57 @@
       currentTab=kind;
       tabWeek.classList.toggle('active', kind==='week');
       tabSeason.classList.toggle('active', kind!=='week');
-      statusEl.textContent=''; tbody.innerHTML='<tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr>';
-      rangeEl.textContent = kind==='week' ? `Week of ${weekStart.toDateString()}` : 'Season to date';
+      statusEl.textContent='';
+      tbody.innerHTML='<tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr>';
+      rangeEl.textContent = kind==='week' ? `Week of ${startOfWeek().toDateString()}` : 'Season to date';
 
-      const params = (kind==='week') ? { week_start: weekStart.toISOString().slice(0,10) } : {};
+      const params = (kind==='week') ? { week_start: startOfWeek().toISOString().slice(0,10) } : {};
       const { data, error } = await supabase.rpc('get_leaderboard', params);
       lastUpdatedEl.textContent = new Date().toLocaleTimeString();
 
       if (error){ console.error(error); statusEl.textContent='Error loading leaderboard'; return; }
       if (!data || data.length===0){ tbody.innerHTML='<tr><td colspan="3" style="padding:18px;color:#64748b;">No results yet.</td></tr>'; return; }
 
-      // Prepare lookups
       const userIds = data.map(r=>r.user_id);
       const favMap = await getFavTeams(userIds);
-      const exactMap = await getCareerExacts(userIds);
 
-      // Render
       tbody.innerHTML='';
       const { data: { session } } = await supabase.auth.getSession();
       const myId = session?.user?.id || null;
 
-      // Build rows sequentially so we can async-resolve crest logos without flicker
       for (let idx=0; idx<data.length; idx++){
         const row = data[idx];
         const fav = favMap.get(row.user_id) || '';
         const crestFallback = badgeDataUrl(fav || row.display_name || 'Player');
-        const exacts = exactMap.get(row.user_id) || 0;
 
         const tr=document.createElement('tr');
         if (row.user_id===myId) tr.classList.add('me');
-
-        // initial render with fallback crest (initials)
         tr.innerHTML = `
           <td>${idx+1}</td>
           <td style="text-align:left">
             <div class="namecell">
               <img class="crest fallback" src="${crestFallback}" alt="${fav||'Team'} crest"/>
               <span>${row.display_name || 'Anon'}</span>
-              ${tierChip(exacts)}
+              <span class="tierchip rookie" title="Exact scores: …">Rookie</span>
             </div>
           </td>
           <td>${row.points}</td>
         `;
         tbody.appendChild(tr);
 
-        // Try to swap in a real logo from Storage (if available)
-        if (fav){
-          const url = await pickLogoUrl(fav);
-          if (url){
-            const img = tr.querySelector('img.crest');
-            img.src = url;
-            img.classList.remove('fallback');
-          }
-        }
+        // Swap in real crest if available (non-blocking)
+        const img = tr.querySelector('img.crest');
+        setCrestImage(img, fav, crestFallback);
+
+        // Load exact count for this user (non-blocking)
+        try{
+          const exacts = await countExactsForUser(row.user_id);
+          const chip = tr.querySelector('.tierchip');
+          const t = tierFor(exacts);
+          chip.className = `tierchip ${t.key}`;
+          chip.textContent = t.label;
+          chip.title = `Exact scores: ${exacts}`;
+        } catch {}
       }
     }
 
@@ -277,4 +277,3 @@
   </script>
 </body>
 </html>
-
