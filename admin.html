@@ -4,36 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=45" />
+  <link rel="stylesheet" href="brand.css?v=50" />
   <style>
     .wrap{max-width:1000px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
     .card h2{margin:0 0 10px;color:#1f357a}
-    .grid{display:grid;gap:12px}
-    @media (min-width: 900px){ .grid{grid-template-columns:1fr 1fr} }
-
+    .row-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{background:#28428f;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn.light{background:#e2e8f0;color:#111827}
+    .meta{font-size:.9rem;color:#475569}
     table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
     th{background:#f8fafc;text-transform:uppercase;font-size:.85rem;letter-spacing:.03em}
     .muted{color:#64748b}
-    .row-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .btn{background:#28428f;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
-    .btn.secondary{background:#111827}
-    .btn.light{background:#e2e8f0;color:#111827}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .hint{font-size:.9rem;color:#475569}
-    .pill{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.75rem;font-weight:800}
-    .ok{background:#dcfce7;color:#166534}
-    .warn{background:#fef3c7;color:#92400e}
-    .bad{background:#fee2e2;color:#991b1b}
-    .meta{font-size:.85rem;color:#475569}
-
-    .lists{display:grid;gap:10px}
-    @media (min-width: 900px){ .lists{grid-template-columns:1fr 1fr 1fr} }
-    .list card{padding:0}
-    ul{list-style:none;padding:0;margin:6px 0 0}
-    li{padding:6px 0;border-bottom:1px dashed #e5e7eb}
-    .small{font-size:.9rem}
+    .count{font-weight:800;color:#1f357a}
+    .list{list-style:none;margin:8px 0 0;padding:0}
+    .list li{padding:6px 0;border-bottom:1px dashed #e5e7eb}
+    .small{font-size:.95rem}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#ecfeff;color:#164e63;font-weight:800;font-size:.8rem}
   </style>
 </head>
 <body>
@@ -49,25 +38,27 @@
 
   <main class="wrap">
     <!-- Header -->
-    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div>
         <h2>Admin Dashboard</h2>
         <div class="meta">Week of <span id="weekLabel">—</span></div>
       </div>
       <div class="row-actions">
         <button id="lockBtn" class="btn">Lock Week for Everyone</button>
-        <button id="unlockBtn" class="btn light">Unlock Week</button>
       </div>
-    </div>
+    </section>
 
-    <!-- Featured fixtures & picker -->
+    <!-- Featured fixtures -->
     <section class="card">
       <h2>Pick This Week’s Featured Fixtures</h2>
-      <p class="hint">Tick the 5 games you want players to predict. Click <b>Save Featured</b> to publish.</p>
+      <p class="meta">Select <b>exactly 5</b> fixtures for players to predict. Then click <b>Save Featured</b>.</p>
+
       <div class="row-actions" style="margin:8px 0 10px">
-        <button id="saveFeaturedBtn" class="btn">Save Featured</button>
+        <span class="pill">Selected: <span id="selectedCount">0</span>/5</span>
+        <button id="saveFeaturedBtn" class="btn" disabled>Save Featured</button>
         <span id="saveStatus" class="meta"></span>
       </div>
+
       <table>
         <thead>
           <tr>
@@ -83,24 +74,11 @@
       </table>
     </section>
 
-    <!-- Submissions -->
+    <!-- Submissions (ONLY those who picked) -->
     <section class="card">
       <h2>Who Has Submitted Picks (This Week)</h2>
       <div class="meta" id="subsMeta">Loading…</div>
-      <div class="lists">
-        <div>
-          <div class="pill ok">Submitted (all picks in)</div>
-          <ul id="listAll"></ul>
-        </div>
-        <div>
-          <div class="pill warn">Started (some picks)</div>
-          <ul id="listSome"></ul>
-        </div>
-        <div>
-          <div class="pill bad">Not started</div>
-          <ul id="listNone"></ul>
-        </div>
-      </div>
+      <ul class="list" id="listPicked"></ul>
     </section>
   </main>
 
@@ -111,50 +89,54 @@
     // --- Auth guard + logout ---
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
-    const me = session.user;
     document.getElementById('navLogout').addEventListener('click', async () => {
       await supabase.auth.signOut(); window.location.replace('login.html');
     });
 
     // Ensure admin
     {
-      const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', me.id).maybeSingle();
-      if (error || !data?.is_admin) {
-        alert('Admins only.'); window.location.replace('predict.html'); throw new Error('Not admin');
-      }
+      const { data, error } = await supabase
+        .from('profiles').select('is_admin').eq('id', session.user.id).maybeSingle();
+      if (error || !data?.is_admin) { alert('Admins only.'); window.location.replace('predict.html'); throw new Error('Not admin'); }
     }
 
-    // --- Date helpers: current Monday..next Monday ---
+    // --- Week window (Mon..Mon in UTC) ---
     function startOfWeek(d=new Date()){
-      const x=new Date(d); const day=x.getDay(); const diff=x.getDate()-day+(day===0?-6:1);
-      x.setHours(0,0,0,0); return new Date(x.setDate(diff));
+      const x=new Date(d); const day=x.getUTCDay(); // use UTC to match utc_date
+      const diff=x.getUTCDate()-day+(day===0?-6:1);
+      x.setUTCHours(0,0,0,0);
+      return new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), diff));
     }
-    function fmtISO(d){ return d.toISOString().slice(0,10); }
+    function isoDate(d){ return d.toISOString().slice(0,10); }
     const weekStart = startOfWeek();
-    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+7);
-    document.getElementById('weekLabel').textContent = `${weekStart.toDateString()} — ${new Date(weekEnd-1).toDateString()}`;
+    const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate()+7);
+    document.getElementById('weekLabel').textContent =
+      `${weekStart.toUTCString().slice(0,16)} — ${new Date(weekEnd-1).toUTCString().slice(0,16)}`;
 
     // --- Elements ---
     const fixturesBody = document.getElementById('fixturesBody');
     const saveBtn = document.getElementById('saveFeaturedBtn');
     const saveStatus = document.getElementById('saveStatus');
-    const lockBtn = document.getElementById('lockBtn');
-    const unlockBtn = document.getElementById('unlockBtn');
-
-    const listAll = document.getElementById('listAll');
-    const listSome = document.getElementById('listSome');
-    const listNone = document.getElementById('listNone');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const listPicked = document.getElementById('listPicked');
     const subsMeta = document.getElementById('subsMeta');
+    const lockBtn = document.getElementById('lockBtn');
 
-    // --- Load fixtures for this week ---
+    // --- Load fixtures in week ---
     let fixtures = [];
+    function updateSelectedCounter(){
+      const n = document.querySelectorAll('.feat:checked').length;
+      selectedCountEl.textContent = n;
+      saveBtn.disabled = (n !== 5);
+    }
+
     async function loadFixtures(){
       fixturesBody.innerHTML = '<tr><td colspan="4" class="muted">Loading fixtures…</td></tr>';
       const { data, error } = await supabase
         .from('fixtures')
         .select('id,home_team,away_team,utc_date,home_score,away_score,status,featured')
-        .gte('utc_date', fmtISO(weekStart))
-        .lt('utc_date', fmtISO(weekEnd))
+        .gte('utc_date', isoDate(weekStart))
+        .lt('utc_date', isoDate(weekEnd))
         .order('utc_date', { ascending: true });
 
       if (error) { fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>`; return; }
@@ -164,149 +146,127 @@
         return;
       }
       renderFixtures();
+      updateSelectedCounter();
     }
 
     function renderFixtures(){
       fixturesBody.innerHTML = '';
       for (const f of fixtures){
-        const date = new Date(f.utc_date).toISOString().replace('T',' ').slice(0,16) + ' UTC';
+        const date = new Date(f.utc_date+'T00:00:00Z'); // utc_date is a date (no time); show as date only
+        const dateStr = `${date.toISOString().slice(0,10)} UTC`;
         const res = (f.home_score ?? '') !== '' && (f.away_score ?? '') !== ''
           ? `${f.home_score}–${f.away_score}` : (f.status || '—');
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><input type="checkbox" class="feat" data-id="${f.id}" ${f.featured ? 'checked':''} /></td>
-          <td>${date}</td>
+          <td>${dateStr}</td>
           <td>${f.home_team || '?'} vs ${f.away_team || '?'}</td>
           <td class="muted">${res}</td>
         `;
         fixturesBody.appendChild(tr);
       }
+      document.querySelectorAll('.feat').forEach(cb=>cb.addEventListener('change', updateSelectedCounter));
     }
 
-    // --- Save featured selection ---
+    // --- Save featured (require exactly 5) ---
     saveBtn.addEventListener('click', async ()=>{
+      const checks = Array.from(document.querySelectorAll('.feat'));
+      const picked = checks.filter(c=>c.checked).map(c=>c.dataset.id);
+      if (picked.length !== 5){
+        alert('Please select exactly 5 fixtures.');
+        return;
+      }
       saveBtn.disabled = true; saveStatus.textContent = 'Saving…';
       try{
-        const checks = Array.from(document.querySelectorAll('.feat'));
-        const idsChecked = checks.filter(c=>c.checked).map(c=>c.dataset.id);
         const idsAll = fixtures.map(f=>f.id);
-
-        // set featured=true for checked, false for others (only this week’s fixtures)
         if (idsAll.length){
-          // false for all in this week
           const { error: e1 } = await supabase.from('fixtures')
-            .update({ featured: false })
-            .in('id', idsAll);
+            .update({ featured: false }).in('id', idsAll);
           if (e1) throw e1;
         }
-        if (idsChecked.length){
-          const { error: e2 } = await supabase.from('fixtures')
-            .update({ featured: true })
-            .in('id', idsChecked);
-          if (e2) throw e2;
-        }
+        const { error: e2 } = await supabase.from('fixtures')
+          .update({ featured: true }).in('id', picked);
+        if (e2) throw e2;
+
         saveStatus.textContent = 'Saved.';
         await loadFixtures();
-        await loadSubmissions(); // refresh submission buckets after changes
+        await loadSubmissions(); // refresh list
       } catch(e){
-        console.error(e);
-        saveStatus.textContent = 'Error saving.';
+        console.error(e); saveStatus.textContent = 'Error saving.';
       } finally {
         saveBtn.disabled = false;
         setTimeout(()=>saveStatus.textContent='', 1500);
       }
     });
 
-    // --- Global lock / unlock for the week ---
+    // --- Lock week for everyone ---
     lockBtn.addEventListener('click', async ()=>{
       lockBtn.disabled = true;
       try{
-        // Insert if not exists
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('global_locks')
-          .upsert({ week_start: fmtISO(weekStart), locked: true }, { onConflict: 'week_start' })
-          .select();
+          .upsert({ week_start: isoDate(weekStart), locked: true }, { onConflict: 'week_start' });
         if (error) throw error;
         alert('Week locked for everyone.');
       } catch(e){ console.error(e); alert('Could not lock the week.'); }
       finally{ lockBtn.disabled=false; }
     });
 
-    unlockBtn.addEventListener('click', async ()=>{
-      unlockBtn.disabled = true;
-      try{
-        const { error } = await supabase
-          .from('global_locks')
-          .update({ locked: false })
-          .eq('week_start', fmtISO(weekStart));
-        if (error) throw error;
-        alert('Week unlocked.');
-      } catch(e){ console.error(e); alert('Could not unlock the week.'); }
-      finally{ unlockBtn.disabled=false; }
-    });
-
-    // --- Submissions (fixed) ---
+    // --- Submissions: only show users who picked (>=1) among this week's FEATURED fixtures ---
     async function loadSubmissions(){
-      listAll.innerHTML = ''; listSome.innerHTML = ''; listNone.innerHTML = '';
-      subsMeta.textContent = 'Loading…';
+      listPicked.innerHTML = ''; subsMeta.textContent = 'Loading…';
 
-      // 1) This week’s FEATURED fixtures
       const featured = fixtures.filter(f=>f.featured);
       const featuredIds = featured.map(f=>f.id);
       const totalNeeded = featuredIds.length;
+
       if (totalNeeded === 0){
-        subsMeta.textContent = 'No featured fixtures picked yet.';
+        subsMeta.textContent = 'No featured fixtures selected yet.';
         return;
       }
 
-      // 2) All players (profiles)
-      const { data: profiles, error: pErr } = await supabase
-        .from('profiles')
-        .select('id,display_name')
-        .order('display_name', { ascending: true });
-      if (pErr){ subsMeta.textContent = 'Error loading players.'; return; }
-
-      // 3) Predictions for these featured fixtures (any user)
-      //    We only care about user_id and fixture_id.
-      //    Chunk fixture ids if many; usually 5 so one query is fine.
+      // All predictions on the featured fixtures
       const { data: preds, error: prErr } = await supabase
         .from('predictions')
         .select('user_id, fixture_id')
         .in('fixture_id', featuredIds);
       if (prErr){ subsMeta.textContent = 'Error loading predictions.'; return; }
 
-      // 4) Count distinct picks per user for the featured set
-      const counts = new Map(); // user_id -> count
-      (preds || []).forEach(p=>{
+      // Count by user
+      const counts = new Map();
+      (preds||[]).forEach(p=>{
         counts.set(p.user_id, (counts.get(p.user_id)||0) + 1);
       });
 
-      // 5) Bucket users
-      const all = [];
-      const some = [];
-      const none = [];
-      (profiles || []).forEach(u=>{
-        const c = counts.get(u.id) || 0;
-        const name = u.display_name || 'Anon';
+      // Filter users who picked >=1, and fetch their names
+      const userIds = [...counts.keys()];
+      if (userIds.length === 0){
+        subsMeta.textContent = `Featured fixtures: ${totalNeeded} • No submissions yet.`;
+        listPicked.innerHTML = '<li class="muted small">—</li>';
+        return;
+      }
+
+      const { data: profs, error: pe } = await supabase
+        .from('profiles')
+        .select('id,display_name')
+        .in('id', userIds);
+      if (pe){ subsMeta.textContent = 'Error loading players.'; return; }
+
+      const byId = new Map((profs||[]).map(p=>[p.id, p.display_name || 'Anon']));
+      // Sort: completed first (5/5), then by count desc, then name
+      const items = userIds.map(id=>({ id, name: byId.get(id) || 'Anon', c: counts.get(id) || 0 }));
+      items.sort((a,b)=> (b.c===a.c ? (a.name.localeCompare(b.name)) : b.c-a.c));
+
+      items.forEach(it=>{
         const li = document.createElement('li');
         li.className = 'small';
-        li.textContent = `${name} — ${c}/${totalNeeded}`;
-        if (c === 0) none.push(li);
-        else if (c >= totalNeeded) all.push(li);
-        else some.push(li);
+        const done = it.c >= totalNeeded ? ' ✓' : '';
+        li.textContent = `${it.name} — ${it.c}/${totalNeeded}${done}`;
+        listPicked.appendChild(li);
       });
 
-      // 6) Render
-      if (!all.length) listAll.innerHTML = '<li class="muted small">—</li>';
-      else all.forEach(li=>listAll.appendChild(li));
-
-      if (!some.length) listSome.innerHTML = '<li class="muted small">—</li>';
-      else some.forEach(li=>listSome.appendChild(li));
-
-      if (!none.length) listNone.innerHTML = '<li class="muted small">—</li>';
-      else none.forEach(li=>listNone.appendChild(li));
-
-      subsMeta.textContent = `Featured fixtures: ${totalNeeded} • Players: ${profiles?.length||0}`;
+      subsMeta.textContent = `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
     }
 
     // Boot
