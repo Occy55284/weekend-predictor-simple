@@ -9,74 +9,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
   <style>
     :root{ --ink:#0f172a; --muted:#475569; --brand:#2643B3; --accent:#16a34a; --card:#ffffff; }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      color:var(--ink);
-      background: radial-gradient(1200px 600px at 50% -20%, #e9f0ff 0%, rgba(233,240,255,0) 55%),
-                  linear-gradient(180deg, #f7faff 0%, #eef4ff 45%, #f8fbff 100%);
-      display:grid; place-items:center; padding:20px 12px;
-    }
-    .brand{
-      display:flex; align-items:center; gap:10px; justify-content:center;
-      margin-bottom:10px; font-weight:800;
-    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         color:var(--ink);
+         background: radial-gradient(1200px 600px at 50% -20%, #e9f0ff 0%, rgba(233,240,255,0) 55%),
+                     linear-gradient(180deg, #f7faff 0%, #eef4ff 45%, #f8fbff 100%);
+         display:grid; place-items:center; padding:20px 12px;}
+    .brand{display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:10px; font-weight:800;}
     .logo{width:38px; height:38px}
-
-    .card{
-      width:min(720px, 94vw);
-      background:
-        radial-gradient(300px 140px at 20% 10%, rgba(22,163,74,.08), transparent 60%),
-        radial-gradient(380px 170px at 80% 15%, rgba(38,67,179,.10), transparent 60%),
-        linear-gradient(180deg, #fff, #f4f7ff);
-      border:1px solid #e6e9f5; border-radius:20px; padding:28px 22px 22px;
-      box-shadow:0 14px 40px rgba(17,24,39,.12);
-    }
+    .card{ width:min(720px,94vw); background: linear-gradient(180deg,#fff,#f4f7ff);
+      border:1px solid #e6e9f5; border-radius:20px; padding:28px 22px 22px; box-shadow:0 14px 40px rgba(17,24,39,.12); }
     h1{ text-align:center; font-size:clamp(24px, 3.4vw, 36px); margin:4px 0 2px; }
     p.lead{color:var(--muted); text-align:center; margin:0 0 14px}
-
     form{margin-top:6px}
     .row{display:grid; gap:10px; grid-template-columns:1fr}
     @media (min-width:720px){ .row{grid-template-columns:1fr 1fr} }
     label{font-weight:800; font-size:.95rem; margin-bottom:4px; display:block}
     .field{margin:8px 0 14px}
-    input[type="text"], select{
-      width:100%; padding:14px; border:1px solid #cdd6f4; border-radius:12px; font-size:1rem; background:#fff;
-      box-shadow:inset 0 1px 0 rgba(0,0,0,.03);
-    }
+    input[type="text"], select{ width:100%; padding:14px; border:1px solid #cdd6f4; border-radius:12px; font-size:1rem; background:#fff; }
     .help{color:#64748b; font-size:.9rem; margin-top:2px}
-    .msg{margin-top:12px; font-size:.95rem; text-align:center}
-    .ok{color:#166534}
-    .err{color:#b91c1c}
-
     .actions{margin-top:8px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
     .btn{border:none; cursor:pointer; font-weight:900; letter-spacing:.2px; padding:14px 20px; border-radius:12px; font-size:1rem;}
     .primary{ background:linear-gradient(135deg, var(--brand), #1b3186); color:#fff; box-shadow:0 8px 20px rgba(38,67,179,.28) }
     .secondary{ background:#e5e7eb }
-    .link{color:#1f307a; text-decoration:none; font-weight:700}
+    .msg{margin-top:12px; text-align:center; font-size:.95rem}
+    .ok{color:#166534} .err{color:#b91c1c}
     .foot{ margin-top:14px; color:#64748b; font-size:.9rem; text-align:center }
 
-    /* Badge preview */
     .badge-preview{display:flex; align-items:center; gap:10px; margin-top:6px}
     .badge-preview img{width:28px; height:28px; border-radius:50%; display:block}
     .preview-name{color:#334155; font-weight:700}
-
-    /* Progress section */
-    .progress-card{
-      margin-top:18px; padding:14px; border-radius:14px; background:#fff;
-      border:1px solid #e6e9f5; box-shadow:0 8px 18px rgba(0,0,0,.06);
-    }
-    .progress-head{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
-    .progress-head h3{margin:0; font-size:1.05rem}
-    .tier{font-weight:800; letter-spacing:.3px}
-    .tier.rookie{color:#0ea5e9}
-    .tier.amateur{color:#16a34a}
-    .tier.pro{color:#f59e0b}
-    .tier.goat{color:#7c3aed}
-    .bar-wrap{margin-top:8px; width:100%; height:14px; border-radius:999px; background:#eef2ff; overflow:hidden}
-    .bar{height:100%; width:0; background:linear-gradient(90deg, #16a34a, #22c55e); transition:width .4s ease}
-    .progress-meta{margin-top:6px; color:#475569; font-size:.9rem; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap}
   </style>
 </head>
 <body>
@@ -90,9 +52,9 @@
       <span>Weekend Predictor</span>
     </div>
 
-    <section class="card" id="card">
+    <section class="card">
       <h1>Your Profile</h1>
-      <p class="lead">Pick a nickname and your favourite team. Your team badge will show on the leaderboard.</p>
+      <p class="lead">Pick a nickname and your favourite team. Your team badge will appear on the leaderboard.</p>
 
       <form id="form">
         <div class="row">
@@ -125,21 +87,8 @@
         </div>
       </form>
 
-      <!-- Progress tracker -->
-      <div class="progress-card" id="progressCard" aria-live="polite">
-        <div class="progress-head">
-          <h3>Accuracy Progress</h3>
-          <span id="tier" class="tier rookie">Rookie</span>
-        </div>
-        <div class="bar-wrap"><div id="bar" class="bar"></div></div>
-        <div class="progress-meta">
-          <span id="counts">Exact scores: 0</span>
-          <span id="nextGoal">Next: 11 (Amateur)</span>
-        </div>
-      </div>
-
       <div id="message" class="msg"></div>
-      <div class="foot"><a class="link" href="index.html">← Back to home</a></div>
+      <div class="foot"><a href="index.html">← Back to home</a></div>
     </section>
   </div>
 
@@ -159,39 +108,25 @@
     const logoutBtn = document.getElementById('logout');
     const msg = document.getElementById('message');
 
-    const bar = document.getElementById('bar');
-    const tierEl = document.getElementById('tier');
-    const countsEl = document.getElementById('counts');
-    const nextGoalEl = document.getElementById('nextGoal');
+    // Fallback team list (used only if fixtures query returns nothing)
+    const FALLBACK_TEAMS = [
+      "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton",
+      "Chelsea", "Crystal Palace", "Everton", "Fulham", "Ipswich Town",
+      "Leicester City", "Liverpool", "Manchester City", "Manchester United",
+      "Newcastle United", "Nottingham Forest", "Southampton",
+      "Tottenham Hotspur", "West Ham United", "Wolverhampton"
+    ];
 
-    // Require auth
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
-    const user = session.user;
-
-    // --- Badge generator (initials) used for preview only (leaderboard can use real logos later) ---
-    function initials(text){
-      if(!text) return '';
-      const parts = text.replace(/\s+/g,' ').trim().split(' ');
-      const pick = parts.length>=2 ? (parts[0][0]+parts[1][0]) : parts[0].slice(0,2);
-      return pick.toUpperCase();
-    }
-    function colorFrom(text){
-      let h=0; for (let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0;
-      const hue = h % 360; return `hsl(${hue} 70% 45%)`;
-    }
-    function badgeDataUrl(team){
+    // Minimal badge for preview (initials + color)
+    const initials = t => (t||'').split(/\s+/).slice(0,2).map(s=>s[0]||'').join('').toUpperCase();
+    function colorFrom(text){ let h=0; for(let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0; return `hsl(${h%360} 70% 45%)`; }
+    const badgeDataUrl = team => {
       const init = initials(team||'');
       const col = colorFrom(team||'Team');
-      const svg = encodeURIComponent(
-        `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
-           <defs><filter id='s' x='-50%' y='-50%' width='200%' height='200%'>
-             <feDropShadow dx='0' dy='1' stdDeviation='1' flood-opacity='.25'/>
-           </filter></defs>
-           <circle cx='32' cy='32' r='30' fill='${col}' filter='url(#s)'/>
-           <text x='32' y='39' font-family='Inter,Arial' font-size='24' font-weight='800' text-anchor='middle' fill='white'>${init}</text>
-         </svg>`
-      );
+      const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
+        <circle cx='32' cy='32' r='30' fill='${col}'/>
+        <text x='32' y='39' font-family='Inter,Arial' font-size='24' font-weight='800' text-anchor='middle' fill='white'>${init}</text>
+      </svg>`);
       return `data:image/svg+xml;charset=utf-8,${svg}`;
     }
     function showPreview(team){
@@ -201,31 +136,68 @@
       badgePreview.style.display='flex';
     }
 
-    // Populate teams from fixtures (unique home & away)
-    async function loadTeams(){
-      const seen=new Set(); const list=[];
-      const add = (arr, key) => (arr||[]).forEach(r=>{ const t=r[key]?.trim(); if(t && !seen.has(t)){ seen.add(t); list.push(t);} });
-      const { data: h } = await supabase.from('fixtures').select('home_team').not('home_team','is',null).order('home_team',{ascending:true}).limit(400);
-      add(h,'home_team');
-      const { data: a } = await supabase.from('fixtures').select('away_team').not('away_team','is',null).order('away_team',{ascending:true}).limit(400);
-      add(a,'away_team');
-      list.sort((x,y)=>x.localeCompare(y));
+    function fillTeamOptions(list){
+      // keep first "Select…" and last "Other…"
       const otherOpt = teamSel.querySelector('option[value="__other"]');
-      list.forEach(t=>{ const opt=document.createElement('option'); opt.value=t; opt.textContent=t; teamSel.insertBefore(opt, otherOpt); });
+      // remove any existing dynamic options
+      [...teamSel.querySelectorAll('option')].forEach(o=>{
+        if (o.value && o.value !== '__other') o.remove();
+      });
+      list.forEach(t=>{
+        const opt=document.createElement('option');
+        opt.value=t; opt.textContent=t;
+        teamSel.insertBefore(opt, otherOpt);
+      });
     }
 
-    // Prefill existing
-    let isAdmin=false;
-    async function prefill(){
-      const { data: prof } = await supabase.from('profiles').select('display_name,favorite_team,is_admin').eq('id', user.id).maybeSingle();
-      if (prof?.display_name) nickname.value = prof.display_name;
-      if (prof?.favorite_team) {
-        const opt=[...teamSel.options].find(o=>o.value===prof.favorite_team);
-        if (opt) teamSel.value=prof.favorite_team;
-        else { teamSel.value='__other'; otherWrap.style.display='block'; otherTeam.value=prof.favorite_team; }
-        showPreview(prof.favorite_team);
+    async function loadTeams(){
+      try{
+        const seen=new Set(); const list=[];
+        const add = (rows, key) => (rows||[]).forEach(r=>{
+          const t=r[key]?.trim(); if(t && !seen.has(t)){ seen.add(t); list.push(t); }
+        });
+        // read a chunk of fixtures (RLS requires select policy; we added one in SQL)
+        const { data: h, error: e1 } = await supabase
+          .from('fixtures').select('home_team').not('home_team','is',null).limit(500);
+        if (!e1) add(h,'home_team');
+        const { data: a, error: e2 } = await supabase
+          .from('fixtures').select('away_team').not('away_team','is',null).limit(500);
+        if (!e2) add(a,'away_team');
+
+        let teams = Array.from(new Set(list)).sort((x,y)=>x.localeCompare(y));
+        if (teams.length === 0) {
+          // fallback so the page is usable even if fixtures read fails
+          teams = FALLBACK_TEAMS;
+        }
+        fillTeamOptions(teams);
+      }catch(err){
+        console.error('loadTeams error', err);
+        fillTeamOptions(FALLBACK_TEAMS);
       }
-      isAdmin = !!prof?.is_admin;
+    }
+
+    // auth guard
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
+    const user = session.user;
+
+    // prefill profile
+    async function prefill(){
+      try{
+        const { data: prof } = await supabase.from('profiles')
+          .select('display_name,favorite_team,is_admin').eq('id', user.id).maybeSingle();
+        if (prof?.display_name) nickname.value = prof.display_name;
+        if (prof?.favorite_team) {
+          const existing = [...teamSel.options].some(o=>o.value===prof.favorite_team);
+          if (!existing) {
+            const otherOpt = teamSel.querySelector('option[value="__other"]');
+            const opt=document.createElement('option'); opt.value=prof.favorite_team; opt.textContent=prof.favorite_team;
+            teamSel.insertBefore(opt, otherOpt);
+          }
+          teamSel.value = prof.favorite_team;
+          showPreview(prof.favorite_team);
+        }
+      }catch(e){ console.warn('prefill error (non-fatal):', e); }
     }
 
     teamSel.addEventListener('change', ()=>{
@@ -236,87 +208,40 @@
     });
     otherTeam.addEventListener('input', ()=>{ if(teamSel.value==='__other') showPreview(otherTeam.value.trim()); });
 
-    // Save
+    // save
     form.addEventListener('submit', async (e)=>{
-      e.preventDefault(); msg.textContent='';
-      const name = nickname.value.trim(); if(!name){ msg.innerHTML='<span class="err">Nickname is required.</span>'; return; }
-      let fav = teamSel.value; if (fav==='__other') fav = otherTeam.value.trim(); if (fav==='') fav=null;
-      saveBtn.disabled=true;
+      e.preventDefault();
+      msg.textContent = '';
+      const name = nickname.value.trim();
+      if (!name) { msg.innerHTML = '<span class="err">Nickname is required.</span>'; return; }
+      let fav = teamSel.value; if (fav==='__other') fav = otherTeam.value.trim(); if (fav==='') fav = null;
+
+      saveBtn.disabled = true;
       try{
-        const { error } = await supabase.from('profiles').upsert({ id:user.id, display_name:name, favorite_team:fav }, { onConflict:'id' });
+        // Upsert my row (requires insert/update policies; we added them in SQL)
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({ id:user.id, display_name:name, favorite_team:fav }, { onConflict:'id' });
         if (error) throw error;
-        msg.innerHTML='<span class="ok">Saved.</span>';
-        setTimeout(()=>{ window.location.replace(isAdmin ? 'admin.html' : 'predict.html'); }, 300);
-      }catch(err){ console.error(err); msg.innerHTML='<span class="err">Could not save profile. Please try again.</span>'; }
-      finally{ saveBtn.disabled=false; }
+        msg.innerHTML = '<span class="ok">Saved.</span>';
+        // fetch to see if admin
+        const { data: p2 } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+        const isAdmin = !!p2?.is_admin;
+        setTimeout(()=>{ window.location.replace(isAdmin ? 'admin.html' : 'predict.html'); }, 200);
+      }catch(err){
+        console.error('save profile error', err);
+        msg.innerHTML = `<span class="err">Could not save profile: ${err.message || err}</span>`;
+      }finally{
+        saveBtn.disabled = false;
+      }
     });
 
-    // Logout
     logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); window.location.replace('login.html'); });
-
-    // ---- Progress (exact scores so far) ----
-    function tierFor(n){
-      if (n >= 31) return { key:'goat', label:'GOAT', nextLabel:null, nextAt:null, base:31, cap:40 };
-      if (n >= 21) return { key:'pro', label:'Pro', nextLabel:'GOAT', nextAt:31, base:21, cap:30 };
-      if (n >= 11) return { key:'amateur', label:'Amateur', nextLabel:'Pro', nextAt:21, base:11, cap:20 };
-      return { key:'rookie', label:'Rookie', nextLabel:'Amateur', nextAt:11, base:0, cap:10 };
-    }
-    function updateProgressUI(exacts){
-      const t = tierFor(exacts);
-      tierEl.textContent = t.label;
-      tierEl.className = `tier ${t.key}`;
-      countsEl.textContent = `Exact scores: ${exacts}`;
-
-      // compute progress within current tier
-      const range = (t.key==='goat') ? 10 : (t.cap - t.base + 1); // bar size
-      const within = (t.key==='rookie') ? exacts - t.base : Math.min(exacts - t.base, range);
-      const pct = Math.max(0, Math.min(100, Math.round((within / range) * 100)));
-      bar.style.width = pct + '%';
-
-      if (t.nextAt) {
-        nextGoalEl.textContent = `Next: ${t.nextAt} (${t.nextLabel})`;
-      } else {
-        nextGoalEl.textContent = `Legend status secured. Keep going!`;
-      }
-    }
-
-    async function loadExactScores(){
-      // 1) Fetch my predictions
-      const { data: preds, error: pErr } = await supabase
-        .from('predictions')
-        .select('fixture_id, home_goals, away_goals')
-        .eq('user_id', user.id);
-      if (pErr || !preds || preds.length===0) { updateProgressUI(0); return; }
-
-      // 2) Fetch finished fixtures for those predictions
-      const ids = [...new Set(preds.map(p=>p.fixture_id))];
-      // Supabase in() requires non-empty list; chunk if massive
-      const chunk = (arr, n)=> arr.reduce((a,_,i)=> (i % n ? a : [...a, arr.slice(i,i+n)]), []);
-      let fixtures = [];
-      for (const part of chunk(ids, 1000)) {
-        const { data: fx } = await supabase
-          .from('fixtures')
-          .select('id, home_score, away_score')
-          .in('id', part)
-          .not('home_score','is',null)
-          .not('away_score','is',null);
-        fixtures = fixtures.concat(fx || []);
-      }
-      const fxMap = new Map(fixtures.map(f=>[f.id, f]));
-      // 3) Count exact matches
-      let exacts = 0;
-      preds.forEach(p=>{
-        const f = fxMap.get(p.fixture_id);
-        if (!f) return;
-        if (f.home_score === p.home_goals && f.away_score === p.away_goals) exacts++;
-      });
-      updateProgressUI(exacts);
-    }
 
     // Boot
     await loadTeams();
     await prefill();
-    await loadExactScores();
   </script>
 </body>
 </html>
+
