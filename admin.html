@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=50" />
+  <link rel="stylesheet" href="brand.css?v=60" />
   <style>
     .wrap{max-width:1000px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
@@ -12,7 +12,6 @@
     .row-actions{display:flex;gap:10px;flex-wrap:wrap}
     .btn{background:#28428f;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
     .btn:disabled{opacity:.6;cursor:not-allowed}
-    .btn.light{background:#e2e8f0;color:#111827}
     .meta{font-size:.9rem;color:#475569}
     table{width:100%;border-collapse:collapse}
     th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
@@ -23,6 +22,8 @@
     .list li{padding:6px 0;border-bottom:1px dashed #e5e7eb}
     .small{font-size:.95rem}
     .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#ecfeff;color:#164e63;font-weight:800;font-size:.8rem}
+    .errors{background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:10px;display:none}
+    .errors pre{white-space:pre-wrap;margin:0}
   </style>
 </head>
 <body>
@@ -80,54 +81,72 @@
       <div class="meta" id="subsMeta">Loading…</div>
       <ul class="list" id="listPicked"></ul>
     </section>
+
+    <!-- Error box (so “loading” doesn’t hang silently) -->
+    <section class="card errors" id="errorBox">
+      <strong>Errors</strong>
+      <pre id="errorText"></pre>
+    </section>
   </main>
 
   <script type="module" src="supabase-config.js"></script>
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // --- Auth guard + logout ---
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
-    document.getElementById('navLogout').addEventListener('click', async () => {
-      await supabase.auth.signOut(); window.location.replace('login.html');
-    });
+    // ---------- Utilities ----------
+    const $ = (id)=>document.getElementById(id);
+    const fixturesBody = $('fixturesBody');
+    const saveBtn = $('saveFeaturedBtn');
+    const saveStatus = $('saveStatus');
+    const selectedCountEl = $('selectedCount');
+    const listPicked = $('listPicked');
+    const subsMeta = $('subsMeta');
+    const lockBtn = $('lockBtn');
+    const weekLabel = $('weekLabel');
+    const errorBox = $('errorBox');
+    const errorText = $('errorText');
 
-    // Ensure admin
-    {
-      const { data, error } = await supabase
-        .from('profiles').select('is_admin').eq('id', session.user.id).maybeSingle();
-      if (error || !data?.is_admin) { alert('Admins only.'); window.location.replace('predict.html'); throw new Error('Not admin'); }
+    function showError(e){
+      console.error(e);
+      errorText.textContent = String(e?.message || e);
+      errorBox.style.display = 'block';
     }
 
-    // --- Week window (Mon..Mon in UTC) ---
-    function startOfWeek(d=new Date()){
-      const x=new Date(d); const day=x.getUTCDay(); // use UTC to match utc_date
-      const diff=x.getUTCDate()-day+(day===0?-6:1);
-      x.setUTCHours(0,0,0,0);
-      return new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), diff));
+    function startOfWeekUTC(d=new Date()){
+      // Monday 00:00 UTC .. next Monday 00:00 UTC
+      const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      const dow = dt.getUTCDay(); // 0..6, 1=Mon
+      const offset = dow === 0 ? -6 : 1 - dow;
+      dt.setUTCDate(dt.getUTCDate() + offset);
+      return dt;
     }
     function isoDate(d){ return d.toISOString().slice(0,10); }
-    const weekStart = startOfWeek();
-    const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate()+7);
-    document.getElementById('weekLabel').textContent =
-      `${weekStart.toUTCString().slice(0,16)} — ${new Date(weekEnd-1).toUTCString().slice(0,16)}`;
 
-    // --- Elements ---
-    const fixturesBody = document.getElementById('fixturesBody');
-    const saveBtn = document.getElementById('saveFeaturedBtn');
-    const saveStatus = document.getElementById('saveStatus');
-    const selectedCountEl = document.getElementById('selectedCount');
-    const listPicked = document.getElementById('listPicked');
-    const subsMeta = document.getElementById('subsMeta');
-    const lockBtn = document.getElementById('lockBtn');
+    let weekStart, weekEnd;
+    function setWeekWindow(){
+      weekStart = startOfWeekUTC(new Date());
+      weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate()+7);
+      weekLabel.textContent = `${weekStart.toUTCString().slice(0,16)} — ${new Date(weekEnd-1).toUTCString().slice(0,16)}`;
+    }
 
-    // --- Load fixtures in week ---
-    let fixtures = [];
     function updateSelectedCounter(){
       const n = document.querySelectorAll('.feat:checked').length;
       selectedCountEl.textContent = n;
       saveBtn.disabled = (n !== 5);
+    }
+
+    // ---------- Data ----------
+    let fixtures = [];
+
+    async function secureSession(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
+      document.getElementById('navLogout').onclick = async ()=>{ await supabase.auth.signOut(); window.location.replace('login.html'); };
+      // require admin
+      const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).maybeSingle();
+      if (error) throw error;
+      if (!data?.is_admin) { window.location.replace('predict.html'); throw new Error('Admins only'); }
+      return session.user;
     }
 
     async function loadFixtures(){
@@ -139,44 +158,37 @@
         .lt('utc_date', isoDate(weekEnd))
         .order('utc_date', { ascending: true });
 
-      if (error) { fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>`; return; }
+      if (error) { fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>`; throw error; }
       fixtures = data || [];
       if (!fixtures.length) {
         fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">No fixtures for this week (yet).</td></tr>`;
         return;
       }
-      renderFixtures();
-      updateSelectedCounter();
-    }
-
-    function renderFixtures(){
+      // render
       fixturesBody.innerHTML = '';
       for (const f of fixtures){
-        const date = new Date(f.utc_date+'T00:00:00Z'); // utc_date is a date (no time); show as date only
-        const dateStr = `${date.toISOString().slice(0,10)} UTC`;
+        const dt = new Date(f.utc_date); // timestampz
+        const datestr = dt.toISOString().replace('T',' ').slice(0,16) + ' UTC';
         const res = (f.home_score ?? '') !== '' && (f.away_score ?? '') !== ''
-          ? `${f.home_score}–${f.away_score}` : (f.status || '—');
-
+            ? `${f.home_score}–${f.away_score}`
+            : (f.status || '—');
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><input type="checkbox" class="feat" data-id="${f.id}" ${f.featured ? 'checked':''} /></td>
-          <td>${dateStr}</td>
+          <td>${datestr}</td>
           <td>${f.home_team || '?'} vs ${f.away_team || '?'}</td>
           <td class="muted">${res}</td>
         `;
         fixturesBody.appendChild(tr);
       }
       document.querySelectorAll('.feat').forEach(cb=>cb.addEventListener('change', updateSelectedCounter));
+      updateSelectedCounter();
     }
 
-    // --- Save featured (require exactly 5) ---
-    saveBtn.addEventListener('click', async ()=>{
+    async function saveFeatured(){
       const checks = Array.from(document.querySelectorAll('.feat'));
       const picked = checks.filter(c=>c.checked).map(c=>c.dataset.id);
-      if (picked.length !== 5){
-        alert('Please select exactly 5 fixtures.');
-        return;
-      }
+      if (picked.length !== 5){ alert('Please select exactly 5 fixtures.'); return; }
       saveBtn.disabled = true; saveStatus.textContent = 'Saving…';
       try{
         const idsAll = fixtures.map(f=>f.id);
@@ -191,17 +203,17 @@
 
         saveStatus.textContent = 'Saved.';
         await loadFixtures();
-        await loadSubmissions(); // refresh list
+        await loadSubmissions();
       } catch(e){
-        console.error(e); saveStatus.textContent = 'Error saving.';
+        saveStatus.textContent = 'Error saving.';
+        showError(e);
       } finally {
         saveBtn.disabled = false;
         setTimeout(()=>saveStatus.textContent='', 1500);
       }
-    });
+    }
 
-    // --- Lock week for everyone ---
-    lockBtn.addEventListener('click', async ()=>{
+    async function lockWeek(){
       lockBtn.disabled = true;
       try{
         const { error } = await supabase
@@ -209,11 +221,10 @@
           .upsert({ week_start: isoDate(weekStart), locked: true }, { onConflict: 'week_start' });
         if (error) throw error;
         alert('Week locked for everyone.');
-      } catch(e){ console.error(e); alert('Could not lock the week.'); }
-      finally{ lockBtn.disabled=false; }
-    });
+      } catch(e){ showError(e); alert('Could not lock the week.'); }
+      finally { lockBtn.disabled=false; }
+    }
 
-    // --- Submissions: only show users who picked (>=1) among this week's FEATURED fixtures ---
     async function loadSubmissions(){
       listPicked.innerHTML = ''; subsMeta.textContent = 'Loading…';
 
@@ -226,21 +237,27 @@
         return;
       }
 
-      // All predictions on the featured fixtures
+      // Predictions on featured fixtures
       const { data: preds, error: prErr } = await supabase
         .from('predictions')
         .select('user_id, fixture_id')
         .in('fixture_id', featuredIds);
-      if (prErr){ subsMeta.textContent = 'Error loading predictions.'; return; }
+      if (prErr) { subsMeta.textContent = 'Error loading predictions.'; throw prErr; }
 
-      // Count by user
       const counts = new Map();
       (preds||[]).forEach(p=>{
-        counts.set(p.user_id, (counts.get(p.user_id)||0) + 1);
+        // count unique fixtures per user (avoid double-count if any)
+        const key = `${p.user_id}:${p.fixture_id}`;
+        if (!counts.has(key)) counts.set(key, true);
       });
+      // reduce to user totals
+      const userTotals = new Map();
+      for (const k of counts.keys()){
+        const [uid] = k.split(':');
+        userTotals.set(uid, (userTotals.get(uid)||0)+1);
+      }
 
-      // Filter users who picked >=1, and fetch their names
-      const userIds = [...counts.keys()];
+      const userIds = [...userTotals.keys()];
       if (userIds.length === 0){
         subsMeta.textContent = `Featured fixtures: ${totalNeeded} • No submissions yet.`;
         listPicked.innerHTML = '<li class="muted small">—</li>';
@@ -248,30 +265,39 @@
       }
 
       const { data: profs, error: pe } = await supabase
-        .from('profiles')
-        .select('id,display_name')
-        .in('id', userIds);
-      if (pe){ subsMeta.textContent = 'Error loading players.'; return; }
+        .from('profiles').select('id,display_name').in('id', userIds);
+      if (pe) { subsMeta.textContent = 'Error loading players.'; throw pe; }
 
       const byId = new Map((profs||[]).map(p=>[p.id, p.display_name || 'Anon']));
-      // Sort: completed first (5/5), then by count desc, then name
-      const items = userIds.map(id=>({ id, name: byId.get(id) || 'Anon', c: counts.get(id) || 0 }));
-      items.sort((a,b)=> (b.c===a.c ? (a.name.localeCompare(b.name)) : b.c-a.c));
+      const items = userIds.map(id=>({ id, name: byId.get(id) || 'Anon', c: userTotals.get(id) || 0 }));
+      items.sort((a,b)=> (b.c===a.c ? a.name.localeCompare(b.name) : b.c-a.c));
 
+      listPicked.innerHTML = '';
       items.forEach(it=>{
         const li = document.createElement('li');
         li.className = 'small';
-        const done = it.c >= totalNeeded ? ' ✓' : '';
-        li.textContent = `${it.name} — ${it.c}/${totalNeeded}${done}`;
+        const tick = it.c >= totalNeeded ? ' ✓' : '';
+        li.textContent = `${it.name} — ${it.c}/${totalNeeded}${tick}`;
         listPicked.appendChild(li);
       });
 
       subsMeta.textContent = `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
     }
 
-    // Boot
-    await loadFixtures();
-    await loadSubmissions();
+    // ---------- Init ----------
+    async function init(){
+      try{
+        setWeekWindow();
+        await secureSession();
+        saveBtn.onclick = saveFeatured;
+        lockBtn.onclick = lockWeek;
+        await loadFixtures();
+        await loadSubmissions();
+      } catch(e){
+        showError(e);
+      }
+    }
+    init();
   </script>
 </body>
 </html>
