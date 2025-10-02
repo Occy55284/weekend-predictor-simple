@@ -8,98 +8,58 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --ink:#0f172a;
-      --muted:#475569;
-      --brand:#2643B3;   /* deep blue */
-      --accent:#16a34a;  /* green */
-      --card:#ffffff;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    :root{ --ink:#0f172a; --muted:#475569; --brand:#2643B3; --accent:#16a34a; --card:#ffffff; }
+    *{box-sizing:border-box} html,body{height:100%}
     body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(1200px 600px at 50% -20%, #e9f0ff 0%, rgba(233,240,255,0) 55%) ,
+        radial-gradient(1200px 600px at 50% -20%, #e9f0ff 0%, rgba(233,240,255,0) 55%),
         linear-gradient(180deg, #f7faff 0%, #eef4ff 45%, #f8fbff 100%);
-      display:grid; place-items:center;
-      padding:20px 12px;
+      display:grid; place-items:center; padding:20px 12px;
     }
-
-    /* Top brand */
-    .brand{
-      display:flex; align-items:center; gap:10px; justify-content:center;
-      margin-bottom:10px; color:#0f172a; font-weight:800;
-    }
+    .brand{display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:10px; font-weight:800;}
     .logo{width:38px; height:38px}
-
-    /* Card */
     .card{
       width:min(560px, 92vw);
       background:
         radial-gradient(300px 140px at 20% 10%, rgba(22,163,74,.08), transparent 60%),
         radial-gradient(380px 170px at 80% 15%, rgba(38,67,179,.10), transparent 60%),
         linear-gradient(180deg, #fff, #f4f7ff);
-      border:1px solid #e6e9f5;
-      border-radius:20px;
-      padding:28px 22px 22px;
-      box-shadow:0 14px 40px rgba(17,24,39,.12);
-      text-align:center;
+      border:1px solid #e6e9f5; border-radius:20px; padding:28px 22px 22px;
+      box-shadow:0 14px 40px rgba(17,24,39,.12); text-align:center;
     }
-    h1{
-      font-size:clamp(24px, 3.4vw, 36px);
-      margin:4px 0 6px;
-    }
-    p.lead{
-      color:var(--muted);
-      margin:0 0 16px;
-    }
-
+    h1{font-size:clamp(24px, 3.4vw, 36px); margin:4px 0 6px;}
+    p.lead{color:var(--muted); margin:0 0 16px;}
     form{margin-top:10px}
-    .field{
-      display:flex; gap:10px; justify-content:center; align-items:center;
-      margin:10px 0;
-    }
+    .field{display:flex; gap:10px; justify-content:center; align-items:center; margin:10px 0;}
     input[type="email"]{
-      width:min(380px, 80vw);
-      padding:14px 14px;
-      border:1px solid #cdd6f4; border-radius:12px;
-      font-size:1rem;
-      box-shadow:inset 0 1px 0 rgba(0,0,0,.03);
+      width:min(380px, 80vw); padding:14px 14px; border:1px solid #cdd6f4; border-radius:12px;
+      font-size:1rem; box-shadow:inset 0 1px 0 rgba(0,0,0,.03);
     }
     button.primary{
       border:none; cursor:pointer; font-weight:900; letter-spacing:.2px;
       padding:14px 20px; border-radius:12px; font-size:1rem;
-      background:linear-gradient(135deg, var(--brand), #1b3186);
-      color:#fff; box-shadow:0 8px 20px rgba(38,67,179,.28);
-      transition:transform .06s ease, box-shadow .15s ease;
+      background:linear-gradient(135deg, var(--brand), #1b3186); color:#fff;
+      box-shadow:0 8px 20px rgba(38,67,179,.28); transition:transform .06s ease, box-shadow .15s ease;
       min-width:150px;
     }
     button.primary:hover{transform:translateY(-1px); box-shadow:0 10px 24px rgba(38,67,179,.32)}
     button.primary:disabled{opacity:.6; cursor:not-allowed; transform:none; box-shadow:none}
-
     .msg{margin-top:12px; font-size:.95rem}
-    .ok{color:#166534}
-    .err{color:#b91c1c}
+    .ok{color:#166534} .err{color:#b91c1c}
     .help{color:#64748b; font-size:.9rem; margin-top:6px}
-
-    .foot{
-      margin-top:16px; color:#64748b; font-size:.9rem;
-    }
+    .foot{margin-top:16px; color:#64748b; font-size:.9rem;}
     .link{color:#1f307a; text-decoration:none; font-weight:700}
   </style>
 </head>
 <body>
-
   <div class="wrap">
     <div class="brand">
       <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
         <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
         <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-        <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z"
-              fill="#0E3E2A"></path>
+        <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
       </svg>
       <span>Weekend Predictor</span>
     </div>
@@ -116,11 +76,9 @@
       </form>
 
       <div id="message" class="msg"></div>
-      <div class="help">Make sure to open the link on this device.</div>
+      <div class="help">Open the link on this device.</div>
 
-      <div class="foot">
-        <a class="link" href="index.html">← Back to home</a>
-      </div>
+      <div class="foot"><a class="link" href="index.html">← Back to home</a></div>
     </section>
   </div>
 
@@ -133,33 +91,23 @@
     const sendBtn = document.getElementById('send');
     const msg = document.getElementById('message');
 
-    // --- After-login routing ---
     async function routeAfterLogin(userId){
-      // Admin → admin.html
       try {
-        const { data: prof, error } = await supabase
+        const { data: prof } = await supabase
           .from('profiles')
           .select('display_name,is_admin')
           .eq('id', userId).maybeSingle();
 
-        if (!error && prof?.is_admin) {
-          window.location.replace('admin.html');
-          return;
-        }
-        if (!error && prof?.display_name) {
-          window.location.replace('predict.html');
-        } else {
-          window.location.replace('profile.html');
-        }
-      } catch (e) {
-        console.error(e);
+        if (prof?.is_admin) { window.location.replace('admin.html'); return; }
+        if (prof?.display_name) { window.location.replace('predict.html'); return; }
+        window.location.replace('profile.html');
+      } catch {
         window.location.replace('predict.html');
       }
     }
 
-    // --- Handle redirects from magic link (both modern ?code= and legacy #access_token=) ---
     async function handleAuthRedirect(){
-      // 1) New style: supabase sends ?code= for email links
+      // New style ?code=
       const code = new URL(location.href).searchParams.get('code');
       if (code) {
         msg.textContent = 'Signing you in…';
@@ -170,11 +118,10 @@
           return;
         } catch (e) {
           console.error(e);
-          msg.innerHTML = '<span class="err">Could not complete sign-in. Try sending a new link.</span>';
+          msg.innerHTML = '<span class="err">Could not complete sign-in. Send a new link.</span>';
         }
       }
-
-      // 2) Legacy hash tokens (#access_token=…&refresh_token=…)
+      // Legacy #access_token
       if (location.hash && location.hash.includes('access_token')) {
         msg.textContent = 'Finishing sign-in…';
         const params = new URLSearchParams(location.hash.substring(1));
@@ -184,7 +131,6 @@
           try {
             const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
             if (error) throw error;
-            // clear hash to tidy URL
             history.replaceState({}, document.title, location.pathname);
             await routeAfterLogin(data.user.id);
             return;
@@ -196,10 +142,10 @@
       }
     }
 
-    // Run redirect handler on load
+    // Run on load
     handleAuthRedirect();
 
-    // --- Send magic link form ---
+    // Send magic link
     form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const email = emailEl.value.trim();
@@ -207,9 +153,9 @@
 
       sendBtn.disabled = true;
       msg.textContent = 'Sending magic link…';
-
       try {
-        const redirectTo = `${location.origin}${location.pathname}`;
+        // Force redirect back to this page to complete auth, then we route to Predict/Admin/Profile.
+        const redirectTo = `${location.origin}/login.html`;
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: { emailRedirectTo: redirectTo }
@@ -218,13 +164,13 @@
         msg.innerHTML = '<span class="ok">Magic link sent — check your inbox.</span>';
       } catch (err) {
         console.error(err);
-        msg.innerHTML = '<span class="err">Could not send link. Please check the email and try again.</span>';
+        msg.innerHTML = '<span class="err">Could not send link. Please try again.</span>';
       } finally {
         sendBtn.disabled = false;
       }
     });
 
-    // If already signed in, skip this page
+    // Already signed in? Skip this page.
     (async ()=>{
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) routeAfterLogin(session.user.id);
