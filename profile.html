@@ -3,245 +3,148 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Profile • Weekend Predictor</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+  <title>Your Profile • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=81" />
   <style>
-    :root{ --ink:#0f172a; --muted:#475569; --brand:#2643B3; --accent:#16a34a; --card:#ffffff; }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-         color:var(--ink);
-         background: radial-gradient(1200px 600px at 50% -20%, #e9f0ff 0%, rgba(233,240,255,0) 55%),
-                     linear-gradient(180deg, #f7faff 0%, #eef4ff 45%, #f8fbff 100%);
-         display:grid; place-items:center; padding:20px 12px;}
-    .brand{display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:10px; font-weight:800;}
-    .logo{width:38px; height:38px}
-    .card{ width:min(720px,94vw); background: linear-gradient(180deg,#fff,#f4f7ff);
-      border:1px solid #e6e9f5; border-radius:20px; padding:28px 22px 22px; box-shadow:0 14px 40px rgba(17,24,39,.12); }
-    h1{ text-align:center; font-size:clamp(24px, 3.4vw, 36px); margin:4px 0 2px; }
-    p.lead{color:var(--muted); text-align:center; margin:0 0 14px}
-    form{margin-top:6px}
-    .row{display:grid; gap:10px; grid-template-columns:1fr}
-    @media (min-width:720px){ .row{grid-template-columns:1fr 1fr} }
-    label{font-weight:800; font-size:.95rem; margin-bottom:4px; display:block}
-    .field{margin:8px 0 14px}
-    input[type="text"], select{ width:100%; padding:14px; border:1px solid #cdd6f4; border-radius:12px; font-size:1rem; background:#fff; }
-    .help{color:#64748b; font-size:.9rem; margin-top:2px}
-    .actions{margin-top:8px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
-    .btn{border:none; cursor:pointer; font-weight:900; letter-spacing:.2px; padding:14px 20px; border-radius:12px; font-size:1rem;}
-    .primary{ background:linear-gradient(135deg, var(--brand), #1b3186); color:#fff; box-shadow:0 8px 20px rgba(38,67,179,.28) }
-    .secondary{ background:#e5e7eb }
-    .msg{margin-top:12px; text-align:center; font-size:.95rem}
-    .ok{color:#166534} .err{color:#b91c1c}
-    .foot{ margin-top:14px; color:#64748b; font-size:.9rem; text-align:center }
-
-    .badge-preview{display:flex; align-items:center; gap:10px; margin-top:6px}
-    .badge-preview img{width:28px; height:28px; border-radius:50%; display:block}
-    .preview-name{color:#334155; font-weight:700}
+    .wrap{max-width:820px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    h1{margin:0 0 10px;color:#1f357a}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:760px){ .row{grid-template-columns:1fr} }
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-weight:700;color:#1f2937}
+    .field input,.field select{
+      height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:1rem
+    }
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .msg{margin-top:10px;font-weight:700}
+    .ok{color:#16a34a}.err{color:#b91c1c}
+    .preview{display:flex;align-items:center;gap:12px;margin-top:10px}
+    .badge{width:48px;height:48px;border-radius:12px;background:#eef2ff;display:grid;place-items:center;font-weight:800;color:#1f357a}
   </style>
+  <script type="module" src="supabase-config.js"></script>
+  <!-- Early logout wiring -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{ await supabase.auth.signOut(); }catch{}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="brand">
-      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
-        <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
-        <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-        <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
-      </svg>
-      <span>Weekend Predictor</span>
+  <header class="top">
+    <div class="inner">
+      <a class="logo" href="index.html">WP</a>
+      <nav class="topnav">
+        <a href="predict.html" data-nav="predict">Predict</a>
+        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+        <a href="profile.html" data-nav="profile" class="active">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
     </div>
+  </header>
 
+  <main class="wrap">
     <section class="card">
-      <h1>Your Profile</h1>
-      <p class="lead">Pick a nickname and your favourite team. Your team badge will appear on the leaderboard.</p>
-
+      <h1>Your profile</h1>
       <form id="form">
         <div class="row">
           <div class="field">
-            <label for="nickname">Nickname</label>
-            <input id="nickname" type="text" placeholder="e.g. Mark 2" required />
-            <div class="help">Shown on the leaderboard.</div>
+            <label for="name">Display name</label>
+            <input id="name" type="text" placeholder="Your name" required />
           </div>
-
           <div class="field">
             <label for="team">Favourite team</label>
-            <select id="team">
-              <option value="">Select a team…</option>
-              <!-- options injected -->
-              <option value="__other">Other…</option>
-            </select>
-            <div id="otherWrap" class="field" style="display:none; margin-top:8px">
-              <input id="otherTeam" type="text" placeholder="Type your team" />
-            </div>
-            <div class="badge-preview" id="badgePreview" style="display:none">
-              <img id="badgeImg" alt="team badge"/>
-              <span class="preview-name" id="badgeName"></span>
-            </div>
+            <select id="team"></select>
+          </div>
+        </div>
+
+        <div class="preview">
+          <div class="badge" id="badge">WP</div>
+          <div>
+            <div class="meta">Preview</div>
+            <div id="badgeName" style="font-weight:800;color:#1f357a">—</div>
           </div>
         </div>
 
         <div class="actions">
-          <button id="save" type="submit" class="btn primary">Save & continue</button>
-          <button id="logout" type="button" class="btn secondary">Log out</button>
+          <button id="save" type="submit" class="btn primary">Save changes</button>
+          <a class="btn" href="predict.html">Go to predictions</a>
         </div>
       </form>
-
       <div id="message" class="msg"></div>
-      <div class="foot"><a href="index.html">← Back to home</a></div>
     </section>
-  </div>
+  </main>
 
-  <script type="module" src="supabase-config.js"></script>
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const nickname = document.getElementById('nickname');
-    const teamSel = document.getElementById('team');
-    const otherWrap = document.getElementById('otherWrap');
-    const otherTeam = document.getElementById('otherTeam');
-    const badgePreview = document.getElementById('badgePreview');
-    const badgeImg = document.getElementById('badgeImg');
+    const nameEl = document.getElementById('name');
+    const teamEl = document.getElementById('team');
+    const badge = document.getElementById('badge');
     const badgeName = document.getElementById('badgeName');
-    const form = document.getElementById('form');
     const saveBtn = document.getElementById('save');
-    const logoutBtn = document.getElementById('logout');
     const msg = document.getElementById('message');
 
-    // Fallback team list (used only if fixtures query returns nothing)
-    const FALLBACK_TEAMS = [
-      "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton",
-      "Chelsea", "Crystal Palace", "Everton", "Fulham", "Ipswich Town",
-      "Leicester City", "Liverpool", "Manchester City", "Manchester United",
-      "Newcastle United", "Nottingham Forest", "Southampton",
-      "Tottenham Hotspur", "West Ham United", "Wolverhampton"
-    ];
-
-    // Minimal badge for preview (initials + color)
-    const initials = t => (t||'').split(/\s+/).slice(0,2).map(s=>s[0]||'').join('').toUpperCase();
-    function colorFrom(text){ let h=0; for(let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0; return `hsl(${h%360} 70% 45%)`; }
-    const badgeDataUrl = team => {
-      const init = initials(team||'');
-      const col = colorFrom(team||'Team');
-      const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
-        <circle cx='32' cy='32' r='30' fill='${col}'/>
-        <text x='32' y='39' font-family='Inter,Arial' font-size='24' font-weight='800' text-anchor='middle' fill='white'>${init}</text>
-      </svg>`);
-      return `data:image/svg+xml;charset=utf-8,${svg}`;
-    }
-    function showPreview(team){
-      if(!team){ badgePreview.style.display='none'; return; }
-      badgeImg.src = badgeDataUrl(team);
-      badgeName.textContent = team;
-      badgePreview.style.display='flex';
-    }
-
-    function fillTeamOptions(list){
-      // keep first "Select…" and last "Other…"
-      const otherOpt = teamSel.querySelector('option[value="__other"]');
-      // remove any existing dynamic options
-      [...teamSel.querySelectorAll('option')].forEach(o=>{
-        if (o.value && o.value !== '__other') o.remove();
-      });
-      list.forEach(t=>{
-        const opt=document.createElement('option');
-        opt.value=t; opt.textContent=t;
-        teamSel.insertBefore(opt, otherOpt);
-      });
+    function updatePreview(){
+      badgeName.textContent = nameEl.value || '—';
     }
 
     async function loadTeams(){
-      try{
-        const seen=new Set(); const list=[];
-        const add = (rows, key) => (rows||[]).forEach(r=>{
-          const t=r[key]?.trim(); if(t && !seen.has(t)){ seen.add(t); list.push(t); }
-        });
-        // read a chunk of fixtures (RLS requires select policy; we added one in SQL)
-        const { data: h, error: e1 } = await supabase
-          .from('fixtures').select('home_team').not('home_team','is',null).limit(500);
-        if (!e1) add(h,'home_team');
-        const { data: a, error: e2 } = await supabase
-          .from('fixtures').select('away_team').not('away_team','is',null).limit(500);
-        if (!e2) add(a,'away_team');
+      const { data, error } = await supabase.from('teams').select('id,short_code,name').order('name');
+      if (error) return;
+      teamEl.innerHTML = '<option value="">Select a team…</option>' + (data||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+    }
 
-        let teams = Array.from(new Set(list)).sort((x,y)=>x.localeCompare(y));
-        if (teams.length === 0) {
-          // fallback so the page is usable even if fixtures read fails
-          teams = FALLBACK_TEAMS;
-        }
-        fillTeamOptions(teams);
-      }catch(err){
-        console.error('loadTeams error', err);
-        fillTeamOptions(FALLBACK_TEAMS);
+    async function prefill(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user){ window.location.replace('login.html'); return; }
+      const uid = session.user.id;
+
+      const { data: prof } = await supabase.from('profiles')
+        .select('display_name, team_id, is_admin').eq('id', uid).maybeSingle();
+
+      if (prof){
+        nameEl.value = prof.display_name || '';
+        teamEl.value = prof.team_id || '';
+        updatePreview();
+        if (prof.is_admin) document.getElementById('navAdmin').style.display = '';
       }
     }
 
-    // auth guard
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
-    const user = session.user;
+    document.getElementById('form').addEventListener('input', updatePreview);
 
-    // prefill profile
-    async function prefill(){
-      try{
-        const { data: prof } = await supabase.from('profiles')
-          .select('display_name,favorite_team,is_admin').eq('id', user.id).maybeSingle();
-        if (prof?.display_name) nickname.value = prof.display_name;
-        if (prof?.favorite_team) {
-          const existing = [...teamSel.options].some(o=>o.value===prof.favorite_team);
-          if (!existing) {
-            const otherOpt = teamSel.querySelector('option[value="__other"]');
-            const opt=document.createElement('option'); opt.value=prof.favorite_team; opt.textContent=prof.favorite_team;
-            teamSel.insertBefore(opt, otherOpt);
-          }
-          teamSel.value = prof.favorite_team;
-          showPreview(prof.favorite_team);
-        }
-      }catch(e){ console.warn('prefill error (non-fatal):', e); }
-    }
-
-    teamSel.addEventListener('change', ()=>{
-      const other = teamSel.value==='__other';
-      otherWrap.style.display = other?'block':'none';
-      const val = other ? otherTeam.value.trim() : teamSel.value;
-      showPreview(val);
-    });
-    otherTeam.addEventListener('input', ()=>{ if(teamSel.value==='__other') showPreview(otherTeam.value.trim()); });
-
-    // save
-    form.addEventListener('submit', async (e)=>{
+    document.getElementById('form').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      msg.textContent = '';
-      const name = nickname.value.trim();
-      if (!name) { msg.innerHTML = '<span class="err">Nickname is required.</span>'; return; }
-      let fav = teamSel.value; if (fav==='__other') fav = otherTeam.value.trim(); if (fav==='') fav = null;
-
-      saveBtn.disabled = true;
+      saveBtn.disabled = true; msg.textContent = 'Saving…';
       try{
-        // Upsert my row (requires insert/update policies; we added them in SQL)
-        const { error } = await supabase
-          .from('profiles')
-          .upsert({ id:user.id, display_name:name, favorite_team:fav }, { onConflict:'id' });
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) throw new Error('Not signed in');
+        const uid = session.user.id;
+
+        const { error } = await supabase.from('profiles')
+          .update({ display_name: nameEl.value.trim(), team_id: teamEl.value || null })
+          .eq('id', uid);
+
         if (error) throw error;
         msg.innerHTML = '<span class="ok">Saved.</span>';
-        // fetch to see if admin
-        const { data: p2 } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
-        const isAdmin = !!p2?.is_admin;
-        setTimeout(()=>{ window.location.replace(isAdmin ? 'admin.html' : 'predict.html'); }, 200);
       }catch(err){
-        console.error('save profile error', err);
-        msg.innerHTML = `<span class="err">Could not save profile: ${err.message || err}</span>`;
+        console.error(err);
+        msg.innerHTML = '<span class="err">Could not save.</span>';
       }finally{
         saveBtn.disabled = false;
       }
     });
 
-    logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); window.location.replace('login.html'); });
-
-    // Boot
     await loadTeams();
     await prefill();
   </script>
 </body>
 </html>
-
