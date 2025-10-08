@@ -3,98 +3,100 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Leaderboard</title>
-  <link rel="stylesheet" href="brand.css?v=41" />
+  <title>Leaderboard • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=81" />
   <style>
-    .panel{background:#fff;border-radius:16px;padding:20px;max-width:960px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15);margin:0 auto}
-    .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
-    .tab{background:#e2e8f0;border:none;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600}
-    .tab.active{background:#28428f;color:#fff}
-    table.lb{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden}
-    .lb th,.lb td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center}
-    .lb th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
-    .me{background:#fff8dc}
-    .toolbar{display:flex;gap:10px;justify-content:center;align-items:center;margin:10px 0 6px}
-    .btn{background:#28428f;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .meta{font-size:.85rem;color:#475569;text-align:center;margin-top:6px}
-
-    .namecell{display:flex;align-items:center;gap:10px;justify-content:flex-start}
-    .crest{width:26px;height:26px;border-radius:50%;flex:0 0 26px;object-fit:cover;box-shadow:0 1px 2px rgba(0,0,0,.15)}
-    .crest.fallback{background:#e5e7eb}
-
-    /* Tier chip */
-    .tierchip{font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:999px;line-height:1}
-    .rookie{background:#e0f2fe;color:#075985}
-    .amateur{background:#dcfce7;color:#166534}
-    .pro{background:#fef3c7;color:#92400e}
-    .goat{background:#ede9fe;color:#5b21b6}
-
-    /* Page header logo */
-    .logo{display:block;margin:14px auto 10px;width:52px;height:52px}
-    h2{color:#1f357a;margin:0 0 6px;text-align:center}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    h1{margin:0 0 8px;color:#1f357a}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .tabs{display:flex;gap:6px;flex-wrap:wrap}
+    .tab{padding:6px 10px;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;font-weight:700;cursor:pointer}
+    .tab.active{background:#e0e7ff;border-color:#93c5fd;color:#1f357a}
+    .meta{color:#475569;font-size:.9rem}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{background:#f8fafc;text-transform:uppercase;font-size:.82rem;letter-spacing:.03em}
+    .rank{width:60px;text-align:center;font-weight:800}
+    .name{font-weight:700}
+    .pts{font-weight:800}
+    .ok{color:#16a34a}.err{color:#b91c1c}
+    .ghost{background:transparent;border:1px solid #cbd5e1;border-radius:10px;height:38px;padding:0 12px;font-weight:700}
+    .range{height:38px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 8px}
   </style>
+  <script type="module" src="supabase-config.js"></script>
+  <!-- Early logout wiring so it always works -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{ await supabase.auth.signOut(); }catch{}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
 </head>
 <body>
-  <!-- Top nav -->
-  <nav class="topnav">
-    <a href="predict.html" data-nav="predict">Predict</a>
-    <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-    <a href="leaderboard.html" class="active" data-nav="leaderboard">Leaderboard</a>
-    <a href="profile.html" data-nav="profile">Profile</a>
-    <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
-    <button class="logout" id="navLogout">Logout</button>
-  </nav>
+  <header class="top">
+    <div class="inner">
+      <a class="logo" href="index.html">WP</a>
+      <nav class="topnav">
+        <a href="predict.html" data-nav="predict">Predict</a>
+        <a href="leaderboard.html" data-nav="leaderboard" class="active">Leaderboard</a>
+        <a href="profile.html" data-nav="profile">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
+    </div>
+  </header>
 
-  <main class="landing">
-    <!-- Small logo -->
-    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
-      <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
-      <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
-    </svg>
-
-    <section class="panel">
-      <h2>Leaderboard</h2>
-
-      <div class="tabs">
-        <button id="tabWeek" class="tab active">This Week</button>
-        <button id="tabSeason" class="tab">Season</button>
+  <main class="wrap">
+    <section class="card">
+      <h1>Leaderboard</h1>
+      <div class="controls">
+        <div class="tabs">
+          <button id="tabWeek" class="tab active" type="button">This week</button>
+          <button id="tabSeason" class="tab" type="button">Season</button>
+        </div>
+        <input id="range" class="range" type="week" />
+        <button id="refreshBtn" class="ghost" type="button">Refresh</button>
+        <div class="meta" id="lastUpdated">—</div>
       </div>
+      <div class="meta" id="status">—</div>
 
-      <div class="toolbar">
-        <span id="range">Loading…</span>
-        <button id="refreshBtn" class="btn" title="Reload scores">Refresh</button>
-      </div>
-
-      <table class="lb" id="table">
-        <thead><tr><th>#</th><th style="text-align:left">Player</th><th>Points</th></tr></thead>
-        <tbody id="tbody"><tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr></tbody>
+      <table>
+        <thead>
+          <tr>
+            <th class="rank">#</th>
+            <th>Player</th>
+            <th style="width:160px">Correct scores</th>
+            <th style="width:170px">Correct results</th>
+            <th style="width:110px">Points</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
       </table>
-
-      <p class="meta">Last updated: <span id="lastUpdated">—</span></p>
-      <p id="status" class="meta"></p>
     </section>
   </main>
 
-  <script type="module" src="supabase-config.js"></script>
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // --- Navbar admin visibility + logout ---
-    (async () => {
-      const { data: { session} } = await supabase.auth.getSession();
-      if (!session) { window.location.replace('login.html'); return; }
-      document.getElementById('navLogout').addEventListener('click', async () => {
-        await supabase.auth.signOut(); window.location.replace('login.html');
-      });
-      try {
-        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
+    // Admin reveal (non-blocking)
+    (async ()=>{
+      try{
+        const { data:{ session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const { data, error } = await supabase
+          .from('profiles').select('is_admin').eq('id', session.user.id).single();
         if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
-      } catch {}
+      }catch{}
     })();
 
-    // --- Elements ---
+    // Elements
     const tbody = document.getElementById('tbody');
     const statusEl = document.getElementById('status');
     const tabWeek = document.getElementById('tabWeek');
@@ -103,177 +105,158 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const lastUpdatedEl = document.getElementById('lastUpdated');
 
-    // --- Time helpers ---
-    function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
-    const weekStart = startOfWeek();
+    // Time helpers
+    function startOfWeek(d=new Date()){
+      const x=new Date(d);
+      const day = x.getDay()===0?7:x.getDay(); // Mon=1..Sun=7
+      x.setHours(0,0,0,0);
+      x.setDate(x.getDate()-(day-1));
+      return x;
+    }
+    function pad(n){return String(n).padStart(2,'0')}
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
 
-    // --- Initials badge fallback ---
-    function initials(text){ if(!text) return ''; const p=text.replace(/\s+/g,' ').trim().split(' '); const pick=p.length>=2?(p[0][0]+p[1][0]):p[0].slice(0,2); return pick.toUpperCase(); }
-    function colorFrom(text){ let h=0; for(let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0; const hue=h%360; return `hsl(${hue} 70% 45%)`; }
-    function badgeDataUrl(team){
-      const init=initials(team||''); const col=colorFrom(team||'Team');
-      const svg=encodeURIComponent(
-        `<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 64 64'>
-          <defs><filter id='s' x='-50%' y='-50%' width='200%' height='200%'><feDropShadow dx='0' dy='1' stdDeviation='1' flood-opacity='.25'/></filter></defs>
-          <circle cx='32' cy='32' r='30' fill='${col}' filter='url(#s)'/>
-          <text x='32' y='39' font-family='Inter,Arial' font-size='24' font-weight='800' text-anchor='middle' fill='white'>${init}</text>
-        </svg>`
-      );
-      return `data:image/svg+xml;charset=utf-8,${svg}`;
+    // State
+    let currentTab = 'week';
+    let timerId = null;
+
+    function setTab(t){
+      currentTab = t;
+      tabWeek.classList.toggle('active', t==='week');
+      tabSeason.classList.toggle('active', t==='season');
     }
 
-    // --- Tier helpers (career exact-score count) ---
-    function tierFor(n){
-      if (n >= 31) return { key:'goat', label:'GOAT' };
-      if (n >= 21) return { key:'pro', label:'Pro' };
-      if (n >= 11) return { key:'amateur', label:'Amateur' };
-      return { key:'rookie', label:'Rookie' };
-    }
-    function tierChip(n){
-      const t = tierFor(n);
-      return `<span class="tierchip ${t.key}" title="Exact scores: ${n}">${t.label}</span>`;
-    }
+    function fmt(n){ return new Intl.NumberFormat().format(n||0) }
 
-    // --- Data helpers ---
-    async function getFavTeams(userIds){
-      if (!userIds.length) return new Map();
-      const { data, error } = await supabase.from('profiles').select('id,favorite_team').in('id', userIds);
-      if (error) return new Map();
-      const m=new Map(); (data||[]).forEach(r=>m.set(r.id, r.favorite_team)); return m;
-    }
-
-    // Count exact scores for one user (lightweight & per-user so UI doesn't block)
-    async function countExactsForUser(userId){
-      // Get this user's predictions
-      const { data: preds, error } = await supabase
-        .from('predictions')
-        .select('fixture_id,home_goals,away_goals')
-        .eq('user_id', userId)
-        .limit(2000);
-      if (error || !preds || preds.length===0) return 0;
-
-      const ids = [...new Set(preds.map(p=>p.fixture_id))];
-      // Fetch only finished fixtures among those ids (chunked 1000)
-      const chunk = (arr,n)=>arr.reduce((a,_,i)=>(i%n?a:[...a,arr.slice(i,i+n)]),[]);
-      let finished = [];
-      for (const part of chunk(ids,1000)){
-        const { data: fx } = await supabase
-          .from('fixtures')
-          .select('id,home_score,away_score')
-          .in('id', part)
-          .not('home_score','is',null)
-          .not('away_score','is',null);
-        finished = finished.concat(fx || []);
-      }
-      if (!finished.length) return 0;
-      const fxMap = new Map(finished.map(f=>[f.id,f]));
-      let exacts=0;
-      preds.forEach(p=>{
-        const f=fxMap.get(p.fixture_id);
-        if (f && f.home_score===p.home_goals && f.away_score===p.away_goals) exacts++;
-      });
-      return exacts;
-    }
-
-    // Load a crest from Storage (bucket: logos). Falls back to initials badge.
-    function slugify(name){ return (name||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
-    function buildCandidates(team){
-      const slug=slugify(team||'');
-      return [`${slug}.svg`, `${slug}.png`, `${slug}.jpg`];
-    }
-    function setCrestImage(imgEl, team, fallbackUrl){
-      if (!team){ imgEl.src=fallbackUrl; imgEl.classList.add('fallback'); return; }
-      const bucket = supabase.storage.from('logos');
-      const candidates = buildCandidates(team);
-      // Try SVG then PNG then JPG
-      let idx = 0;
-      const tryNext = () => {
-        if (idx >= candidates.length){ imgEl.src=fallbackUrl; imgEl.classList.add('fallback'); return; }
-        const { data } = bucket.getPublicUrl(candidates[idx++]);
-        const url = data?.publicUrl;
-        if (!url){ tryNext(); return; }
-        // try to load; if 404, onerror will try next
-        imgEl.onerror = () => tryNext();
-        imgEl.onload = () => imgEl.classList.remove('fallback');
-        imgEl.src = url;
-      };
-      tryNext();
-    }
-
-    // --- Load leaderboard ---
-    let currentTab='week';
-    async function load(kind='week'){
-      currentTab=kind;
-      tabWeek.classList.toggle('active', kind==='week');
-      tabSeason.classList.toggle('active', kind!=='week');
-      statusEl.textContent='';
-      tbody.innerHTML='<tr><td colspan="3" style="padding:18px;color:#64748b;">Loading…</td></tr>';
-      rangeEl.textContent = kind==='week' ? `Week of ${startOfWeek().toDateString()}` : 'Season to date';
-
-      const params = (kind==='week') ? { week_start: startOfWeek().toISOString().slice(0,10) } : {};
-      const { data, error } = await supabase.rpc('get_leaderboard', params);
-      lastUpdatedEl.textContent = new Date().toLocaleTimeString();
-
-      if (error){ console.error(error); statusEl.textContent='Error loading leaderboard'; return; }
-      if (!data || data.length===0){ tbody.innerHTML='<tr><td colspan="3" style="padding:18px;color:#64748b;">No results yet.</td></tr>'; return; }
-
-      const userIds = data.map(r=>r.user_id);
-      const favMap = await getFavTeams(userIds);
-
-      tbody.innerHTML='';
-      const { data: { session } } = await supabase.auth.getSession();
-      const myId = session?.user?.id || null;
-
-      for (let idx=0; idx<data.length; idx++){
-        const row = data[idx];
-        const fav = favMap.get(row.user_id) || '';
-        const crestFallback = badgeDataUrl(fav || row.display_name || 'Player');
-
-        const tr=document.createElement('tr');
-        if (row.user_id===myId) tr.classList.add('me');
+    function renderRows(rows){
+      tbody.innerHTML = '';
+      rows.forEach((r,i)=>{
+        const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${idx+1}</td>
-          <td style="text-align:left">
-            <div class="namecell">
-              <img class="crest fallback" src="${crestFallback}" alt="${fav||'Team'} crest"/>
-              <span>${row.display_name || 'Anon'}</span>
-              <span class="tierchip rookie" title="Exact scores: …">Rookie</span>
-            </div>
-          </td>
-          <td>${row.points}</td>
+          <td class="rank">${i+1}</td>
+          <td class="name">${r.display_name || '—'}</td>
+          <td>${fmt(r.correct_scores)}</td>
+          <td>${fmt(r.correct_results)}</td>
+          <td class="pts">${fmt(r.points)}</td>
         `;
         tbody.appendChild(tr);
+      });
+    }
 
-        // Swap in real crest if available (non-blocking)
-        const img = tr.querySelector('img.crest');
-        setCrestImage(img, fav, crestFallback);
+    async function fetchSeason(){
+      // Prefer RPC if present (server computes with 3/5 scoring)
+      const { data, error } = await supabase.rpc('leaderboard_v2');
+      if (!error && Array.isArray(data)) return data;
 
-        // Load exact count for this user (non-blocking)
-        try{
-          const exacts = await countExactsForUser(row.user_id);
-          const chip = tr.querySelector('.tierchip');
-          const t = tierFor(exacts);
-          chip.className = `tierchip ${t.key}`;
-          chip.textContent = t.label;
-          chip.title = `Exact scores: ${exacts}`;
-        } catch {}
+      // Fallback: compute client-side if RPC not created yet
+      // Requires: tables fixtures(id, week_start, home_score, away_score), picks(user_id, fixture_id, home, away)
+      const { data: fixtures } = await supabase.from('fixtures').select('id,home_score,away_score');
+      const { data: picks } = await supabase.from('picks').select('user_id,fixture_id,home,away');
+      const { data: users } = await supabase.from('profiles').select('id,display_name');
+      const name = new Map(users?.map(u=>[u.id,u.display_name]));
+      const byUser = new Map();
+
+      function outcome(h,a){ return h>a?'H':(h<a?'A':'D'); }
+      function points(ph,pa,ah,aa){
+        if (ph==null||pa==null||ah==null||aa==null) return 0;
+        if (ph===ah && pa===aa) return 5; // exact score
+        if (outcome(ph,pa) === outcome(ah,aa)) return 3; // correct result
+        return 0;
+      }
+
+      (picks||[]).forEach(p=>{
+        const fx = fixtures?.find(f=>f.id===p.fixture_id);
+        const pts = fx?points(p.home,p.away,fx.home_score,fx.away_score):0;
+        const isExact = fx && p.home===fx.home_score && p.away===fx.away_score;
+        const isResult = fx && !isExact && outcome(p.home,p.away)===outcome(fx.home_score,fx.away_score);
+        const acc = byUser.get(p.user_id) || { display_name: name.get(p.user_id)||'—', points:0, correct_scores:0, correct_results:0 };
+        acc.points += pts;
+        if (isExact) acc.correct_scores += 1;
+        if (isResult) acc.correct_results += 1;
+        byUser.set(p.user_id, acc);
+      });
+
+      const rows = [...byUser.values()].sort((a,b)=>b.points-a.points);
+      return rows;
+    }
+
+    async function fetchWeek(weekStart){
+      // Prefer RPC if present
+      const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) });
+      if (!error && Array.isArray(data)) return data;
+
+      // Fallback client compute for this week only
+      const ws = isoDate(weekStart);
+      const { data: fixtures } = await supabase.from('fixtures')
+          .select('id,week_start,home_score,away_score').eq('week_start', ws);
+      const ids = new Set((fixtures||[]).map(f=>f.id));
+      const { data: picks } = await supabase.from('picks')
+          .select('user_id,fixture_id,home,away').in('fixture_id',[...ids]);
+      const { data: users } = await supabase.from('profiles').select('id,display_name');
+      const name = new Map(users?.map(u=>[u.id,u.display_name]));
+
+      function outcome(h,a){ return h>a?'H':(h<a?'A':'D'); }
+      function points(ph,pa,ah,aa){
+        if (ph==null||pa==null||ah==null||aa==null) return 0;
+        if (ph===ah && pa===aa) return 5;
+        if (outcome(ph,pa) === outcome(ah,aa)) return 3;
+        return 0;
+      }
+
+      const byUser = new Map();
+      (picks||[]).forEach(p=>{
+        const fx = fixtures?.find(f=>f.id===p.fixture_id);
+        const pts = fx?points(p.home,p.away,fx.home_score,fx.away_score):0;
+        const isExact = fx && p.home===fx.home_score && p.away===fx.away_score;
+        const isResult = fx && !isExact && outcome(p.home,p.away)===outcome(fx.home_score,fx.away_score);
+        const acc = byUser.get(p.user_id) || { display_name: name.get(p.user_id)||'—', points:0, correct_scores:0, correct_results:0 };
+        acc.points += pts;
+        if (isExact) acc.correct_scores += 1;
+        if (isResult) acc.correct_results += 1;
+        byUser.set(p.user_id, acc);
+      });
+
+      return [...byUser.values()].sort((a,b)=>b.points-a.points);
+    }
+
+    function setStatus(text){ statusEl.textContent = text; }
+
+    async function load(which){
+      setTab(which);
+      setStatus('Loading…');
+      tbody.innerHTML = '';
+      const now = new Date();
+      const weekStart = startOfWeek(now);
+
+      try{
+        let rows = [];
+        if (which==='week'){
+          const userPickedWeek = rangeEl.valueAsDate;
+          const ws = userPickedWeek ? startOfWeek(userPickedWeek) : weekStart;
+          rows = await fetchWeek(ws);
+        } else {
+          rows = await fetchSeason();
+        }
+        renderRows(rows);
+        setStatus(`Scoring: 5 pts exact • 3 pts correct result`);
+        lastUpdatedEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      } catch(e){
+        console.error(e);
+        setStatus('Could not load leaderboard.');
       }
     }
 
-    // Auto refresh each minute
-    let timerId=null;
-    function startAuto(){ stopAuto(); timerId=setInterval(()=>load(currentTab), 60000); }
+    function startAuto(){ if(!timerId){ timerId=setInterval(()=>load(currentTab), 60_000); } }
     function stopAuto(){ if(timerId){ clearInterval(timerId); timerId=null; } }
-    window.addEventListener('visibilitychange', ()=>{ document.hidden ? stopAuto() : startAuto(); });
+    document.addEventListener('visibilitychange', ()=>{ document.hidden ? stopAuto() : startAuto(); });
     window.addEventListener('beforeunload', stopAuto);
 
-    // Wire UI
-    document.getElementById('refreshBtn').addEventListener('click', ()=>load(currentTab));
-    document.getElementById('tabWeek').addEventListener('click', ()=>load('week'));
-    document.getElementById('tabSeason').addEventListener('click', ()=>load('season'));
+    refreshBtn.addEventListener('click', ()=>load(currentTab));
+    tabWeek.addEventListener('click', ()=>load('week'));
+    tabSeason.addEventListener('click', ()=>load('season'));
 
-    // Initial
     await load('week'); startAuto();
   </script>
 </body>
 </html>
+
