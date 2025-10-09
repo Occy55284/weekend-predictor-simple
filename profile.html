@@ -14,7 +14,7 @@
     @media (max-width:760px){ .row{grid-template-columns:1fr} }
     .field{display:flex;flex-direction:column;gap:6px}
     .field label{font-weight:700;color:#1f2937}
-    .field input,.field select{
+    .field input{
       height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:1rem
     }
     .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -23,7 +23,9 @@
     .preview{display:flex;align-items:center;gap:12px;margin-top:10px}
     .badge{width:48px;height:48px;border-radius:12px;background:#eef2ff;display:grid;place-items:center;font-weight:800;color:#1f357a}
   </style>
+
   <script type="module" src="supabase-config.js"></script>
+
   <!-- Early logout wiring -->
   <script type="module">
     import { supabase } from './supabase-config.js';
@@ -54,6 +56,7 @@
   <main class="wrap">
     <section class="card">
       <h1>Your profile</h1>
+
       <form id="form">
         <div class="row">
           <div class="field">
@@ -61,8 +64,8 @@
             <input id="name" type="text" placeholder="Your name" required />
           </div>
           <div class="field">
-            <label for="team">Favourite team</label>
-            <select id="team"></select>
+            <label for="team">Favourite team (optional)</label>
+            <input id="team" type="text" placeholder="e.g., Arsenal" />
           </div>
         </div>
 
@@ -88,32 +91,33 @@
 
     const nameEl = document.getElementById('name');
     const teamEl = document.getElementById('team');
-    const badge = document.getElementById('badge');
     const badgeName = document.getElementById('badgeName');
     const saveBtn = document.getElementById('save');
     const msg = document.getElementById('message');
 
-    function updatePreview(){
-      badgeName.textContent = nameEl.value || '—';
-    }
+    function updatePreview(){ badgeName.textContent = nameEl.value || '—'; }
 
-    async function loadTeams(){
-      const { data, error } = await supabase.from('teams').select('id,short_code,name').order('name');
-      if (error) return;
-      teamEl.innerHTML = '<option value="">Select a team…</option>' + (data||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
-    }
-
+    // Prefill profile + show Admin link if applicable
     async function prefill(){
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user){ window.location.replace('login.html'); return; }
       const uid = session.user.id;
 
-      const { data: prof } = await supabase.from('profiles')
-        .select('display_name, team_id, is_admin').eq('id', uid).maybeSingle();
+      // Try to fetch favourite_team if present; otherwise only display_name
+      let prof = null;
+      try{
+        const r = await supabase.from('profiles')
+          .select('display_name, favourite_team, is_admin').eq('id', uid).maybeSingle();
+        prof = r.data || null;
+      }catch{
+        const r2 = await supabase.from('profiles')
+          .select('display_name, is_admin').eq('id', uid).maybeSingle();
+        prof = r2.data || null;
+      }
 
       if (prof){
         nameEl.value = prof.display_name || '';
-        teamEl.value = prof.team_id || '';
+        teamEl.value = prof.favourite_team || '';
         updatePreview();
         if (prof.is_admin) document.getElementById('navAdmin').style.display = '';
       }
@@ -129,11 +133,23 @@
         if (!session?.user) throw new Error('Not signed in');
         const uid = session.user.id;
 
-        const { error } = await supabase.from('profiles')
-          .update({ display_name: nameEl.value.trim(), team_id: teamEl.value || null })
-          .eq('id', uid);
+        // Try to save both fields. If favourite_team column doesn't exist, retry with display_name only.
+        let errorOut = null;
+        try{
+          const { error } = await supabase.from('profiles')
+            .update({ display_name: nameEl.value.trim(), favourite_team: teamEl.value.trim() || null })
+            .eq('id', uid);
+          if (error) errorOut = error;
+        }catch(err){ errorOut = err; }
 
-        if (error) throw error;
+        if (errorOut){
+          // retry without favourite_team (compat for your current schema)
+          const { error: err2 } = await supabase.from('profiles')
+            .update({ display_name: nameEl.value.trim() })
+            .eq('id', uid);
+          if (err2) throw err2;
+        }
+
         msg.innerHTML = '<span class="ok">Saved.</span>';
       }catch(err){
         console.error(err);
@@ -143,7 +159,6 @@
       }
     });
 
-    await loadTeams();
     await prefill();
   </script>
 </body>
