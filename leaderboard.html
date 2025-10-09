@@ -15,18 +15,21 @@
     .tab{padding:6px 10px;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;font-weight:700;cursor:pointer}
     .tab.active{background:#e0e7ff;border-color:#93c5fd;color:#1f357a}
     .meta{color:#475569;font-size:.9rem}
+    .note{color:#1f2937;font-size:.9rem;margin-top:6px}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
     th{background:#f8fafc;text-transform:uppercase;font-size:.82rem;letter-spacing:.03em}
     .rank{width:60px;text-align:center;font-weight:800}
     .name{font-weight:700}
     .pts{font-weight:800}
-    .ok{color:#16a34a}.err{color:#b91c1c}
     .ghost{background:transparent;border:1px solid #cbd5e1;border-radius:10px;height:38px;padding:0 12px;font-weight:700}
     .range{height:38px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 8px}
   </style>
+
+  <!-- Supabase client -->
   <script type="module" src="supabase-config.js"></script>
-  <!-- Early logout wiring so it always works -->
+
+  <!-- Early logout wiring (so it works even if later code throws) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -56,6 +59,7 @@
   <main class="wrap">
     <section class="card">
       <h1>Leaderboard</h1>
+
       <div class="controls">
         <div class="tabs">
           <button id="tabWeek" class="tab active" type="button">This week</button>
@@ -65,7 +69,9 @@
         <button id="refreshBtn" class="ghost" type="button">Refresh</button>
         <div class="meta" id="lastUpdated">—</div>
       </div>
-      <div class="meta" id="status">—</div>
+
+      <div class="note">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result</div>
+      <div class="meta" id="status" style="margin-top:6px;">—</div>
 
       <table>
         <thead>
@@ -85,7 +91,7 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // Admin reveal (non-blocking)
+    // Show Admin link if applicable
     (async ()=>{
       try{
         const { data:{ session } } = await supabase.auth.getSession();
@@ -105,16 +111,13 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const lastUpdatedEl = document.getElementById('lastUpdated');
 
-    // Time helpers
-    function startOfWeek(d=new Date()){
-      const x=new Date(d);
-      const day = x.getDay()===0?7:x.getDay(); // Mon=1..Sun=7
-      x.setHours(0,0,0,0);
-      x.setDate(x.getDate()-(day-1));
-      return x;
-    }
+    // Helpers
     function pad(n){return String(n).padStart(2,'0')}
+    function startOfWeek(d=new Date()){
+      const x=new Date(d); const day=x.getDay()===0?7:x.getDay(); x.setHours(0,0,0,0); x.setDate(x.getDate()-(day-1)); return x;
+    }
     function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+    function fmt(n){ return new Intl.NumberFormat().format(n||0) }
 
     // State
     let currentTab = 'week';
@@ -125,8 +128,6 @@
       tabWeek.classList.toggle('active', t==='week');
       tabSeason.classList.toggle('active', t==='season');
     }
-
-    function fmt(n){ return new Intl.NumberFormat().format(n||0) }
 
     function renderRows(rows){
       tbody.innerHTML = '';
@@ -143,109 +144,90 @@
       });
     }
 
+    // Prefer RPCs (server uses 5/3 scoring). Falls back to client compute if absent.
     async function fetchSeason(){
-      // Prefer RPC if present (server computes with 3/5 scoring)
       const { data, error } = await supabase.rpc('leaderboard_v2');
       if (!error && Array.isArray(data)) return data;
 
-      // Fallback: compute client-side if RPC not created yet
-      // Requires: tables fixtures(id, week_start, home_score, away_score), picks(user_id, fixture_id, home, away)
+      // Fallback (client compute) — optional
+      statusEl.textContent = 'Server RPC missing; computing locally…';
       const { data: fixtures } = await supabase.from('fixtures').select('id,home_score,away_score');
       const { data: picks } = await supabase.from('picks').select('user_id,fixture_id,home,away');
       const { data: users } = await supabase.from('profiles').select('id,display_name');
-      const name = new Map(users?.map(u=>[u.id,u.display_name]));
+      const name = new Map((users||[]).map(u=>[u.id,u.display_name]));
       const byUser = new Map();
-
-      function outcome(h,a){ return h>a?'H':(h<a?'A':'D'); }
-      function points(ph,pa,ah,aa){
-        if (ph==null||pa==null||ah==null||aa==null) return 0;
-        if (ph===ah && pa===aa) return 5; // exact score
-        if (outcome(ph,pa) === outcome(ah,aa)) return 3; // correct result
-        return 0;
-      }
-
+      const outcome = (h,a)=>h>a?'H':(h<a?'A':'D');
+      const pts = (ph,pa,ah,aa)=> (ph===ah && pa===aa)?5 : (outcome(ph,pa)===outcome(ah,aa)?3:0);
       (picks||[]).forEach(p=>{
-        const fx = fixtures?.find(f=>f.id===p.fixture_id);
-        const pts = fx?points(p.home,p.away,fx.home_score,fx.away_score):0;
-        const isExact = fx && p.home===fx.home_score && p.away===fx.away_score;
-        const isResult = fx && !isExact && outcome(p.home,p.away)===outcome(fx.home_score,fx.away_score);
+        const fx = fixtures?.find(f=>String(f.id)===String(p.fixture_id));
+        if (!fx) return;
+        const exact = p.home===fx.home_score && p.away===fx.away_score;
+        const result = !exact && outcome(p.home,p.away)===outcome(fx.home_score,fx.away_score);
         const acc = byUser.get(p.user_id) || { display_name: name.get(p.user_id)||'—', points:0, correct_scores:0, correct_results:0 };
-        acc.points += pts;
-        if (isExact) acc.correct_scores += 1;
-        if (isResult) acc.correct_results += 1;
+        acc.points += pts(p.home,p.away,fx.home_score,fx.away_score);
+        if (exact) acc.correct_scores++;
+        if (result) acc.correct_results++;
         byUser.set(p.user_id, acc);
       });
-
-      const rows = [...byUser.values()].sort((a,b)=>b.points-a.points);
-      return rows;
-    }
-
-    async function fetchWeek(weekStart){
-      // Prefer RPC if present
-      const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) });
-      if (!error && Array.isArray(data)) return data;
-
-      // Fallback client compute for this week only
-      const ws = isoDate(weekStart);
-      const { data: fixtures } = await supabase.from('fixtures')
-          .select('id,week_start,home_score,away_score').eq('week_start', ws);
-      const ids = new Set((fixtures||[]).map(f=>f.id));
-      const { data: picks } = await supabase.from('picks')
-          .select('user_id,fixture_id,home,away').in('fixture_id',[...ids]);
-      const { data: users } = await supabase.from('profiles').select('id,display_name');
-      const name = new Map(users?.map(u=>[u.id,u.display_name]));
-
-      function outcome(h,a){ return h>a?'H':(h<a?'A':'D'); }
-      function points(ph,pa,ah,aa){
-        if (ph==null||pa==null||ah==null||aa==null) return 0;
-        if (ph===ah && pa===aa) return 5;
-        if (outcome(ph,pa) === outcome(ah,aa)) return 3;
-        return 0;
-      }
-
-      const byUser = new Map();
-      (picks||[]).forEach(p=>{
-        const fx = fixtures?.find(f=>f.id===p.fixture_id);
-        const pts = fx?points(p.home,p.away,fx.home_score,fx.away_score):0;
-        const isExact = fx && p.home===fx.home_score && p.away===fx.away_score;
-        const isResult = fx && !isExact && outcome(p.home,p.away)===outcome(fx.home_score,fx.away_score);
-        const acc = byUser.get(p.user_id) || { display_name: name.get(p.user_id)||'—', points:0, correct_scores:0, correct_results:0 };
-        acc.points += pts;
-        if (isExact) acc.correct_scores += 1;
-        if (isResult) acc.correct_results += 1;
-        byUser.set(p.user_id, acc);
-      });
-
       return [...byUser.values()].sort((a,b)=>b.points-a.points);
     }
 
-    function setStatus(text){ statusEl.textContent = text; }
+    async function fetchWeek(weekStart){
+      const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) });
+      if (!error && Array.isArray(data)) return data;
+
+      // Fallback (client compute) — optional
+      statusEl.textContent = 'Server RPC missing; computing locally…';
+      const ws = isoDate(weekStart);
+      const { data: fixtures } = await supabase.from('fixtures').select('id,home_score,away_score,utc_date');
+      const week = (row)=> isoDate(new Date(new Date(row.utc_date).setHours(0,0,0,0) - ((new Date(row.utc_date).getDay()||7)-1)*86400000));
+      const ids = new Set((fixtures||[]).filter(f=>week(f)===ws).map(f=>String(f.id)));
+      const { data: picks } = await supabase.from('picks').select('user_id,fixture_id,home,away').in('fixture_id',[...ids]);
+      const { data: users } = await supabase.from('profiles').select('id,display_name');
+      const name = new Map((users||[]).map(u=>[u.id,u.display_name]));
+      const outcome = (h,a)=>h>a?'H':(h<a?'A':'D');
+      const pts = (ph,pa,ah,aa)=> (ph===ah && pa===aa)?5 : (outcome(ph,pa)===outcome(ah,aa)?3:0);
+      const byUser = new Map();
+      (picks||[]).forEach(p=>{
+        const fx = (fixtures||[]).find(f=>String(f.id)===String(p.fixture_id));
+        if (!fx) return;
+        const exact = p.home===fx.home_score && p.away===fx.away_score;
+        const result = !exact && outcome(p.home,p.away)===outcome(fx.home_score,fx.away_score);
+        const acc = byUser.get(p.user_id) || { display_name: name.get(p.user_id)||'—', points:0, correct_scores:0, correct_results:0 };
+        acc.points += pts(p.home,p.away,fx.home_score,fx.away_score);
+        if (exact) acc.correct_scores++;
+        if (result) acc.correct_results++;
+        byUser.set(p.user_id, acc);
+      });
+      return [...byUser.values()].sort((a,b)=>b.points-a.points);
+    }
 
     async function load(which){
       setTab(which);
-      setStatus('Loading…');
+      statusEl.textContent = 'Loading…';
       tbody.innerHTML = '';
-      const now = new Date();
-      const weekStart = startOfWeek(now);
 
+      const now = new Date();
+      const defaultWeekStart = startOfWeek(now);
       try{
         let rows = [];
         if (which==='week'){
           const userPickedWeek = rangeEl.valueAsDate;
-          const ws = userPickedWeek ? startOfWeek(userPickedWeek) : weekStart;
+          const ws = userPickedWeek ? startOfWeek(userPickedWeek) : defaultWeekStart;
           rows = await fetchWeek(ws);
         } else {
           rows = await fetchSeason();
         }
         renderRows(rows);
-        setStatus(`Scoring: 5 pts exact • 3 pts correct result`);
+        statusEl.textContent = '';
         lastUpdatedEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-      } catch(e){
+      }catch(e){
         console.error(e);
-        setStatus('Could not load leaderboard.');
+        statusEl.textContent = 'Could not load leaderboard.';
       }
     }
 
+    let timerId=null;
     function startAuto(){ if(!timerId){ timerId=setInterval(()=>load(currentTab), 60_000); } }
     function stopAuto(){ if(timerId){ clearInterval(timerId); timerId=null; } }
     document.addEventListener('visibilitychange', ()=>{ document.hidden ? stopAuto() : startAuto(); });
@@ -259,4 +241,3 @@
   </script>
 </body>
 </html>
-
