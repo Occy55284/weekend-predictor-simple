@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Make Predictions • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=84" />
+  <link rel="stylesheet" href="brand.css?v=85" />
   <style>
     .wrap{max-width:960px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -73,7 +73,7 @@
       </table>
 
       <div class="actions" style="margin-top:10px">
-        <button class="btn primary" id="saveBtn" type="button">Save picks</button>
+        <!-- Save removed by request -->
         <button class="btn" id="lockBtn" type="button">Lock my picks</button>
       </div>
       <div id="msg" class="msg"></div>
@@ -95,7 +95,6 @@
     const table = $('#table');
     const emptyBox = $('#empty');
     const msg = $('#msg');
-    const saveBtn = $('#saveBtn');
     const lockBtn = $('#lockBtn');
     const weekLabel = $('#weekLabel');
     const progressEl = $('#progress');
@@ -130,12 +129,11 @@
       }catch{}
     })();
 
-    // --- Load fixtures (featured) for this week using utc_date bounds ---
+    // --- Load fixtures (featured) this week via utc_date bounds ---
     async function loadFixtures(){
       tbody.innerHTML = '';
       msg.textContent = '';
 
-      // Fetch 5 featured fixtures within the current week (Mon 00:00 to next Mon 00:00)
       const { data: fixtures, error } = await supabase
         .from('fixtures')
         .select('id, utc_date, home_team, away_team')
@@ -155,7 +153,6 @@
       if (!fixtures || fixtures.length === 0) {
         emptyBox.style.display = 'block';
         table.style.display = 'none';
-        emptyBox.querySelector('.muted')?.remove?.();
         emptyBox.innerHTML = `<div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>`;
         return { fixtures: [], error: null };
       }
@@ -163,10 +160,9 @@
       emptyBox.style.display = 'none';
       table.style.display = '';
 
-      // Build rows
       fixtures.forEach(fx=>{
         const tr = document.createElement('tr');
-        tr.dataset.fixtureId = String(fx.id); // store real id (string to match predictions.fixture_id text)
+        tr.dataset.fixtureId = String(fx.id); // use real id (string to match predictions.fixture_id text)
         tr.innerHTML = `
           <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
           <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home"></td>
@@ -178,7 +174,7 @@
       return { fixtures, error: null };
     }
 
-    // --- Prefill user picks for this week from view public.picks ---
+    // --- Prefill from public.picks (view) for this Monday ---
     async function prefillPicks(){
       const { data: picks, error } = await supabase
         .from('picks')
@@ -199,43 +195,59 @@
       });
     }
 
-    // --- Save picks using real fixture_id + week_start ---
-    saveBtn.addEventListener('click', async ()=>{
-      saveBtn.disabled = true; msg.textContent = 'Saving…';
-      try{
-        const rows = [...tbody.querySelectorAll('tr')];
-        if (!rows.length){ msg.innerHTML = '<span class="err">No fixtures to save.</span>'; return; }
-        const payload = rows.map(tr=>{
-          const fid = String(tr.dataset.fixtureId);
-          const home = Number(tr.querySelector('input[data-k="home"]').value || 0);
-          const away = Number(tr.querySelector('input[data-k="away"]').value || 0);
-          return { user_id: user.id, fixture_id: fid, week_start: isoDate(weekStart), home, away };
-        });
-        const { error } = await supabase.from('picks')
-          .upsert(payload, { onConflict: 'user_id,fixture_id,week_start' });
-        if (error) throw error;
-        msg.innerHTML = '<span class="ok">Saved.</span>';
-      } catch(e){
-        console.error(e);
-        msg.innerHTML = '<span class="err">Could not save.</span>';
-      } finally{
-        saveBtn.disabled = false;
-      }
-    });
+    function readPayload(){
+      const rows = [...tbody.querySelectorAll('tr')];
+      return rows.map(tr=>{
+        const fid = String(tr.dataset.fixtureId);
+        const home = Number(tr.querySelector('input[data-k="home"]').value || 0);
+        const away = Number(tr.querySelector('input[data-k="away"]').value || 0);
+        return { fixture_id: fid, home_goals: home, away_goals: away };
+      });
+    }
 
-    // --- Lock picks for this week (uses pick_locks view) ---
-    lockBtn.addEventListener('click', async ()=>{
+    function disableInputs(){
+      [...tbody.querySelectorAll('input')].forEach(i=>i.disabled = true);
       lockBtn.disabled = true;
+    }
+
+    // --- Lock flow: save predictions into base table, then lock the week ---
+    lockBtn.addEventListener('click', async ()=>{
+      lockBtn.disabled = true; msg.textContent = 'Locking…';
       try{
-        const { error } = await supabase
+        const payload = readPayload().map(p => ({
+          user_id: user.id,
+          fixture_id: p.fixture_id,
+          home_goals: p.home_goals,
+          away_goals: p.away_goals
+        }));
+
+        if (!payload.length){
+          msg.innerHTML = '<span class="err">No fixtures to lock.</span>';
+          lockBtn.disabled = false;
+          return;
+        }
+
+        // 1) Upsert into base table: predictions (NOT the picks view)
+        // onConflict assumes (user_id, fixture_id) is unique or indexed accordingly
+        const { error: upErr } = await supabase
+          .from('predictions')
+          .upsert(payload, { onConflict: 'user_id,fixture_id' });
+
+        if (upErr) throw upErr;
+
+        // 2) Upsert the lock for this Monday in pick_locks view (maps to week_locks)
+        const { error: lockErr } = await supabase
           .from('pick_locks')
           .upsert({ user_id: user.id, week_start: isoDate(weekStart) }, { onConflict: 'user_id,week_start' });
-        if (error) throw error;
-        msg.innerHTML = '<span class="ok">Your picks are locked for this week.</span>';
-        saveBtn.disabled = true; lockBtn.disabled = true;
+
+        if (lockErr) throw lockErr;
+
+        msg.innerHTML = '<span class="ok">Your picks are saved and locked for this week.</span>';
+        disableInputs();
       } catch(e){
         console.error(e);
         msg.innerHTML = '<span class="err">Could not lock picks.</span>';
+        lockBtn.disabled = false;
       }
     });
 
