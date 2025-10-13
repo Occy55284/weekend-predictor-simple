@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Make Predictions • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=81" />
+  <link rel="stylesheet" href="brand.css?v=84" />
   <style>
     .wrap{max-width:960px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -13,27 +13,28 @@
     table{width:100%;border-collapse:collapse}
     th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left}
     th{background:#f8fafc;text-transform:uppercase;font-size:.85rem;letter-spacing:.03em}
-    input[type="number"]{width:48px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;text-align:center}
+    input[type="number"]{width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center}
     .meta{color:#475569;font-size:.9rem;margin:6px 0 0}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     .msg{margin-top:10px;font-weight:600}
-    .ok{color:#16a34a}.err{color:#b91c1c}
+    .ok{color:#16a34a}.err{color:#b91c1c}.muted{color:#64748b}
     .tips{color:#475569;font-size:.9rem}
+    .empty{padding:10px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
   </style>
-  <!-- Ensure Supabase is available to both early and main scripts -->
+
+  <!-- Supabase client -->
   <script type="module" src="supabase-config.js"></script>
-  <!-- Early, tiny module: wires logout ASAP so it still works if later code errors -->
+
+  <!-- Early logout wiring so it always works -->
   <script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
       const navLogout = document.getElementById('navLogout');
-      if (navLogout) {
-        navLogout.addEventListener('click', async (e)=>{
-          e.preventDefault();
-          try{ await supabase.auth.signOut(); }catch{}
-          window.location.replace('login.html');
-        });
-      }
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{ await supabase.auth.signOut(); }catch{}
+        window.location.replace('login.html');
+      });
     });
   </script>
 </head>
@@ -45,8 +46,7 @@
         <a href="predict.html" data-nav="predict" class="active">Predict</a>
         <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
         <a href="profile.html" data-nav="profile">Profile</a>
-        <a href="admin.html" data-nav="admin">Admin</a>
-        <!-- Anchor fallback: works even if JS fails; JS intercepts to call signOut -->
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
         <a class="logout" id="navLogout" href="login.html">Logout</a>
       </nav>
     </div>
@@ -56,22 +56,28 @@
     <section class="card">
       <h2>This Week’s Predictions</h2>
       <div id="weekLabel" class="meta">—</div>
-      <table>
+
+      <div id="empty" class="empty" style="display:none">
+        <div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>
+      </div>
+
+      <table id="table" style="display:none">
         <thead>
           <tr>
             <th>Fixture</th>
-            <th style="width:100px">Home</th>
-            <th style="width:100px">Away</th>
+            <th style="width:120px">Home</th>
+            <th style="width:120px">Away</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
+
       <div class="actions" style="margin-top:10px">
         <button class="btn primary" id="saveBtn" type="button">Save picks</button>
         <button class="btn" id="lockBtn" type="button">Lock my picks</button>
       </div>
       <div id="msg" class="msg"></div>
-      <p class="tips">You can edit until the lock time. Locked picks can’t be changed.</p>
+      <p class="tips">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.</p>
     </section>
 
     <section class="card">
@@ -83,9 +89,11 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // --- Helpers ---
+    // --- Elements & helpers ---
     const $ = (sel)=>document.querySelector(sel);
     const tbody = $('#tbody');
+    const table = $('#table');
+    const emptyBox = $('#empty');
     const msg = $('#msg');
     const saveBtn = $('#saveBtn');
     const lockBtn = $('#lockBtn');
@@ -99,75 +107,112 @@
       const x = new Date(d);
       const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
       x.setHours(0,0,0,0);
-      x.setDate(x.getDate() - (day-1));
+      x.setDate(x.getDate() - (day - 1));
       return x;
     }
+    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+
     const weekStart = startOfWeek(); // Monday
-    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()}`;
+    const weekEnd = addDays(weekStart, 7); // next Monday
+    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
 
     // --- Auth gate ---
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      window.location.replace('login.html');
-      throw new Error('No session');
-    }
+    if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
     const user = session.user;
 
-    // --- UI builders ---
-    function row(fx){
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${fx.home}</strong> vs <strong>${fx.away}</strong></td>
-        <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home" /></td>
-        <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="away" /></td>
-      `;
-      return tr;
-    }
+    // Reveal Admin link if admin
+    (async ()=>{
+      try{
+        const { data, error } = await supabase
+          .from('profiles').select('is_admin').eq('id', user.id).single();
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
+      }catch{}
+    })();
 
-    // --- Load fixtures + existing picks ---
+    // --- Load fixtures (featured) for this week using utc_date bounds ---
     async function loadFixtures(){
-      tbody.innerHTML = `<tr><td colspan="3">Loading fixtures…</td></tr>`;
+      tbody.innerHTML = '';
+      msg.textContent = '';
+
+      // Fetch 5 featured fixtures within the current week (Mon 00:00 to next Mon 00:00)
       const { data: fixtures, error } = await supabase
         .from('fixtures')
-        .select('id,home,away,week_start')
-        .eq('week_start', isoDate(weekStart))
-        .order('id', { ascending:true });
-      if (error) { tbody.innerHTML = `<tr><td colspan="3">Could not load fixtures.</td></tr>`; return; }
+        .select('id, utc_date, home_team, away_team')
+        .eq('featured', true)
+        .gte('utc_date', new Date(weekStart).toISOString())
+        .lt('utc_date', new Date(weekEnd).toISOString())
+        .order('utc_date', { ascending: true });
 
-      tbody.innerHTML = '';
-      fixtures.forEach(fx => tbody.appendChild(row(fx)));
+      if (error) {
+        emptyBox.style.display = 'block';
+        table.style.display = 'none';
+        emptyBox.innerHTML = `<div class="err">Could not load fixtures.</div>`;
+        console.error(error);
+        return { fixtures: [], error };
+      }
 
-      // prefill picks
-      const { data: picks } = await supabase
+      if (!fixtures || fixtures.length === 0) {
+        emptyBox.style.display = 'block';
+        table.style.display = 'none';
+        emptyBox.querySelector('.muted')?.remove?.();
+        emptyBox.innerHTML = `<div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>`;
+        return { fixtures: [], error: null };
+      }
+
+      emptyBox.style.display = 'none';
+      table.style.display = '';
+
+      // Build rows
+      fixtures.forEach(fx=>{
+        const tr = document.createElement('tr');
+        tr.dataset.fixtureId = String(fx.id); // store real id (string to match predictions.fixture_id text)
+        tr.innerHTML = `
+          <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
+          <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home"></td>
+          <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="away"></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      return { fixtures, error: null };
+    }
+
+    // --- Prefill user picks for this week from view public.picks ---
+    async function prefillPicks(){
+      const { data: picks, error } = await supabase
         .from('picks')
-        .select('fixture_id,home,away')
+        .select('fixture_id, home, away')
         .eq('user_id', user.id)
         .eq('week_start', isoDate(weekStart));
 
-      if (picks?.length){
-        const map = new Map(picks.map(p=>[p.fixture_id, p]));
-        [...tbody.querySelectorAll('tr')].forEach((tr, i)=>{
-          const fx = fixtures[i];
-          const p = map.get(fx.id);
-          if (p){
-            tr.querySelector('input[data-k="home"]').value = p.home ?? '';
-            tr.querySelector('input[data-k="away"]').value = p.away ?? '';
-          }
-        });
-      }
+      if (error) { console.error(error); return; }
+
+      const map = new Map((picks||[]).map(p=>[String(p.fixture_id), p]));
+      [...tbody.querySelectorAll('tr')].forEach(tr=>{
+        const fid = tr.dataset.fixtureId;
+        const p = map.get(String(fid));
+        if (p){
+          tr.querySelector('input[data-k="home"]').value = p.home ?? '';
+          tr.querySelector('input[data-k="away"]').value = p.away ?? '';
+        }
+      });
     }
 
-    // --- Save ---
+    // --- Save picks using real fixture_id + week_start ---
     saveBtn.addEventListener('click', async ()=>{
       saveBtn.disabled = true; msg.textContent = 'Saving…';
       try{
         const rows = [...tbody.querySelectorAll('tr')];
-        const payload = rows.map((tr, i)=>{
+        if (!rows.length){ msg.innerHTML = '<span class="err">No fixtures to save.</span>'; return; }
+        const payload = rows.map(tr=>{
+          const fid = String(tr.dataset.fixtureId);
           const home = Number(tr.querySelector('input[data-k="home"]').value || 0);
           const away = Number(tr.querySelector('input[data-k="away"]').value || 0);
-          return { user_id:user.id, week_start: isoDate(weekStart), fixture_id: i+1, home, away };
+          return { user_id: user.id, fixture_id: fid, week_start: isoDate(weekStart), home, away };
         });
-        const { error } = await supabase.from('picks').upsert(payload, { onConflict:'user_id,week_start,fixture_id' });
+        const { error } = await supabase.from('picks')
+          .upsert(payload, { onConflict: 'user_id,fixture_id,week_start' });
         if (error) throw error;
         msg.innerHTML = '<span class="ok">Saved.</span>';
       } catch(e){
@@ -178,13 +223,13 @@
       }
     });
 
-    // --- Lock ---
+    // --- Lock picks for this week (uses pick_locks view) ---
     lockBtn.addEventListener('click', async ()=>{
       lockBtn.disabled = true;
       try{
         const { error } = await supabase
           .from('pick_locks')
-          .upsert({ user_id:user.id, week_start: isoDate(weekStart) }, { onConflict:'user_id,week_start' });
+          .upsert({ user_id: user.id, week_start: isoDate(weekStart) }, { onConflict: 'user_id,week_start' });
         if (error) throw error;
         msg.innerHTML = '<span class="ok">Your picks are locked for this week.</span>';
         saveBtn.disabled = true; lockBtn.disabled = true;
@@ -194,19 +239,23 @@
       }
     });
 
-    // --- Simple season progress example ---
+    // --- Simple season progress (non-blocking; rpc optional) ---
     (async ()=>{
-      const { data: totals } = await supabase
-        .rpc('season_progress', { uid: user.id })
-        .catch(()=>({ data:null }));
-      if (totals?.points != null){
-        progressEl.textContent = `Points: ${totals.points} • Rank: ${totals.rank}`;
-      }else{
+      try{
+        const { data: totals } = await supabase.rpc('season_progress', { uid: user.id });
+        if (totals?.points != null){
+          progressEl.textContent = `Points: ${totals.points} • Rank: ${totals.rank}`;
+        } else {
+          progressEl.textContent = `Track your points as results roll in.`;
+        }
+      }catch{
         progressEl.textContent = `Track your points as results roll in.`;
       }
     })();
 
-    await loadFixtures();
+    // --- Boot ---
+    const { fixtures } = await loadFixtures();
+    if (fixtures && fixtures.length) await prefillPicks();
   </script>
 </body>
 </html>
