@@ -3,169 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign in • Weekend Predictor</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+  <title>Sign In • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=86" />
   <style>
-    :root{ --ink:#0f172a; --muted:#475569; --brand:#2643B3; --accent:#16a34a; --card:#ffffff; }
-    *{box-sizing:border-box} html,body{height:100%}
     body{
-      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 50% -20%, #e9f0ff 0%, rgba(233,240,255,0) 55%),
-        linear-gradient(180deg, #f7faff 0%, #eef4ff 45%, #f8fbff 100%);
-      display:grid; place-items:center; padding:20px 12px;
+      background:linear-gradient(135deg,#1f357a 0%,#334155 100%);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      margin:0;
     }
-    .brand{display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:10px; font-weight:800;}
-    .logo{width:38px; height:38px}
     .card{
-      width:min(560px, 92vw);
-      background:
-        radial-gradient(300px 140px at 20% 10%, rgba(22,163,74,.08), transparent 60%),
-        radial-gradient(380px 170px at 80% 15%, rgba(38,67,179,.10), transparent 60%),
-        linear-gradient(180deg, #fff, #f4f7ff);
-      border:1px solid #e6e9f5; border-radius:20px; padding:28px 22px 22px;
-      box-shadow:0 14px 40px rgba(17,24,39,.12); text-align:center;
+      background:#fff;
+      border-radius:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,.15);
+      padding:40px 30px;
+      width:100%;
+      max-width:380px;
+      text-align:center;
     }
-    h1{font-size:clamp(24px, 3.4vw, 36px); margin:4px 0 6px;}
-    p.lead{color:var(--muted); margin:0 0 16px;}
-    form{margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:12px;}
+    h1{
+      margin:0 0 8px;
+      font-size:1.8rem;
+      color:#1f357a;
+      font-weight:800;
+    }
+    p.sub{
+      margin:0 0 20px;
+      color:#475569;
+    }
+    form{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
     input[type="email"]{
-      width:min(380px, 80vw); padding:14px 14px; border:1px solid #cdd6f4; border-radius:12px;
-      font-size:1rem; box-shadow:inset 0 1px 0 rgba(0,0,0,.03);
+      height:48px;
+      border:1px solid #cbd5e1;
+      border-radius:12px;
+      padding:0 14px;
+      font-size:1rem;
+      text-align:center;
     }
-    button.primary{
-      border:none; cursor:pointer; font-weight:900; letter-spacing:.2px;
-      padding:14px 20px; border-radius:12px; font-size:1rem;
-      background:linear-gradient(135deg, var(--brand), #1b3186); color:#fff;
-      box-shadow:0 8px 20px rgba(38,67,179,.28); transition:transform .06s ease, box-shadow .15s ease;
-      min-width:180px;
+    button{
+      height:48px;
+      border:none;
+      border-radius:12px;
+      background:#1f357a;
+      color:#fff;
+      font-size:1rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:background .2s;
     }
-    button.primary:hover{transform:translateY(-1px); box-shadow:0 10px 24px rgba(38,67,179,.32)}
-    button.primary:disabled{opacity:.6; cursor:not-allowed; transform:none; box-shadow:none}
-    .msg{margin-top:12px; font-size:.95rem}
-    .ok{color:#166534} .err{color:#b91c1c}
-    .help{color:#64748b; font-size:.9rem; margin-top:6px}
-    .foot{margin-top:16px; color:#64748b; font-size:.9rem;}
-    .link{color:#1f307a; text-decoration:none; font-weight:700}
+    button:hover{ background:#2c4ba8; }
+    .msg{
+      margin-top:12px;
+      font-weight:600;
+    }
+    .ok{color:#16a34a}
+    .err{color:#b91c1c}
+    footer{
+      margin-top:25px;
+      color:#e2e8f0;
+      font-size:.85rem;
+    }
   </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="brand">
-      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
-        <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
-        <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-        <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
-      </svg>
-      <span>Weekend Predictor</span>
-    </div>
-
-    <section class="card" id="card">
-      <h1>Sign in / Sign up</h1>
-      <p class="lead">We’ll email you a magic link to get you in.</p>
-
-      <form id="form">
-        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" required />
-        <button id="send" type="submit" class="primary">Send magic link</button>
-      </form>
-
-      <div id="message" class="msg"></div>
-      <div class="help">Open the link on this device.</div>
-
-      <div class="foot"><a class="link" href="index.html">← Back to home</a></div>
-    </section>
-  </div>
 
   <script type="module" src="supabase-config.js"></script>
+</head>
+<body>
+  <main class="card">
+    <h1>Weekend Predictor</h1>
+    <p class="sub">Sign in to make your picks</p>
+
+    <form id="form">
+      <input id="email" type="email" placeholder="Enter your email" required />
+      <button type="submit">Send magic link</button>
+    </form>
+
+    <div id="msg" class="msg"></div>
+
+    <footer>© 2025 Weekend Predictor</footer>
+  </main>
+
   <script type="module">
     import { supabase } from './supabase-config.js';
 
     const form = document.getElementById('form');
-    const emailEl = document.getElementById('email');
-    const sendBtn = document.getElementById('send');
-    const msg = document.getElementById('message');
-
-    async function routeAfterLogin(userId){
-      try {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('display_name,is_admin')
-          .eq('id', userId).maybeSingle();
-
-        if (prof?.is_admin) { window.location.replace('admin.html'); return; }
-        if (prof?.display_name) { window.location.replace('predict.html'); return; }
-        window.location.replace('profile.html');
-      } catch {
-        window.location.replace('predict.html');
-      }
-    }
-
-    async function handleAuthRedirect(){
-      const code = new URL(location.href).searchParams.get('code');
-      if (code) {
-        msg.textContent = 'Signing you in…';
-        try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-          await routeAfterLogin(data.user.id);
-          return;
-        } catch (e) {
-          console.error(e);
-          msg.innerHTML = '<span class="err">Could not complete sign-in. Send a new link.</span>';
-        }
-      }
-      if (location.hash && location.hash.includes('access_token')) {
-        msg.textContent = 'Finishing sign-in…';
-        const params = new URLSearchParams(location.hash.substring(1));
-        const access_token = params.get('access_token');
-        const refresh_token = params.get('refresh_token');
-        if (access_token && refresh_token) {
-          try {
-            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-            if (error) throw error;
-            history.replaceState({}, document.title, location.pathname);
-            await routeAfterLogin(data.user.id);
-            return;
-          } catch (e) {
-            console.error(e);
-            msg.innerHTML = '<span class="err">Could not finish sign-in from link. Send a new link.</span>';
-          }
-        }
-      }
-    }
-
-    handleAuthRedirect();
+    const msg = document.getElementById('msg');
 
     form.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const email = emailEl.value.trim();
-      if (!email) return;
-
-      sendBtn.disabled = true;
       msg.textContent = 'Sending magic link…';
-      try {
-        const redirectTo = `${location.origin}/login.html`;
+      msg.className = 'msg';
+      const email = document.getElementById('email').value.trim();
+      try{
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: redirectTo }
+          options:{
+            emailRedirectTo: `${window.location.origin}/predict.html`
+          }
         });
         if (error) throw error;
-        msg.innerHTML = '<span class="ok">Magic link sent — check your inbox.</span>';
-      } catch (err) {
+        msg.innerHTML = '<span class="ok">Check your inbox for the sign-in link.</span>';
+      }catch(err){
         console.error(err);
-        msg.innerHTML = '<span class="err">Could not send link. Please try again.</span>';
-      } finally {
-        sendBtn.disabled = false;
+        msg.innerHTML = '<span class="err">Could not send link.</span>';
       }
     });
-
-    (async ()=>{
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) routeAfterLogin(session.user.id);
-    })();
   </script>
 </body>
 </html>
