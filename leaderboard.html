@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=87" />
+  <link rel="stylesheet" href="brand.css?v=90" />
   <style>
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -24,27 +24,13 @@
     .pts{font-weight:800}
     .ghost{background:transparent;border:1px solid #cbd5e1;border-radius:10px;height:38px;padding:0 12px;font-weight:700}
     .range{height:38px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 8px}
-
-    /* Brand badge pills */
-    .badge{
-      border-radius:999px;
-      padding:2px 8px;
-      font-size:.75rem;
-      font-weight:700;
-      display:inline-block;
-      margin-left:8px;
-      vertical-align:middle;
-    }
-    .badge.rookie{background:#cdd5f0;color:#1f357a}                 /* soft blue-grey */
-    .badge.amateur{background:#5c7ddf;color:#fff}                   /* brand bright blue */
-    .badge.pro{background:linear-gradient(135deg,#1f357a,#2c4ba8);color:#fff} /* deep navy gradient */
-    .badge.goat{background:linear-gradient(135deg,#2c4ba8,#7c3aed);color:#fff;box-shadow:0 0 8px rgba(124,58,237,.4)} /* iridescent */
+    .badge{border-radius:999px;padding:2px 8px;font-size:.75rem;font-weight:700;display:inline-block;margin-left:8px;vertical-align:middle}
+    .badge.rookie{background:#cdd5f0;color:#1f357a}
+    .badge.amateur{background:#5c7ddf;color:#fff}
+    .badge.pro{background:linear-gradient(135deg,#1f357a,#2c4ba8);color:#fff}
+    .badge.goat{background:linear-gradient(135deg,#2c4ba8,#7c3aed);color:#fff;box-shadow:0 0 8px rgba(124,58,237,.4)}
   </style>
-
-  <!-- Supabase client -->
   <script type="module" src="supabase-config.js"></script>
-
-  <!-- Early logout wiring -->
   <script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -57,7 +43,7 @@
     });
   </script>
 </head>
-<body>
+<body class="bg-hero">
   <header class="top">
     <div class="inner">
       <a class="logo" href="index.html">WP</a>
@@ -74,7 +60,6 @@
   <main class="wrap">
     <section class="card">
       <h1>Leaderboard</h1>
-
       <div class="controls">
         <div class="tabs">
           <button id="tabWeek" class="tab active" type="button">This week</button>
@@ -84,10 +69,8 @@
         <button id="refreshBtn" class="ghost" type="button">Refresh</button>
         <div class="meta" id="lastUpdated">—</div>
       </div>
-
       <div class="note">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result</div>
       <div class="meta" id="status" style="margin-top:6px;">—</div>
-
       <table>
         <thead>
           <tr>
@@ -105,19 +88,15 @@
 
   <script type="module">
     import { supabase } from './supabase-config.js';
-
-    // Show Admin link if applicable
     (async ()=>{
       try{
         const { data:{ session } } = await supabase.auth.getSession();
         if (!session?.user) return;
-        const { data, error } = await supabase
-          .from('profiles').select('is_admin').eq('id', session.user.id).single();
+        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
         if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
       }catch{}
     })();
 
-    // Elements
     const tbody = document.getElementById('tbody');
     const statusEl = document.getElementById('status');
     const tabWeek = document.getElementById('tabWeek');
@@ -126,107 +105,42 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const lastUpdatedEl = document.getElementById('lastUpdated');
 
-    // Helpers
     function pad(n){return String(n).padStart(2,'0')}
-    function startOfWeek(d=new Date()){
-      const x=new Date(d); const day=x.getDay()===0?7:x.getDay(); x.setHours(0,0,0,0); x.setDate(x.getDate()-(day-1)); return x;
-    }
+    function startOfWeek(d=new Date()){ const x=new Date(d); const day=x.getDay()===0?7:x.getDay(); x.setHours(0,0,0,0); x.setDate(x.getDate()-(day-1)); return x; }
     function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
     function fmt(n){ return new Intl.NumberFormat().format(n||0) }
 
-    // State
     let currentTab = 'week';
-    let timerId = null;
-
-    function setTab(t){
-      currentTab = t;
-      tabWeek.classList.toggle('active', t==='week');
-      tabSeason.classList.toggle('active', t==='season');
-    }
-
-    function badgeTooltip(badge, cs){
-      const tips = {
-        rookie:  '10 exact scores – welcome to the game!',
-        amateur: '15 exact scores – solid prediction form.',
-        pro:     '20 exact scores – elite predictor!',
-        goat:    '30 exact scores – the Greatest of All Time.',
-      };
-      return tips[badge] || (cs!=null ? `${cs} exact scores` : '');
-    }
-
+    function setTab(t){ currentTab=t; tabWeek.classList.toggle('active',t==='week'); tabSeason.classList.toggle('active',t==='season'); }
     function renderRows(rows){
-      tbody.innerHTML = '';
-      if (!rows || !rows.length){
-        tbody.innerHTML = `<tr><td colspan="5" class="meta">No data to show.</td></tr>`;
-        return;
-      }
+      tbody.innerHTML='';
+      if(!rows?.length){ tbody.innerHTML = `<tr><td colspan="5" class="meta">No data to show.</td></tr>`; return; }
       rows.forEach((r,i)=>{
         const badge = r.badge && String(r.badge).toLowerCase();
-        const nameHtml = badge
-          ? `${r.display_name || '—'} <span class="badge ${badge}" title="${badgeTooltip(badge, r.correct_scores)}">${badge.toUpperCase()}</span>`
-          : `${r.display_name || '—'}`;
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="rank">${i+1}</td>
-          <td class="name">${nameHtml}</td>
-          <td>${fmt(r.correct_scores)}</td>
-          <td>${fmt(r.correct_results)}</td>
-          <td class="pts">${fmt(r.points)}</td>
-        `;
+        const nameHtml = badge ? `${r.display_name||'—'} <span class="badge ${badge}">${badge.toUpperCase()}</span>` : `${r.display_name||'—'}`;
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td class="rank">${i+1}</td><td class="name">${nameHtml}</td><td>${fmt(r.correct_scores)}</td><td>${fmt(r.correct_results)}</td><td class="pts">${fmt(r.points)}</td>`;
         tbody.appendChild(tr);
       });
     }
 
-    // Prefer RPCs (server computes with 5/3 scoring + badge)
-    async function fetchSeason(){
-      const { data, error } = await supabase.rpc('leaderboard_v2');
-      if (error) throw error;
-      return Array.isArray(data) ? data : [];
-    }
-
-    async function fetchWeek(weekStart){
-      const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) });
-      if (error) throw error;
-      return Array.isArray(data) ? data : [];
-    }
+    async function fetchSeason(){ const { data, error } = await supabase.rpc('leaderboard_v2'); if (error) throw error; return data||[]; }
+    async function fetchWeek(weekStart){ const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) }); if (error) throw error; return data||[]; }
 
     async function load(which){
-      setTab(which);
-      statusEl.textContent = 'Loading…';
-      tbody.innerHTML = '';
-
-      const now = new Date();
-      const defaultWeekStart = startOfWeek(now);
+      setTab(which); statusEl.textContent='Loading…'; tbody.innerHTML='';
+      const ws = rangeEl.valueAsDate ? startOfWeek(rangeEl.valueAsDate) : startOfWeek(new Date());
       try{
-        let rows = [];
-        if (which==='week'){
-          const userPickedWeek = rangeEl.valueAsDate;
-          const ws = userPickedWeek ? startOfWeek(userPickedWeek) : defaultWeekStart;
-          rows = await fetchWeek(ws);
-        } else {
-          rows = await fetchSeason();
-        }
-        renderRows(rows);
-        statusEl.textContent = '';
-        lastUpdatedEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-      }catch(e){
-        console.error(e);
-        statusEl.textContent = 'Could not load leaderboard.';
-      }
+        const rows = which==='week' ? await fetchWeek(ws) : await fetchSeason();
+        renderRows(rows); statusEl.textContent=''; lastUpdatedEl.textContent=`Updated ${new Date().toLocaleTimeString()}`;
+      }catch(e){ console.error(e); statusEl.textContent='Could not load leaderboard.'; }
     }
 
-    // Events & auto-refresh
     refreshBtn.addEventListener('click', ()=>load(currentTab));
     tabWeek.addEventListener('click', ()=>load('week'));
     tabSeason.addEventListener('click', ()=>load('season'));
 
-    function startAuto(){ if(!timerId){ timerId=setInterval(()=>load(currentTab), 60_000); } }
-    function stopAuto(){ if(timerId){ clearInterval(timerId); timerId=null; } }
-    document.addEventListener('visibilitychange', ()=>{ document.hidden ? stopAuto() : startAuto(); });
-    window.addEventListener('beforeunload', stopAuto);
-
-    await load('week'); startAuto();
+    await load('week');
   </script>
 </body>
 </html>
