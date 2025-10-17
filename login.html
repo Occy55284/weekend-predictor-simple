@@ -4,108 +4,48 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign In • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=86" />
+  <link rel="stylesheet" href="brand.css?v=90" />
   <style>
-    body{
-      background:linear-gradient(135deg,#1f357a 0%,#334155 100%);
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-      margin:0;
-    }
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0}
     .card{
-      background:#fff;
-      border-radius:20px;
-      box-shadow:0 10px 30px rgba(0,0,0,.15);
-      padding:40px 30px;
-      width:100%;
-      max-width:380px;
-      text-align:center;
+      background:#fff;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.15);
+      padding:40px 30px;width:100%;max-width:380px;text-align:center
     }
-    h1{
-      margin:0 0 8px;
-      font-size:1.8rem;
-      color:#1f357a;
-      font-weight:800;
-    }
-    p.sub{
-      margin:0 0 20px;
-      color:#475569;
-    }
-    form{
-      display:flex;
-      flex-direction:column;
-      gap:16px;
-    }
-    input[type="email"]{
-      height:48px;
-      border:1px solid #cbd5e1;
-      border-radius:12px;
-      padding:0 14px;
-      font-size:1rem;
-      text-align:center;
-    }
-    button{
-      height:48px;
-      border:none;
-      border-radius:12px;
-      background:#1f357a;
-      color:#fff;
-      font-size:1rem;
-      font-weight:700;
-      cursor:pointer;
-      transition:background .2s;
-    }
-    button:hover{ background:#2c4ba8; }
-    .msg{
-      margin-top:12px;
-      font-weight:600;
-    }
-    .ok{color:#16a34a}
-    .err{color:#b91c1c}
-    footer{
-      margin-top:25px;
-      color:#e2e8f0;
-      font-size:.85rem;
-    }
+    h1{margin:0 0 8px;font-size:1.8rem;color:#1f357a;font-weight:800}
+    p.sub{margin:0 0 20px;color:#475569}
+    form{display:flex;flex-direction:column;gap:16px}
+    input[type="email"]{height:48px;border:1px solid #cbd5e1;border-radius:12px;padding:0 14px;font-size:1rem;text-align:center}
+    button{height:48px;border:none;border-radius:12px;background:#1f357a;color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
+    button:hover{background:#2c4ba8}
+    .msg{margin-top:12px;font-weight:600}
+    .ok{color:#16a34a}.err{color:#b91c1c}
+    footer{margin-top:25px;color:#e2e8f0;font-size:.85rem}
   </style>
-
   <script type="module" src="supabase-config.js"></script>
 </head>
-<body>
+<body class="bg-hero">
   <main class="card">
     <h1>Weekend Predictor</h1>
     <p class="sub">Sign in to make your picks</p>
-
     <form id="form">
       <input id="email" type="email" placeholder="Enter your email" required />
       <button type="submit">Send magic link</button>
     </form>
-
     <div id="msg" class="msg"></div>
-
     <footer>© 2025 Weekend Predictor</footer>
   </main>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
-
     const form = document.getElementById('form');
     const msg = document.getElementById('msg');
-
     form.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      msg.textContent = 'Sending magic link…';
-      msg.className = 'msg';
+      msg.textContent = 'Sending magic link…'; msg.className='msg';
       const email = document.getElementById('email').value.trim();
       try{
         const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options:{
-            emailRedirectTo: `${window.location.origin}/predict.html`
-          }
+          email, options:{ emailRedirectTo: `${window.location.origin}/predict.html` }
         });
         if (error) throw error;
         msg.innerHTML = '<span class="ok">Check your inbox for the sign-in link.</span>';
