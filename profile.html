@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Your Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=83" />
+  <link rel="stylesheet" href="brand.css?v=88" />
   <style>
-    .wrap{max-width:820px;margin:0 auto;padding:16px}
+    .wrap{max-width:880px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
           box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
     h1{margin:0 0 10px;color:#1f357a}
@@ -18,8 +18,28 @@
     .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .msg{margin-top:10px;font-weight:700}
     .ok{color:#16a34a}.err{color:#b91c1c}
-    .preview{display:flex;align-items:center;gap:12px;margin-top:10px}
-    .badge{width:48px;height:48px;border-radius:12px;background:#eef2ff;display:grid;place-items:center;font-weight:800;color:#1f357a}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:820px){ .grid{grid-template-columns:1fr} }
+
+    /* Badge pills (brand-aligned) */
+    .badge{
+      border-radius:999px;
+      padding:2px 8px;
+      font-size:.75rem;
+      font-weight:700;
+      display:inline-block;
+      vertical-align:middle;
+    }
+    .badge.rookie{background:#cdd5f0;color:#1f357a}
+    .badge.amateur{background:#5c7ddf;color:#fff}
+    .badge.pro{background:linear-gradient(135deg,#1f357a,#2c4ba8);color:#fff}
+    .badge.goat{background:linear-gradient(135deg,#2c4ba8,#7c3aed);color:#fff;box-shadow:0 0 8px rgba(124,58,237,.4)}
+
+    /* Progress bar */
+    .bar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+    .fill{height:100%;background:linear-gradient(90deg,#1f357a,#2c4ba8)}
+    .meta{color:#475569}
+    .big{font-size:1.25rem;font-weight:800;color:#1f357a}
   </style>
 
   <script type="module" src="supabase-config.js"></script>
@@ -52,23 +72,14 @@
   </header>
 
   <main class="wrap">
+    <!-- Profile editor -->
     <section class="card">
       <h1>Your profile</h1>
-
       <form id="form">
         <div class="field">
           <label for="name">Display name</label>
           <input id="name" type="text" placeholder="Your name" required />
         </div>
-
-        <div class="preview">
-          <div class="badge" id="badge">WP</div>
-          <div>
-            <div class="meta">Preview</div>
-            <div id="badgeName" style="font-weight:800;color:#1f357a">—</div>
-          </div>
-        </div>
-
         <div class="actions">
           <button id="save" type="submit" class="btn primary">Save changes</button>
           <a class="btn" href="predict.html">Go to predictions</a>
@@ -76,17 +87,82 @@
       </form>
       <div id="message" class="msg"></div>
     </section>
+
+    <!-- Badge & progress -->
+    <section class="card">
+      <div class="grid">
+        <div>
+          <div class="big" style="margin-bottom:6px;">Your Status</div>
+          <div class="meta" style="margin-bottom:8px;">Badges are earned from exact score predictions.</div>
+          <div id="badgeRow" class="meta" style="margin:10px 0;">
+            Current badge: <span id="badgePill" class="badge" style="display:none"></span>
+            <span id="badgeNone" class="meta">— none yet</span>
+          </div>
+          <div class="meta" id="statExact">Exact scores: —</div>
+          <div class="meta" id="statResult">Correct results: —</div>
+          <div class="meta" id="statPoints" style="margin-bottom:10px;">Points: —</div>
+
+          <div class="bar"><div id="barFill" class="fill" style="width:0%"></div></div>
+          <div class="meta" id="nextText" style="margin-top:6px;">Next milestone: —</div>
+        </div>
+
+        <div>
+          <div class="big" style="margin-bottom:6px;">How badges work</div>
+          <ul class="meta" style="padding-left:18px;line-height:1.6">
+            <li>Rookie (10), Amateur (15), Pro (20), GOAT (30) — based on total exact scores.</li>
+            <li>Badges appear next to your name on the Leaderboard.</li>
+            <li>Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
     const nameEl = document.getElementById('name');
-    const badgeName = document.getElementById('badgeName');
     const saveBtn = document.getElementById('save');
     const msg = document.getElementById('message');
 
-    function updatePreview(){ badgeName.textContent = nameEl.value || '—'; }
+    const badgePill = document.getElementById('badgePill');
+    const badgeNone = document.getElementById('badgeNone');
+    const statExact = document.getElementById('statExact');
+    const statResult = document.getElementById('statResult');
+    const statPoints = document.getElementById('statPoints');
+    const barFill = document.getElementById('barFill');
+    const nextText = document.getElementById('nextText');
+
+    function setBadge(badge){
+      if (!badge){
+        badgePill.style.display = 'none';
+        badgeNone.style.display = '';
+        return;
+      }
+      const label = badge.toUpperCase();
+      badgePill.textContent = label;
+      badgePill.className = 'badge ' + badge;
+      badgePill.style.display = 'inline-block';
+      badgeNone.style.display = 'none';
+    }
+
+    function nextMilestone(exacts){
+      if (exacts >= 30) return { next:null, need:0, target:30 };
+      if (exacts >= 20) return { next:'goat', need:30 - exacts, target:30 };
+      if (exacts >= 15) return { next:'pro', need:20 - exacts, target:20 };
+      if (exacts >= 10) return { next:'amateur', need:15 - exacts, target:15 };
+      return { next:'rookie', need:10 - (exacts||0), target:10 };
+    }
+
+    function computeBadge(exacts){
+      if (exacts >= 30) return 'goat';
+      if (exacts >= 20) return 'pro';
+      if (exacts >= 15) return 'amateur';
+      if (exacts >= 10) return 'rookie';
+      return null;
+    }
+
+    function pct(a,b){ if(!b) return 0; const p = Math.max(0, Math.min(1, a/b)); return Math.round(p*100); }
 
     // Prefill profile + show Admin link if applicable
     async function prefill(){
@@ -99,12 +175,64 @@
 
       if (prof){
         nameEl.value = prof.display_name || '';
-        updatePreview();
         if (prof.is_admin) document.getElementById('navAdmin').style.display = '';
       }
-    }
 
-    document.getElementById('form').addEventListener('input', updatePreview);
+      // Try RPC first (if you later add it), else compute locally
+      try{
+        const { data: sp, error } = await supabase.rpc('season_progress', { uid });
+        if (!error && sp){
+          const exacts = sp.correct_scores ?? 0;
+          const results = sp.correct_results ?? 0;
+          const points = sp.points ?? 0;
+          statExact.textContent = `Exact scores: ${exacts}`;
+          statResult.textContent = `Correct results: ${results}`;
+          statPoints.textContent = `Points: ${points}`;
+          setBadge(sp.badge || computeBadge(exacts));
+          const nm = nextMilestone(exacts);
+          const progressPct = nm.next ? pct(exacts, nm.target) : 100;
+          barFill.style.width = progressPct + '%';
+          nextText.textContent = nm.next
+            ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
+            : `You’ve reached the top tier — GOAT!`;
+          return; // done
+        }
+      }catch{}
+
+      // Local compute using picks view + fixtures
+      const { data: picks } = await supabase
+        .from('picks').select('fixture_id, home, away, week_start').eq('user_id', uid);
+      const { data: fixtures } = await supabase
+        .from('fixtures').select('id, home_score, away_score');
+
+      const fIdx = new Map((fixtures||[]).map(f => [String(f.id), f]));
+      let exacts = 0, results = 0, points = 0;
+
+      const outcome = (h,a)=> h>a ? 'H' : (h<a ? 'A' : 'D');
+      for (const p of (picks||[])){
+        const f = fIdx.get(String(p.fixture_id));
+        if (!f || f.home_score == null || f.away_score == null) continue;
+        const isExact = (p.home === f.home_score) && (p.away === f.away_score);
+        if (isExact) { exacts += 1; points += 5; continue; }
+        if (outcome(p.home, p.away) === outcome(f.home_score, f.away_score)) {
+          results += 1; points += 3;
+        }
+      }
+
+      statExact.textContent = `Exact scores: ${exacts}`;
+      statResult.textContent = `Correct results: ${results}`;
+      statPoints.textContent = `Points: ${points}`;
+
+      const badge = computeBadge(exacts);
+      setBadge(badge);
+
+      const nm = nextMilestone(exacts);
+      const progressPct = nm.next ? pct(exacts, nm.target) : 100;
+      barFill.style.width = progressPct + '%';
+      nextText.textContent = nm.next
+        ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
+        : `You’ve reached the top tier — GOAT!`;
+    }
 
     document.getElementById('form').addEventListener('submit', async (e)=>{
       e.preventDefault();
