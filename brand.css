@@ -1,156 +1,30 @@
-/* --- Reset & base --- */
-*,
-*::before,
-*::after { box-sizing: border-box; }
-html, body { height: 100%; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background: radial-gradient(1200px 600px at 50% -100px, #274796 0%, #1f357a 40%, #162d66 100%);
-  color: #0f172a;
-}
-img { display: block; max-width: 100%; height: auto; border: 0; }
-h1, h2, h3, p { margin: 0; }
+/* === Hero Background (Option A) ===
+   Apply by adding class="bg-hero" to the <body> of a page.
+   Uses a dark overlay + mild blur so content stays readable. */
 
-/* --- Center layout --- */
-.landing {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+body.bg-hero{
+  /* point this to your image path */
+  --hero-img: url("images/prem-hero.jpg");
+  --hero-tint: rgba(0,0,0,.45);   /* overlay strength */
+  --hero-blur: 6px;               /* background blur */
+  background-image: var(--hero-img);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  position: relative;
 }
 
-/* --- Logo --- */
-.logo {
-  width: 120px;   /* keeps it small */
-  height: auto;
-  margin: 0 auto 20px;
-  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
-}
-
-/* --- Hero banner (home page) --- */
-.hero {
-  width: 100%;
-  max-width: 980px;
-  background: #ffffff;
-  border-radius: 20px;
-  box-shadow:
-    0 10px 20px rgba(0,0,0,0.15),
-    inset 0 0 0 1px rgba(0,0,0,0.04);
-  padding: clamp(18px, 3.5vw, 36px);
-  text-align: center;
-}
-
-.hero-title {
-  font-weight: 800;
-  line-height: 1.1;
-  color: #ffd200;
-  font-size: clamp(26px, 4.2vw, 44px);
-  margin-bottom: 18px;
-}
-
-/* --- CTA button --- */
-.cta {
-  display: inline-block;
-  background: #28428f;
-  color: #ffffff;
-  text-decoration: none;
-  font-weight: 600;
-  padding: 12px 28px;
-  border-radius: 14px;
-  box-shadow: 0 6px 14px rgba(0,0,0,0.18);
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
-}
-.cta:hover { 
-  background: #1f357a;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.22);
-  transform: translateY(-1px);
-}
-.cta:active { transform: translateY(0); }
-.cta:focus-visible { outline: 3px solid #ffd200; outline-offset: 3px; }
-
-/* --- Login page card --- */
-.card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 24px;
-  max-width: 400px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-}
-
-.card h2 {
-  margin-bottom: 12px;
-  color: #1f357a;
-}
-
-.card p {
-  font-size: 0.9rem;
-  margin-bottom: 16px;
-  color: #444;
-}
-
-.card input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 12px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-}
-
-.card button {
-  background: #28428f;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.card button:hover {
-  background: #1f357a;
-}
-
-/* --- Small screens --- */
-@media (max-width: 480px) {
-  .logo { width: 96px; margin-bottom: 14px; }
-  .hero { border-radius: 16px; }
-}
-
-/* === Mini top-right nav === */
-.topnav {
+body.bg-hero::before{
+  content:"";
   position: fixed;
-  top: 12px;
-  right: 12px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: rgba(255,255,255,0.9);
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 6px 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-  z-index: 50;
+  inset: 0;
+  background: var(--hero-tint);
+  backdrop-filter: blur(var(--hero-blur));
+  -webkit-backdrop-filter: blur(var(--hero-blur));
+  z-index: 0;
 }
 
-.topnav a, .topnav button {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: none;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  color: #1f2937;
-  background: transparent;
-}
-
-.topnav a:hover { background: #eef2ff; }
-.topnav .active { background: #28428f; color: #fff; }
-.topnav .logout { color: #b91c1c; }
-.topnav .logout:hover { background: #fee2e2; }
+body.bg-hero > *{
+  position: relative;
+  z-index: 1; /* keep your cards/nav above the overlay */
 }
