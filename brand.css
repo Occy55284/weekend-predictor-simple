@@ -4,7 +4,7 @@
 
 body.bg-hero{
   /* point this to your image path */
-  --hero-img: url("images/prem-hero.jpg");
+  --hero-img: url("prem-hero.jpg");
   --hero-tint: rgba(0,0,0,.45);   /* overlay strength */
   --hero-blur: 6px;               /* background blur */
   background-image: var(--hero-img);
