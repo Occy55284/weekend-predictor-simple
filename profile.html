@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Your Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=88" />
+  <link rel="stylesheet" href="brand.css?v=89" />
   <style>
     .wrap{max-width:880px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -94,13 +94,16 @@
         <div>
           <div class="big" style="margin-bottom:6px;">Your Status</div>
           <div class="meta" style="margin-bottom:8px;">Badges are earned from exact score predictions.</div>
+
           <div id="badgeRow" class="meta" style="margin:10px 0;">
             Current badge: <span id="badgePill" class="badge" style="display:none"></span>
             <span id="badgeNone" class="meta">— none yet</span>
           </div>
+
           <div class="meta" id="statExact">Exact scores: —</div>
           <div class="meta" id="statResult">Correct results: —</div>
-          <div class="meta" id="statPoints" style="margin-bottom:10px;">Points: —</div>
+          <div class="meta" id="statPoints">Points: —</div>
+          <div class="meta" id="statRank" style="margin-bottom:10px;">Season rank: —</div>
 
           <div class="bar"><div id="barFill" class="fill" style="width:0%"></div></div>
           <div class="meta" id="nextText" style="margin-top:6px;">Next milestone: —</div>
@@ -130,6 +133,7 @@
     const statExact = document.getElementById('statExact');
     const statResult = document.getElementById('statResult');
     const statPoints = document.getElementById('statPoints');
+    const statRank = document.getElementById('statRank');
     const barFill = document.getElementById('barFill');
     const nextText = document.getElementById('nextText');
 
@@ -153,77 +157,37 @@
       if (exacts >= 10) return { next:'amateur', need:15 - exacts, target:15 };
       return { next:'rookie', need:10 - (exacts||0), target:10 };
     }
-
-    function computeBadge(exacts){
-      if (exacts >= 30) return 'goat';
-      if (exacts >= 20) return 'pro';
-      if (exacts >= 15) return 'amateur';
-      if (exacts >= 10) return 'rookie';
-      return null;
-    }
-
     function pct(a,b){ if(!b) return 0; const p = Math.max(0, Math.min(1, a/b)); return Math.round(p*100); }
 
-    // Prefill profile + show Admin link if applicable
+    // Prefill profile + admin link, then load stats via RPC
     async function prefill(){
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user){ window.location.replace('login.html'); return; }
       const uid = session.user.id;
 
+      // Profile basics + admin
       const { data: prof } = await supabase.from('profiles')
         .select('display_name, is_admin').eq('id', uid).maybeSingle();
-
       if (prof){
         nameEl.value = prof.display_name || '';
         if (prof.is_admin) document.getElementById('navAdmin').style.display = '';
       }
 
-      // Try RPC first (if you later add it), else compute locally
-      try{
-        const { data: sp, error } = await supabase.rpc('season_progress', { uid });
-        if (!error && sp){
-          const exacts = sp.correct_scores ?? 0;
-          const results = sp.correct_results ?? 0;
-          const points = sp.points ?? 0;
-          statExact.textContent = `Exact scores: ${exacts}`;
-          statResult.textContent = `Correct results: ${results}`;
-          statPoints.textContent = `Points: ${points}`;
-          setBadge(sp.badge || computeBadge(exacts));
-          const nm = nextMilestone(exacts);
-          const progressPct = nm.next ? pct(exacts, nm.target) : 100;
-          barFill.style.width = progressPct + '%';
-          nextText.textContent = nm.next
-            ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
-            : `You’ve reached the top tier — GOAT!`;
-          return; // done
-        }
-      }catch{}
+      // Season stats via RPC
+      const { data: sp, error } = await supabase.rpc('season_progress', { uid });
+      if (error){ console.error(error); return; }
 
-      // Local compute using picks view + fixtures
-      const { data: picks } = await supabase
-        .from('picks').select('fixture_id, home, away, week_start').eq('user_id', uid);
-      const { data: fixtures } = await supabase
-        .from('fixtures').select('id, home_score, away_score');
+      const exacts  = sp?.correct_scores ?? 0;
+      const results = sp?.correct_results ?? 0;
+      const points  = sp?.points ?? 0;
+      const badge   = sp?.badge ?? null;
+      const rank    = sp?.rank ?? null;
 
-      const fIdx = new Map((fixtures||[]).map(f => [String(f.id), f]));
-      let exacts = 0, results = 0, points = 0;
-
-      const outcome = (h,a)=> h>a ? 'H' : (h<a ? 'A' : 'D');
-      for (const p of (picks||[])){
-        const f = fIdx.get(String(p.fixture_id));
-        if (!f || f.home_score == null || f.away_score == null) continue;
-        const isExact = (p.home === f.home_score) && (p.away === f.away_score);
-        if (isExact) { exacts += 1; points += 5; continue; }
-        if (outcome(p.home, p.away) === outcome(f.home_score, f.away_score)) {
-          results += 1; points += 3;
-        }
-      }
-
-      statExact.textContent = `Exact scores: ${exacts}`;
+      statExact.textContent  = `Exact scores: ${exacts}`;
       statResult.textContent = `Correct results: ${results}`;
       statPoints.textContent = `Points: ${points}`;
+      statRank.textContent   = rank ? `Season rank: #${rank}` : 'Season rank: —';
 
-      const badge = computeBadge(exacts);
       setBadge(badge);
 
       const nm = nextMilestone(exacts);
