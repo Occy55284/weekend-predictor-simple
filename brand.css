@@ -18,9 +18,7 @@ body.bg-hero::before{
   content:"";
   position: fixed;
   inset: 0;
-  background: var(--hero-tint);
-  backdrop-filter: blur(var(--hero-blur));
-  -webkit-backdrop-filter: blur(var(--hero-blur));
+  background: var(--hero-tint); /* keeps the soft dark overlay */
   z-index: 0;
 }
 
