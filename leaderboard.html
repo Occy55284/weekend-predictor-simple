@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=82" />
+  <link rel="stylesheet" href="brand.css?v=87" />
   <style>
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -24,12 +24,24 @@
     .pts{font-weight:800}
     .ghost{background:transparent;border:1px solid #cbd5e1;border-radius:10px;height:38px;padding:0 12px;font-weight:700}
     .range{height:38px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 8px}
-    .err{color:#b91c1c;font-weight:700}
-    .ok{color:#16a34a;font-weight:700}
-    .muted{color:#64748b}
-    pre.errbox{white-space:pre-wrap;background:#fff7f7;border:1px solid #fecaca;border-radius:10px;padding:10px;margin-top:8px;color:#7f1d1d;font-size:.9rem}
+
+    /* Brand badge pills */
+    .badge{
+      border-radius:999px;
+      padding:2px 8px;
+      font-size:.75rem;
+      font-weight:700;
+      display:inline-block;
+      margin-left:8px;
+      vertical-align:middle;
+    }
+    .badge.rookie{background:#cdd5f0;color:#1f357a}                 /* soft blue-grey */
+    .badge.amateur{background:#5c7ddf;color:#fff}                   /* brand bright blue */
+    .badge.pro{background:linear-gradient(135deg,#1f357a,#2c4ba8);color:#fff} /* deep navy gradient */
+    .badge.goat{background:linear-gradient(135deg,#2c4ba8,#7c3aed);color:#fff;box-shadow:0 0 8px rgba(124,58,237,.4)} /* iridescent */
   </style>
 
+  <!-- Supabase client -->
   <script type="module" src="supabase-config.js"></script>
 
   <!-- Early logout wiring -->
@@ -74,8 +86,7 @@
       </div>
 
       <div class="note">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result</div>
-      <div id="status" class="meta" style="margin-top:6px;">—</div>
-      <pre id="diag" class="errbox" style="display:none"></pre>
+      <div class="meta" id="status" style="margin-top:6px;">—</div>
 
       <table>
         <thead>
@@ -95,131 +106,122 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // Utilities
-    const $ = (sel)=>document.querySelector(sel);
-    const tbody = $('#tbody');
-    const statusEl = $('#status');
-    const diagEl = $('#diag');
-    const tabWeek = $('#tabWeek');
-    const tabSeason = $('#tabSeason');
-    const rangeEl = $('#range');
-    const refreshBtn = $('#refreshBtn');
-    const lastUpdatedEl = $('#lastUpdated');
-
-    function showStatus(txt, cls=''){ statusEl.className = 'meta ' + (cls||''); statusEl.textContent = txt; }
-    function showDiag(obj){
-      if (!obj) { diagEl.style.display='none'; diagEl.textContent=''; return; }
-      diagEl.style.display='block';
-      try { diagEl.textContent = typeof obj==='string' ? obj : JSON.stringify(obj, null, 2); }
-      catch { diagEl.textContent = String(obj); }
-    }
-    function pad(n){return String(n).padStart(2,'0')}
-    function startOfWeek(d=new Date()){ const x=new Date(d); const day=x.getDay()===0?7:x.getDay(); x.setHours(0,0,0,0); x.setDate(x.getDate()-(day-1)); return x; }
-    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
-    function fmt(n){ return new Intl.NumberFormat().format(n||0) }
-    function renderRows(rows){
-      tbody.innerHTML='';
-      if (!rows || !rows.length){ tbody.innerHTML = `<tr><td colspan="5" class="muted">No data to show.</td></tr>`; return; }
-      rows.forEach((r,i)=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="rank">${i+1}</td>
-          <td class="name">${r.display_name ?? '—'}</td>
-          <td>${fmt(r.correct_scores ?? r.correct_score ?? 0)}</td>
-          <td>${fmt(r.correct_results ?? r.correct_result ?? 0)}</td>
-          <td class="pts">${fmt(r.points ?? 0)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // Admin reveal
+    // Show Admin link if applicable
     (async ()=>{
       try{
         const { data:{ session } } = await supabase.auth.getSession();
         if (!session?.user) return;
-        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
-        if (!error && data?.is_admin) $('#navAdmin').style.display = '';
+        const { data, error } = await supabase
+          .from('profiles').select('is_admin').eq('id', session.user.id).single();
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
       }catch{}
     })();
 
-    // Diagnostics: verify connectivity + simple read
-    async function connectivityProbe(){
-      try{
-        const { data: { session }, error: sessErr } = await supabase.auth.getSession();
-        if (sessErr) throw sessErr;
-        showStatus('Connected. Checking data access…');
-        const { count, error } = await supabase.from('profiles').select('*', { count:'exact', head:true });
-        if (error) throw error;
-        showStatus(`Connected. Profiles visible: ${count ?? 0}`, 'ok');
-        showDiag(null);
-      }catch(e){
-        showStatus('Connection or RLS issue detected.', 'err');
-        showDiag({ step:'connectivityProbe', error: e?.message || e });
-      }
-    }
+    // Elements
+    const tbody = document.getElementById('tbody');
+    const statusEl = document.getElementById('status');
+    const tabWeek = document.getElementById('tabWeek');
+    const tabSeason = document.getElementById('tabSeason');
+    const rangeEl = document.getElementById('range');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const lastUpdatedEl = document.getElementById('lastUpdated');
 
-    // Server calls
-    async function fetchSeason(){
-      try{
-        showStatus('Loading season (RPC)…');
-        const { data, error } = await supabase.rpc('leaderboard_v2');
-        if (error) throw error;
-        showStatus('Season data loaded.', 'ok');
-        showDiag(null);
-        return Array.isArray(data) ? data : [];
-      }catch(e){
-        showStatus('Season RPC failed. See details below.', 'err');
-        showDiag({ step:'leaderboard_v2', error: e?.message || e });
-        return [];
-      }
+    // Helpers
+    function pad(n){return String(n).padStart(2,'0')}
+    function startOfWeek(d=new Date()){
+      const x=new Date(d); const day=x.getDay()===0?7:x.getDay(); x.setHours(0,0,0,0); x.setDate(x.getDate()-(day-1)); return x;
     }
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+    function fmt(n){ return new Intl.NumberFormat().format(n||0) }
 
-    async function fetchWeek(weekStart){
-      try{
-        showStatus(`Loading week ${isoDate(weekStart)} (RPC)…`);
-        const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) });
-        if (error) throw error;
-        showStatus('Week data loaded.', 'ok');
-        showDiag(null);
-        return Array.isArray(data) ? data : [];
-      }catch(e){
-        showStatus('Weekly RPC failed. See details below.', 'err');
-        showDiag({ step:'leaderboard_week_v2', error: e?.message || e, arg: isoDate(weekStart) });
-        return [];
-      }
-    }
-
-    // State & wiring
+    // State
     let currentTab = 'week';
     let timerId = null;
+
     function setTab(t){
       currentTab = t;
       tabWeek.classList.toggle('active', t==='week');
       tabSeason.classList.toggle('active', t==='season');
     }
 
-    async function load(which){
-      setTab(which);
-      tbody.innerHTML = '';
-      const now = new Date();
-      const ws = rangeEl.valueAsDate ? startOfWeek(rangeEl.valueAsDate) : startOfWeek(now);
-
-      await connectivityProbe();
-
-      const rows = which==='week'
-        ? await fetchWeek(ws)
-        : await fetchSeason();
-
-      renderRows(rows);
-      lastUpdatedEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    function badgeTooltip(badge, cs){
+      const tips = {
+        rookie:  '10 exact scores – welcome to the game!',
+        amateur: '15 exact scores – solid prediction form.',
+        pro:     '20 exact scores – elite predictor!',
+        goat:    '30 exact scores – the Greatest of All Time.',
+      };
+      return tips[badge] || (cs!=null ? `${cs} exact scores` : '');
     }
 
+    function renderRows(rows){
+      tbody.innerHTML = '';
+      if (!rows || !rows.length){
+        tbody.innerHTML = `<tr><td colspan="5" class="meta">No data to show.</td></tr>`;
+        return;
+      }
+      rows.forEach((r,i)=>{
+        const badge = r.badge && String(r.badge).toLowerCase();
+        const nameHtml = badge
+          ? `${r.display_name || '—'} <span class="badge ${badge}" title="${badgeTooltip(badge, r.correct_scores)}">${badge.toUpperCase()}</span>`
+          : `${r.display_name || '—'}`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="rank">${i+1}</td>
+          <td class="name">${nameHtml}</td>
+          <td>${fmt(r.correct_scores)}</td>
+          <td>${fmt(r.correct_results)}</td>
+          <td class="pts">${fmt(r.points)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Prefer RPCs (server computes with 5/3 scoring + badge)
+    async function fetchSeason(){
+      const { data, error } = await supabase.rpc('leaderboard_v2');
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }
+
+    async function fetchWeek(weekStart){
+      const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) });
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }
+
+    async function load(which){
+      setTab(which);
+      statusEl.textContent = 'Loading…';
+      tbody.innerHTML = '';
+
+      const now = new Date();
+      const defaultWeekStart = startOfWeek(now);
+      try{
+        let rows = [];
+        if (which==='week'){
+          const userPickedWeek = rangeEl.valueAsDate;
+          const ws = userPickedWeek ? startOfWeek(userPickedWeek) : defaultWeekStart;
+          rows = await fetchWeek(ws);
+        } else {
+          rows = await fetchSeason();
+        }
+        renderRows(rows);
+        statusEl.textContent = '';
+        lastUpdatedEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      }catch(e){
+        console.error(e);
+        statusEl.textContent = 'Could not load leaderboard.';
+      }
+    }
+
+    // Events & auto-refresh
     refreshBtn.addEventListener('click', ()=>load(currentTab));
     tabWeek.addEventListener('click', ()=>load('week'));
     tabSeason.addEventListener('click', ()=>load('season'));
 
-    function startAuto(){ if(!timerId){ timerId = setInterval(()=>load(currentTab), 60_000); } }
+    function startAuto(){ if(!timerId){ timerId=setInterval(()=>load(currentTab), 60_000); } }
     function stopAuto(){ if(timerId){ clearInterval(timerId); timerId=null; } }
     document.addEventListener('visibilitychange', ()=>{ document.hidden ? stopAuto() : startAuto(); });
     window.addEventListener('beforeunload', stopAuto);
