@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Make Predictions • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=85" />
+  <link rel="stylesheet" href="brand.css?v=92" />
   <style>
     .wrap{max-width:960px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -38,7 +38,7 @@
     });
   </script>
 </head>
-<body>
+<body class="bg-hero">
   <header class="top">
     <div class="inner">
       <a class="logo" href="index.html">WP</a>
@@ -73,7 +73,7 @@
       </table>
 
       <div class="actions" style="margin-top:10px">
-        <!-- Save removed by request -->
+        <!-- Save removed; we lock + save in one step -->
         <button class="btn" id="lockBtn" type="button">Lock my picks</button>
       </div>
       <div id="msg" class="msg"></div>
@@ -129,7 +129,7 @@
       }catch{}
     })();
 
-    // --- Load fixtures (featured) this week via utc_date bounds ---
+    // --- Load fixtures (featured) for this week using utc_date bounds ---
     async function loadFixtures(){
       tbody.innerHTML = '';
       msg.textContent = '';
@@ -160,9 +160,10 @@
       emptyBox.style.display = 'none';
       table.style.display = '';
 
+      // Build rows
       fixtures.forEach(fx=>{
         const tr = document.createElement('tr');
-        tr.dataset.fixtureId = String(fx.id); // use real id (string to match predictions.fixture_id text)
+        tr.dataset.fixtureId = String(fx.id); // store real id
         tr.innerHTML = `
           <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
           <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home"></td>
@@ -174,7 +175,7 @@
       return { fixtures, error: null };
     }
 
-    // --- Prefill from public.picks (view) for this Monday ---
+    // --- Prefill user picks for this week from view public.picks ---
     async function prefillPicks(){
       const { data: picks, error } = await supabase
         .from('picks')
@@ -227,19 +228,16 @@
           return;
         }
 
-        // 1) Upsert into base table: predictions (NOT the picks view)
-        // onConflict assumes (user_id, fixture_id) is unique or indexed accordingly
+        // 1) Save into base table: predictions
         const { error: upErr } = await supabase
           .from('predictions')
           .upsert(payload, { onConflict: 'user_id,fixture_id' });
-
         if (upErr) throw upErr;
 
-        // 2) Upsert the lock for this Monday in pick_locks view (maps to week_locks)
+        // 2) Lock the week
         const { error: lockErr } = await supabase
           .from('pick_locks')
           .upsert({ user_id: user.id, week_start: isoDate(weekStart) }, { onConflict: 'user_id,week_start' });
-
         if (lockErr) throw lockErr;
 
         msg.innerHTML = '<span class="ok">Your picks are saved and locked for this week.</span>';
@@ -251,12 +249,12 @@
       }
     });
 
-    // --- Simple season progress (non-blocking; rpc optional) ---
+    // --- Season progress via RPC if available (non-blocking) ---
     (async ()=>{
       try{
         const { data: totals } = await supabase.rpc('season_progress', { uid: user.id });
         if (totals?.points != null){
-          progressEl.textContent = `Points: ${totals.points} • Rank: ${totals.rank}`;
+          progressEl.textContent = `Points: ${totals.points} • Rank: ${totals.rank ?? '—'}`;
         } else {
           progressEl.textContent = `Track your points as results roll in.`;
         }
