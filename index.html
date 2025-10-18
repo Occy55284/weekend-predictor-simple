@@ -69,11 +69,6 @@
     .cta { display:flex; gap:12px; flex-wrap:wrap; margin-top:10px }
     .hint { color:var(--muted-2); font-size:.9rem; margin-top:6px }
 
-    /* Feature chips */
-    .chips { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px }
-    .chip { font-weight:700; font-size:.82rem; color:#e2e8f0; padding:8px 12px; border-radius:999px;
-            background:rgba(148,163,184,.09); border:1px solid rgba(226,232,240,.12) }
-
     /* Mock card */
     .mock {
       position:relative; border-radius:18px; overflow:hidden;
@@ -115,16 +110,11 @@
         <h1>Predict 5 fixtures.<br/>Top the leaderboard.</h1>
         <p class="lead">A clean, zero-fuss predictor for matchday weekends. Make your picks in minutes, lock them before kick-off, and chase bragging rights all season.</p>
 
+        <!-- Only one CTA button -->
         <div class="cta">
           <a id="ctaPrimary" class="btn primary" href="login.html">Get started</a>
-          <a class="btn" href="leaderboard.html">View leaderboard</a>
         </div>
-        <div class="chips">
-          <div class="chip">Email magic link</div>
-          <div class="chip">Lock before kick-off</div>
-          <div class="chip">Auto standings</div>
-          <div class="chip">No spreadsheet drama</div>
-        </div>
+
         <div class="hint">Already have an account? We’ll take you straight to your predictions.</div>
       </div>
 
@@ -150,10 +140,6 @@
             <div>A <span class="footnote">0</span></div>
           </div>
           <div class="footnote">Sign in to see your fixtures and lock your picks.</div>
-          <div style="margin-top:12px; display:flex; gap:10px;">
-            <a id="ctaSecondary" class="ghost-btn" href="login.html">Make predictions</a>
-            <a class="ghost-btn" href="profile.html">Your profile</a>
-          </div>
         </div>
       </div>
     </section>
@@ -172,24 +158,22 @@
       const toPredict = el('toPredict');
       const navLogout = el('navLogout');
       const ctaPrimary = el('ctaPrimary');
-      const ctaSecondary = el('ctaSecondary');
 
       if (signedIn) {
-        // Show prediction CTAs + logout, hide generic get-started
+        // Logged in view
         getStartedTop?.classList.add('hide');
         toPredict?.classList.remove('hide');
         navLogout?.classList.remove('hide');
         if (ctaPrimary) ctaPrimary.href = 'predict.html';
-        if (ctaSecondary) ctaSecondary.href = 'predict.html';
       } else {
+        // Logged out view
         getStartedTop?.classList.remove('hide');
         toPredict?.classList.add('hide');
         navLogout?.classList.add('hide');
         if (ctaPrimary) ctaPrimary.href = 'login.html';
-        if (ctaSecondary) ctaSecondary.href = 'login.html';
       }
 
-      // Robust logout: intercept click, sign out, then hard redirect
+      // Logout
       navLogout?.addEventListener('click', async (e)=>{
         e.preventDefault();
         try{ await supabase.auth.signOut(); }catch{}
