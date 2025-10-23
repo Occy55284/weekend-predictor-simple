@@ -121,96 +121,110 @@
     </section>
   </main>
 
-  <script type="module">
-    import { supabase } from './supabase-config.js';
+ <script type="module">
+  import { supabase } from './supabase-config.js';
 
-    const nameEl = document.getElementById('name');
+  // Tiny helpers
+  const $ = (id) => document.getElementById(id);
+  const statExact   = $('statExact');
+  const statResult  = $('statResult');
+  const statPoints  = $('statPoints');
+  const statRank    = $('statRank');
+  const badgePill   = $('badgePill');
+  const badgeNone   = $('badgeNone');
+  const barFill     = $('barFill');
+  const nextText    = $('nextText');
+
+  const computeBadge = (exacts)=>{
+    if (exacts >= 30) return 'goat';
+    if (exacts >= 20) return 'pro';
+    if (exacts >= 15) return 'amateur';
+    if (exacts >= 10) return 'rookie';
+    return null;
+  };
+  const nextMilestone = (exacts)=>{
+    if (exacts >= 30) return { next:null, need:0, target:30 };
+    if (exacts >= 20) return { next:'goat', need:30 - exacts, target:30 };
+    if (exacts >= 15) return { next:'pro',  need:20 - exacts, target:20 };
+    if (exacts >= 10) return { next:'amateur', need:15 - exacts, target:15 };
+    return { next:'rookie', need:10 - (exacts||0), target:10 };
+  };
+  const pct = (a,b)=> !b ? 0 : Math.round(Math.max(0, Math.min(1, a/b)) * 100);
+
+  function setBadge(badge){
+    if (!badge){
+      badgePill.style.display = 'none';
+      badgeNone.style.display = '';
+      return;
+    }
+    badgePill.textContent = badge.toUpperCase();
+    badgePill.className = 'badge ' + badge;
+    badgePill.style.display = 'inline-block';
+    badgeNone.style.display = 'none';
+  }
+
+  // Prefill display name and show Admin link if needed
+  async function prefillBasics(uid){
+    const { data: prof } = await supabase.from('profiles')
+      .select('display_name, is_admin').eq('id', uid).maybeSingle();
+    if (prof){
+      const nameEl = document.getElementById('name');
+      if (nameEl) nameEl.value = prof.display_name || '';
+      if (prof.is_admin) document.getElementById('navAdmin').style.display = '';
+    }
+  }
+
+  // Normalize RPC data (object or array)
+  function normalizeSeasonProgress(data){
+    const s = Array.isArray(data) ? (data[0] || {}) : (data || {});
+    return {
+      exacts:  Number(s.correct_scores  ?? 0),
+      results: Number(s.correct_results ?? 0),
+      points:  Number(s.points          ?? 0),
+      badge:   s.badge ?? null,
+      rank:    s.rank ?? null,
+    };
+  }
+
+  (async ()=>{
+    // Require sign-in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user){ window.location.replace('login.html'); return; }
+    const uid = session.user.id;
+
+    await prefillBasics(uid);
+
+    // Fetch season totals from the server
+    const { data: sp, error } = await supabase.rpc('season_progress', { uid });
+    if (error){ console.error('season_progress error:', error); return; }
+
+    const { exacts, results, points, badge, rank } = normalizeSeasonProgress(sp);
+
+    // Update UI
+    statExact.textContent  = `Exact scores: ${exacts}`;
+    statResult.textContent = `Correct results: ${results}`;
+    statPoints.textContent = `Points: ${points}`;
+    statRank.textContent   = rank ? `Season rank: #${rank}` : 'Season rank: —';
+    setBadge(badge || computeBadge(exacts));
+
+    const nm = nextMilestone(exacts);
+    barFill.style.width = (nm.next ? pct(exacts, nm.target) : 100) + '%';
+    nextText.textContent = nm.next
+      ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
+      : `You’ve reached the top tier — GOAT!`;
+
+    // Save display name handler (unchanged)
+    const form = document.getElementById('form');
     const saveBtn = document.getElementById('save');
     const msg = document.getElementById('message');
-
-    const badgePill = document.getElementById('badgePill');
-    const badgeNone = document.getElementById('badgeNone');
-    const statExact = document.getElementById('statExact');
-    const statResult = document.getElementById('statResult');
-    const statPoints = document.getElementById('statPoints');
-    const statRank = document.getElementById('statRank');
-    const barFill = document.getElementById('barFill');
-    const nextText = document.getElementById('nextText');
-
-    function setBadge(badge){
-      if (!badge){
-        badgePill.style.display = 'none';
-        badgeNone.style.display = '';
-        return;
-      }
-      const label = badge.toUpperCase();
-      badgePill.textContent = label;
-      badgePill.className = 'badge ' + badge;
-      badgePill.style.display = 'inline-block';
-      badgeNone.style.display = 'none';
-    }
-
-    function nextMilestone(exacts){
-      if (exacts >= 30) return { next:null, need:0, target:30 };
-      if (exacts >= 20) return { next:'goat', need:30 - exacts, target:30 };
-      if (exacts >= 15) return { next:'pro', need:20 - exacts, target:20 };
-      if (exacts >= 10) return { next:'amateur', need:15 - exacts, target:15 };
-      return { next:'rookie', need:10 - (exacts||0), target:10 };
-    }
-    function pct(a,b){ if(!b) return 0; const p = Math.max(0, Math.min(1, a/b)); return Math.round(p*100); }
-
-    // Prefill profile + admin link, then load stats via RPC
-    async function prefill(){
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user){ window.location.replace('login.html'); return; }
-      const uid = session.user.id;
-
-      // Profile basics + admin
-      const { data: prof } = await supabase.from('profiles')
-        .select('display_name, is_admin').eq('id', uid).maybeSingle();
-      if (prof){
-        nameEl.value = prof.display_name || '';
-        if (prof.is_admin) document.getElementById('navAdmin').style.display = '';
-      }
-
-      // Season stats via RPC
-      const { data: sp, error } = await supabase.rpc('season_progress', { uid });
-      if (error){ console.error(error); return; }
-
-      const exacts  = sp?.correct_scores ?? 0;
-      const results = sp?.correct_results ?? 0;
-      const points  = sp?.points ?? 0;
-      const badge   = sp?.badge ?? null;
-      const rank    = sp?.rank ?? null;
-
-      statExact.textContent  = `Exact scores: ${exacts}`;
-      statResult.textContent = `Correct results: ${results}`;
-      statPoints.textContent = `Points: ${points}`;
-      statRank.textContent   = rank ? `Season rank: #${rank}` : 'Season rank: —';
-
-      setBadge(badge);
-
-      const nm = nextMilestone(exacts);
-      const progressPct = nm.next ? pct(exacts, nm.target) : 100;
-      barFill.style.width = progressPct + '%';
-      nextText.textContent = nm.next
-        ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
-        : `You’ve reached the top tier — GOAT!`;
-    }
-
-    document.getElementById('form').addEventListener('submit', async (e)=>{
+    form?.addEventListener('submit', async (e)=>{
       e.preventDefault();
       saveBtn.disabled = true; msg.textContent = 'Saving…';
       try{
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) throw new Error('Not signed in');
-        const uid = session.user.id;
-
-        const { error } = await supabase.from('profiles')
-          .update({ display_name: nameEl.value.trim() })
+        const { error: uerr } = await supabase.from('profiles')
+          .update({ display_name: document.getElementById('name').value.trim() })
           .eq('id', uid);
-
-        if (error) throw error;
+        if (uerr) throw uerr;
         msg.innerHTML = '<span class="ok">Saved.</span>';
       }catch(err){
         console.error(err);
@@ -219,8 +233,5 @@
         saveBtn.disabled = false;
       }
     });
-
-    await prefill();
-  </script>
-</body>
-</html>
+  })();
+</script>
