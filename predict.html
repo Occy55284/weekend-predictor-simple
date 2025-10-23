@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Make Predictions • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=92" />
+  <link rel="stylesheet" href="brand.css?v=96" />
   <style>
     .wrap{max-width:960px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -18,14 +18,13 @@
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     .msg{margin-top:10px;font-weight:600}
     .ok{color:#16a34a}.err{color:#b91c1c}.muted{color:#64748b}
-    .tips{color:#475569;font-size:.9rem}
     .empty{padding:10px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
   </style>
 
   <!-- Supabase client -->
   <script type="module" src="supabase-config.js"></script>
 
-  <!-- Early logout wiring so it always works -->
+  <!-- Early logout wiring -->
   <script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -73,11 +72,10 @@
       </table>
 
       <div class="actions" style="margin-top:10px">
-        <!-- Save removed; we lock + save in one step -->
         <button class="btn" id="lockBtn" type="button">Lock my picks</button>
       </div>
       <div id="msg" class="msg"></div>
-      <p class="tips">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.</p>
+      <p class="meta">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.</p>
     </section>
 
     <section class="card">
@@ -111,7 +109,7 @@
     }
     function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-    const weekStart = startOfWeek(); // Monday
+    const weekStart = startOfWeek(); // Monday (local time)
     const weekEnd = addDays(weekStart, 7); // next Monday
     weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
 
@@ -120,7 +118,7 @@
     if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
     const user = session.user;
 
-    // Reveal Admin link if admin
+    // Show Admin link if applicable
     (async ()=>{
       try{
         const { data, error } = await supabase
@@ -160,10 +158,9 @@
       emptyBox.style.display = 'none';
       table.style.display = '';
 
-      // Build rows
       fixtures.forEach(fx=>{
         const tr = document.createElement('tr');
-        tr.dataset.fixtureId = String(fx.id); // store real id
+        tr.dataset.fixtureId = String(fx.id);
         tr.innerHTML = `
           <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
           <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home"></td>
@@ -211,7 +208,29 @@
       lockBtn.disabled = true;
     }
 
-    // --- Lock flow: save predictions into base table, then lock the week ---
+    // --- NEW: Enforce lock state on UI if already locked this week ---
+    async function enforceLockUI() {
+      const { data: lockRow, error } = await supabase
+        .from('pick_locks')
+        .select('locked_at, week_start')
+        .eq('user_id', user.id)
+        .eq('week_start', isoDate(weekStart))
+        .maybeSingle();
+
+      if (error) {
+        console.error('lock check error', error);
+        return;
+      }
+
+      if (lockRow) {
+        // Disable all inputs + lock button, show message
+        disableInputs();
+        const ts = lockRow.locked_at ? new Date(lockRow.locked_at).toLocaleString() : '';
+        msg.innerHTML = `<span class="muted">Locked on ${ts}. Changes are disabled.</span>`;
+      }
+    }
+
+    // --- Lock flow: save predictions, then lock the week ---
     lockBtn.addEventListener('click', async ()=>{
       lockBtn.disabled = true; msg.textContent = 'Locking…';
       try{
@@ -249,12 +268,13 @@
       }
     });
 
-    // --- Season progress via RPC if available (non-blocking) ---
+    // --- Season progress via RPC (non-blocking) ---
     (async ()=>{
       try{
         const { data: totals } = await supabase.rpc('season_progress', { uid: user.id });
         if (totals?.points != null){
-          progressEl.textContent = `Points: ${totals.points} • Rank: ${totals.rank ?? '—'}`;
+          const s = Array.isArray(totals) ? totals[0] : totals;
+          progressEl.textContent = `Points: ${s.points ?? 0} • Rank: ${s.rank ?? '—'}`;
         } else {
           progressEl.textContent = `Track your points as results roll in.`;
         }
@@ -266,6 +286,7 @@
     // --- Boot ---
     const { fixtures } = await loadFixtures();
     if (fixtures && fixtures.length) await prefillPicks();
+    await enforceLockUI();   // <- check & freeze if already locked
   </script>
 </body>
 </html>
