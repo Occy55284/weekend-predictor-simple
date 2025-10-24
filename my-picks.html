@@ -4,17 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=108" />
+  <link rel="stylesheet" href="brand.css?v=109" />
   <style>
-    /* Remove any hero/logo/wallpaper on this page */
+    /* Nuke hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
-    .hero, .page-hero, .wall, .wallpaper, .bg-hero, .brand-hero,
-    .logo, .logo-wrap, img.logo, header img[alt*="logo"],
-    .prem-hero, img[src*="prem-hero"], .prem-hero-img { display: none !important; }
+    .hero,.page-hero,.wall,.wallpaper,.bg-hero,.brand-hero,
+    .logo,.logo-wrap,img.logo,header img[alt*="logo"],
+    .prem-hero,img[src*="prem-hero"],.prem-hero-img { display:none!important; }
 
     .wrap{max-width:1000px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
-          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+      box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
     h1{margin:0 0 8px;color:#1f357a}
     .muted{color:#64748b}
     .top .bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
@@ -37,6 +37,12 @@
     .meta{color:#475569;font-size:.9rem}
     .grid-2{display:grid;grid-template-columns:1fr 320px;gap:16px}
     @media (max-width: 960px){ .grid-2{grid-template-columns:1fr} }
+
+    /* Debug */
+    details.debug{margin-top:12px}
+    .dbg{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#0b1220;color:#d1e0ff;
+      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:260px;overflow:auto}
+    .dbg b{color:#93c5fd}
   </style>
 </head>
 <body>
@@ -63,23 +69,26 @@
       <h1>My picks</h1>
       <div class="muted" style="margin-bottom:12px">Your selections for the current gameweek.</div>
 
-      <div id="empty" class="empty" style="display:none">
-        You haven’t made any picks for this week yet.
-      </div>
+      <div id="empty" class="empty" style="display:none">No picks found for your account.</div>
 
       <div id="tableWrap" style="display:none">
         <table aria-label="Your picks">
           <thead>
-            <tr>
-              <th>Fixture</th>
-              <th class="center">Your Pick</th>
-              <th class="center">Result</th>
-              <th class="right">Status</th>
-            </tr>
+          <tr>
+            <th>Fixture</th>
+            <th class="center">Your Pick</th>
+            <th class="center">Result</th>
+            <th class="right">Status</th>
+          </tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
         <div class="meta" id="lastUpdated" style="margin-top:6px"></div>
+
+        <details class="debug">
+          <summary><strong>Debug</strong> (what the server returned)</summary>
+          <div class="dbg" id="debugBox">Loading…</div>
+        </details>
       </div>
     </section>
 
@@ -102,79 +111,143 @@
     });
   </script>
 
-  <!-- Page logic: read from VIEW `picks` just like predict.html -->
+  <!-- Page logic with multi-query + debug -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const $ = (id)=> document.getElementById(id);
+    const $ = id => document.getElementById(id);
     const tbody = $('tbody');
     const empty = $('empty');
-    const tableWrap = $('tableWrap');
+    const wrap = $('tableWrap');
     const lastUpdated = $('lastUpdated');
+    const dbg = $('debugBox');
     const navAdmin = $('navAdmin');
 
-    function pad(n){ return String(n).padStart(2,'0'); }
-    function startOfWeek(d=new Date()){
+    // --- small helpers ---
+    const pad = n => String(n).padStart(2,'0');
+    const startOfWeek = (d=new Date())=>{
       const x = new Date(d);
-      const day = x.getDay(); // 0=Sun ... 1=Mon
+      const day = x.getDay(); // 0 Sun, 1 Mon...
       x.setHours(0,0,0,0);
       const diff = (day === 0 ? -6 : 1 - day); // Monday start
       x.setDate(x.getDate() + diff);
       return x;
+    };
+    const addDays = (d, n)=> { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+    const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const bool = v => v === true || v === 'true' || v === 1;
+
+    // field mappers
+    const pickScore = r => {
+      const hg = r.home ?? r.home_goals ?? r.home_score ?? r.h ?? r.pred_home ?? null;
+      const ag = r.away ?? r.away_goals ?? r.away_score ?? r.a ?? r.pred_away ?? null;
+      if (hg == null && ag == null) return '—';
+      return `${hg ?? '–'} : ${ag ?? '–'}`;
+    };
+    const pickTeams = r => {
+      const home = r.home_team ?? r.home_name ?? r.home ?? 'Home';
+      const away = r.away_team ?? r.away_name ?? r.away ?? 'Away';
+      return `${home} vs ${away}`;
+    };
+
+    const log = (label, obj) => {
+      const safe = v => (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
+      dbg.textContent += `\n\n=== ${label} ===\n` + safe(obj);
+      console.log('[my-picks.debug]', label, obj);
+    };
+
+    async function queryPicksEq(uid, weekStart){
+      return supabase.from('picks')
+        .select('fixture_id, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
+        .eq('user_id', uid).eq('week_start', weekStart)
+        .order('fixture_id', { ascending: true });
     }
-    const isoDate = (d)=> `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    const bool = (v)=> v === true || v === 'true' || v === 1;
+
+    async function queryPicksRange(uid, weekStart, weekEnd){
+      return supabase.from('picks')
+        .select('fixture_id, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at, week_start')
+        .eq('user_id', uid).gte('week_start', weekStart).lt('week_start', weekEnd)
+        .order('week_start', { ascending: true });
+    }
+
+    async function queryPicksRecent(uid){
+      return supabase.from('picks')
+        .select('fixture_id, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at, week_start')
+        .eq('user_id', uid).order('created_at', { ascending:false }).limit(30);
+    }
 
     function render(rows){
       tbody.innerHTML = '';
-      if (!rows?.length){
-        tableWrap.style.display = 'none';
-        empty.style.display = '';
-        return;
-      }
-      tableWrap.style.display = '';
-      empty.style.display = 'none';
+      if (!rows?.length){ wrap.style.display='none'; empty.style.display=''; return; }
+      wrap.style.display=''; empty.style.display='none';
 
       rows.forEach(r=>{
         const tr = document.createElement('tr');
-        const homeName = r.home_team ?? r.home_name ?? r.home ?? 'Home';
-        const awayName = r.away_team ?? r.away_name ?? r.away ?? 'Away';
-        const pick = `${r.home ?? '–'} : ${r.away ?? '–'}`; // your entered scores live in 'home' & 'away' on the view
-        const res  = r.result_text ?? r.result ?? '—';
+        const fixture = pickTeams(r);
+        const pick = pickScore(r);
+        const res = r.result_text ?? r.result ?? '—';
         const locked = bool(r.locked);
         tr.innerHTML = `
-          <td><strong>${homeName}</strong> vs <strong>${awayName}</strong></td>
+          <td>${fixture}</td>
           <td class="center"><strong>${pick}</strong></td>
           <td class="center">${res}</td>
           <td class="right"><span class="pill ${locked?'locked':'open'}">${locked?'Locked':'Open'}</span></td>
         `;
         tbody.appendChild(tr);
       });
-      lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      lastUpdated.textContent = `Loaded ${rows.length} pick${rows.length===1?'':'s'}.`;
     }
 
     (async ()=>{
+      dbg.textContent = '';
+
       const { data:{ session } } = await supabase.auth.getSession();
       if (!session?.user){ window.location.replace('login.html'); return; }
       const uid = session.user.id;
 
-      // Show Admin link if applicable (self row)
+      // Admin link
       try{
         const { data } = await supabase.from('profiles').select('is_admin').eq('id', uid).maybeSingle();
         if (data?.is_admin) navAdmin.style.display = '';
       }catch{}
 
-      // Same week calc + same source as predict.html:
-      const weekStart = isoDate(startOfWeek(new Date()));
-      const { data: rows, error } = await supabase
-        .from('picks')
-        .select('fixture_id, home_team, away_team, home, away, result_text, result, locked')
-        .eq('user_id', uid)
-        .eq('week_start', weekStart)
-        .order('fixture_id', { ascending: true });
+      const ws = startOfWeek(new Date());
+      const weekStart = isoDate(ws);
+      const weekEnd = isoDate(addDays(ws, 7));
+      log('Computed week bounds', { weekStart, weekEnd });
 
-      if (error){ console.error(error); render([]); return; }
-      render(rows || []);
+      // 1) exact week_start
+      let { data: aData, error: aErr } = await queryPicksEq(uid, weekStart);
+      log('picks eq(week_start)', { count: aData?.length ?? 0, error: aErr?.message || null });
+      if (aErr) console.error(aErr);
+
+      // 2) week range
+      let bData = null, bErr = null;
+      if (!aData || aData.length === 0){
+        const r = await queryPicksRange(uid, weekStart, weekEnd);
+        bData = r.data; bErr = r.error;
+        log('picks week range', { count: bData?.length ?? 0, error: bErr?.message || null });
+        if (bErr) console.error(bErr);
+      }
+
+      // 3) recent
+      let cData = null, cErr = null;
+      if ((!aData || aData.length === 0) && (!bData || bData.length === 0)){
+        const r = await queryPicksRecent(uid);
+        cData = r.data; cErr = r.error;
+        log('picks recent (no filter)', { count: cData?.length ?? 0, error: cErr?.message || null });
+        if (cErr) console.error(cErr);
+      }
+
+      const rows = (aData && aData.length) ? aData
+                 : (bData && bData.length) ? bData
+                 : (cData && cData.length) ? cData
+                 : [];
+
+      // Show one sample row (first) to confirm column names
+      if (rows?.length) log('sample row', rows[0]);
+
+      render(rows);
     })();
   </script>
 </body>
