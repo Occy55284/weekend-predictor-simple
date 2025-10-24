@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=111" />
+  <link rel="stylesheet" href="brand.css?v=112" />
   <style>
     /* Nuke hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
@@ -41,7 +41,7 @@
     /* Debug (always visible) */
     details.debug{margin:10px 0 14px}
     .dbg{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#0b1220;color:#d1e0ff;
-      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:280px;overflow:auto}
+      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:300px;overflow:auto}
     .dbg b{color:#93c5fd}
   </style>
 </head>
@@ -111,7 +111,7 @@
     });
   </script>
 
-  <!-- Page logic (select *; robust rendering) -->
+  <!-- Page logic: join picks with fixtures client-side -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -123,6 +123,7 @@
     const dbg = $('debugBox');
     const navAdmin = $('navAdmin');
 
+    // ---------- helpers ----------
     const pad = n => String(n).padStart(2,'0');
     const startOfWeek = (d=new Date())=>{
       const x = new Date(d);
@@ -132,29 +133,8 @@
       x.setDate(x.getDate() + diff);
       return x;
     };
-    const addDays = (d, n)=> { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
     const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
     const bool = v => v === true || v === 'true' || v === 1;
-
-    const FIRST_NAME_KEYS = ['home_team_name','home_name','homeclub','home_club','home_side','ht_name','homeTeam','home_team_short'];
-    const SECOND_NAME_KEYS = ['away_team_name','away_name','awayclub','away_club','away_side','at_name','awayTeam','away_team_short'];
-
-    function firstKey(o, keys){ return keys.find(k => o && Object.prototype.hasOwnProperty.call(o,k) && o[k] != null); }
-
-    function teamNames(r){
-      const hk = firstKey(r, FIRST_NAME_KEYS);
-      const ak = firstKey(r, SECOND_NAME_KEYS);
-      const home = hk ? r[hk] : 'Home';
-      const away = ak ? r[ak] : 'Away';
-      return { home, away };
-    }
-
-    function pickScore(r){
-      const hg = r.home ?? r.home_goals ?? r.home_score ?? r.h ?? r.pred_home ?? r.home_prediction ?? null;
-      const ag = r.away ?? r.away_goals ?? r.away_score ?? r.a ?? r.pred_away ?? r.away_prediction ?? null;
-      if (hg == null && ag == null) return '—';
-      return `${hg ?? '–'} : ${ag ?? '–'}`;
-    }
 
     const log = (label, obj) => {
       const safe = v => (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
@@ -162,16 +142,38 @@
       console.log('[my-picks.debug]', label, obj);
     };
 
-    async function selectAny(uid, filter){
-      // select * so we learn the actual column names
-      let q = supabase.from('picks').select('*');
-      q = q.eq('user_id', uid);
-      if (filter?.eq) q = q.eq('week_start', filter.eq);
-      if (filter?.range){
-        q = q.gte('week_start', filter.range[0]).lt('week_start', filter.range[1]);
-      }
-      if (filter?.recent) q = q.order('created_at', { ascending:false }).limit(30);
-      return q;
+    function teamNamesFromFixture(f){
+      const home = f.home_team ?? f.home_name ?? f.home ?? f.ht_name ?? f.homeTeam ?? f.ht ?? null;
+      const away = f.away_team ?? f.away_name ?? f.away ?? f.at_name ?? f.awayTeam ?? f.at ?? null;
+      return {
+        home: home || `Fixture #${fixtureKey(f)}`,
+        away: away || ''
+      };
+    }
+
+    function fixtureKey(f){
+      // common possibilities for the ID in fixture-like tables
+      return f.fixture_id ?? f.id ?? f.match_id ?? f.game_id ?? f.event_id ?? null;
+    }
+
+    function kickoffMillis(f){
+      const k = f.kickoff ?? f.kickoff_at ?? f.start_time ?? f.kickoff_time ?? f.date ?? f.datetime ?? null;
+      const t = (typeof k === 'string' || k instanceof String) ? Date.parse(k) : (k instanceof Date ? k.getTime() : null);
+      return Number.isFinite(t) ? t : null;
+    }
+
+    function lockedFromFixture(f){
+      if (typeof f.locked !== 'undefined') return bool(f.locked);
+      const ms = kickoffMillis(f);
+      if (ms != null) return (Date.now() >= ms);
+      return false;
+    }
+
+    function pickScore(p){
+      const hg = p.home ?? p.home_goals ?? p.home_score ?? p.h ?? p.pred_home ?? null;
+      const ag = p.away ?? p.away_goals ?? p.away_score ?? p.a ?? p.pred_away ?? null;
+      if (hg == null && ag == null) return '—';
+      return `${hg ?? '–'} : ${ag ?? '–'}`;
     }
 
     function render(rows){
@@ -181,19 +183,63 @@
 
       rows.forEach(r=>{
         const tr = document.createElement('tr');
-        const { home, away } = teamNames(r);
-        const pick = pickScore(r);
-        const res = r.result_text ?? r.result ?? '—';
-        const locked = bool(r.locked);
         tr.innerHTML = `
-          <td><strong>${home}</strong> vs <strong>${away}</strong></td>
-          <td class="center"><strong>${pick}</strong></td>
-          <td class="center">${res}</td>
-          <td class="right"><span class="pill ${locked?'locked':'open'}">${locked?'Locked':'Open'}</span></td>
+          <td>${r.fixtureText}</td>
+          <td class="center"><strong>${r.pick}</strong></td>
+          <td class="center">${r.result ?? '—'}</td>
+          <td class="right"><span class="pill ${r.locked?'locked':'open'}">${r.locked?'Locked':'Open'}</span></td>
         `;
         tbody.appendChild(tr);
       });
       lastUpdated.textContent = `Loaded ${rows.length} pick${rows.length===1?'':'s'}.`;
+    }
+
+    // ---------- data loaders ----------
+    async function loadPicks(uid, weekStart){
+      // exact week (you already confirmed this returns rows)
+      const { data, error } = await supabase
+        .from('picks')
+        .select('fixture_id, week_start, home, away, user_id, created_at')
+        .eq('user_id', uid)
+        .eq('week_start', weekStart)
+        .order('fixture_id', { ascending:true });
+
+      log('picks rows', { count: data?.length ?? 0, error: error?.message || null, keys: data?.[0] ? Object.keys(data[0]) : [] });
+      return data || [];
+    }
+
+    async function loadFixturesForWeek(weekStart){
+      // try several likely tables/views
+      const candidates = ['fixtures','matches','games','schedule','vw_fixtures'];
+      for (const table of candidates){
+        try{
+          const { data, error } = await supabase
+            .from(table)
+            .select('*')
+            .eq('week_start', weekStart);
+          if (!error && Array.isArray(data) && data.length){
+            log(`fixtures source: ${table}`, { count: data.length, keys: Object.keys(data[0]) });
+            return { table, rows: data };
+          }else{
+            if (error) log(`fixtures ${table} error`, error.message);
+            else log(`fixtures ${table} empty`, { count: 0 });
+          }
+        }catch(e){
+          log(`fixtures ${table} exception`, String(e));
+        }
+      }
+      // As a fallback, try without week filter and just map by IDs (we’ll still match on fixture_id)
+      for (const table of candidates){
+        try{
+          const { data, error } = await supabase.from(table).select('*').limit(200);
+          if (!error && Array.isArray(data) && data.length){
+            log(`fixtures fallback source: ${table}`, { count: data.length, keys: Object.keys(data[0]) });
+            return { table, rows: data };
+          }
+        }catch(e){}
+      }
+      log('fixtures', 'No fixture table found.');
+      return { table: null, rows: [] };
     }
 
     (async ()=>{
@@ -209,39 +255,49 @@
         if (data?.is_admin) navAdmin.style.display = '';
       }catch{}
 
-      const ws = startOfWeek(new Date());
-      const weekStart = isoDate(ws);
-      const weekEnd = isoDate(addDays(ws, 7));
-      log('Computed week bounds', { weekStart, weekEnd });
+      const weekStart = isoDate(startOfWeek(new Date()));
+      log('Computed week_start', weekStart);
 
-      // 1) exact week
-      let { data: aData, error: aErr } = await selectAny(uid, { eq: weekStart });
-      log('picks * eq(week_start)', { count: aData?.length ?? 0, error: aErr?.message || null, keys: aData?.[0] ? Object.keys(aData[0]) : [] });
+      const picks = await loadPicks(uid, weekStart);
 
-      // 2) week range
-      let bData = null, bErr = null;
-      if (!aData?.length){
-        const b = await selectAny(uid, { range: [weekStart, weekEnd] });
-        bData = b.data; bErr = b.error;
-        log('picks * week range', { count: bData?.length ?? 0, error: bErr?.message || null, keys: bData?.[0] ? Object.keys(bData[0]) : [] });
+      // Build a lookup by fixture_id
+      const wantIds = [...new Set(picks.map(p => p.fixture_id))];
+      log('fixture ids', wantIds);
+
+      const { table: fixtureTable, rows: fixtures } = await loadFixturesForWeek(weekStart);
+
+      // Map fixtures by common id keys
+      const byId = new Map();
+      const idKeys = ['fixture_id','id','match_id','game_id','event_id'];
+      for (const f of fixtures){
+        const fidKey = idKeys.find(k => typeof f[k] !== 'undefined');
+        if (fidKey) byId.set(String(f[fidKey]), f);
       }
 
-      // 3) recent
-      let cData = null, cErr = null;
-      if (!aData?.length && !bData?.length){
-        const c = await selectAny(uid, { recent: true });
-        cData = c.data; cErr = c.error;
-        log('picks * recent (no filter)', { count: cData?.length ?? 0, error: cErr?.message || null, keys: cData?.[0] ? Object.keys(cData[0]) : [] });
+      // Compose rows for display
+      const out = picks.map(p => {
+        const fx = byId.get(String(p.fixture_id)) || {};
+        const names = teamNamesFromFixture(fx);
+        const fixtureText = names.away
+          ? `<strong>${names.home}</strong> vs <strong>${names.away}</strong>`
+          : `Fixture #${p.fixture_id}`;
+        const locked = lockedFromFixture(fx);
+        // if fixture view has a result string, try to pick it up
+        const result = fx.result_text ?? fx.result ?? null;
+
+        return {
+          fixtureText,
+          pick: pickScore(p),
+          result,
+          locked
+        };
+      });
+
+      if (!out.length){
+        log('note', 'No rows to render — either no picks for this week, or fixture table not found / not joined by week_start. If you can tell me your fixture table name and its columns for team names + kickoff, I’ll wire it exactly.');
       }
 
-      const rows = aData?.length ? aData : bData?.length ? bData : cData?.length ? cData : [];
-      if (rows?.length){
-        log('sample row', rows[0]);
-      } else {
-        log('note', 'No rows returned from picks for your user with any filter. If your data is in a different table/view, tell me its name.');
-      }
-
-      render(rows);
+      render(out);
     })();
   </script>
 </body>
