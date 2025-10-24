@@ -25,8 +25,6 @@ export function getEmailRedirectTo() {
   return `${window.location.origin}/predict.html`;
 }
 
-}
-
 // ---- Debug ping (safe) ----
 console.log('[supabase-config] URL:', SUPABASE_URL)
 console.log('[supabase-config] Anon key present:', !!SUPABASE_ANON_KEY)
