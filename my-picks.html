@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=110" />
+  <link rel="stylesheet" href="brand.css?v=111" />
   <style>
     /* Nuke hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
@@ -69,7 +69,6 @@
       <h1>My picks</h1>
       <div class="muted" style="margin-bottom:6px">Your selections for the current gameweek.</div>
 
-      <!-- Debug panel sits BEFORE any conditional UI so it's always visible -->
       <details class="debug" open>
         <summary><strong>Debug</strong> (what the server returned)</summary>
         <div class="dbg" id="debugBox">Loading…</div>
@@ -112,7 +111,7 @@
     });
   </script>
 
-  <!-- Page logic with multi-query + ALWAYS-visible debug -->
+  <!-- Page logic (select *; robust rendering) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -137,17 +136,25 @@
     const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
     const bool = v => v === true || v === 'true' || v === 1;
 
-    const pickScore = r => {
-      const hg = r.home ?? r.home_goals ?? r.home_score ?? r.h ?? r.pred_home ?? null;
-      const ag = r.away ?? r.away_goals ?? r.away_score ?? r.a ?? r.pred_away ?? null;
+    const FIRST_NAME_KEYS = ['home_team_name','home_name','homeclub','home_club','home_side','ht_name','homeTeam','home_team_short'];
+    const SECOND_NAME_KEYS = ['away_team_name','away_name','awayclub','away_club','away_side','at_name','awayTeam','away_team_short'];
+
+    function firstKey(o, keys){ return keys.find(k => o && Object.prototype.hasOwnProperty.call(o,k) && o[k] != null); }
+
+    function teamNames(r){
+      const hk = firstKey(r, FIRST_NAME_KEYS);
+      const ak = firstKey(r, SECOND_NAME_KEYS);
+      const home = hk ? r[hk] : 'Home';
+      const away = ak ? r[ak] : 'Away';
+      return { home, away };
+    }
+
+    function pickScore(r){
+      const hg = r.home ?? r.home_goals ?? r.home_score ?? r.h ?? r.pred_home ?? r.home_prediction ?? null;
+      const ag = r.away ?? r.away_goals ?? r.away_score ?? r.a ?? r.pred_away ?? r.away_prediction ?? null;
       if (hg == null && ag == null) return '—';
       return `${hg ?? '–'} : ${ag ?? '–'}`;
-    };
-    const pickTeams = r => {
-      const home = r.home_team ?? r.home_name ?? r.home ?? 'Home';
-      const away = r.away_team ?? r.away_name ?? r.away ?? 'Away';
-      return `${home} vs ${away}`;
-    };
+    }
 
     const log = (label, obj) => {
       const safe = v => (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
@@ -155,22 +162,16 @@
       console.log('[my-picks.debug]', label, obj);
     };
 
-    async function queryPicksEq(uid, weekStart){
-      return supabase.from('picks')
-        .select('fixture_id, week_start, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
-        .eq('user_id', uid).eq('week_start', weekStart)
-        .order('fixture_id', { ascending: true });
-    }
-    async function queryPicksRange(uid, weekStart, weekEnd){
-      return supabase.from('picks')
-        .select('fixture_id, week_start, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
-        .eq('user_id', uid).gte('week_start', weekStart).lt('week_start', weekEnd)
-        .order('week_start', { ascending: true });
-    }
-    async function queryPicksRecent(uid){
-      return supabase.from('picks')
-        .select('fixture_id, week_start, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
-        .eq('user_id', uid).order('created_at', { ascending:false }).limit(30);
+    async function selectAny(uid, filter){
+      // select * so we learn the actual column names
+      let q = supabase.from('picks').select('*');
+      q = q.eq('user_id', uid);
+      if (filter?.eq) q = q.eq('week_start', filter.eq);
+      if (filter?.range){
+        q = q.gte('week_start', filter.range[0]).lt('week_start', filter.range[1]);
+      }
+      if (filter?.recent) q = q.order('created_at', { ascending:false }).limit(30);
+      return q;
     }
 
     function render(rows){
@@ -180,12 +181,12 @@
 
       rows.forEach(r=>{
         const tr = document.createElement('tr');
-        const fixture = pickTeams(r);
+        const { home, away } = teamNames(r);
         const pick = pickScore(r);
         const res = r.result_text ?? r.result ?? '—';
         const locked = bool(r.locked);
         tr.innerHTML = `
-          <td>${fixture}</td>
+          <td><strong>${home}</strong> vs <strong>${away}</strong></td>
           <td class="center"><strong>${pick}</strong></td>
           <td class="center">${res}</td>
           <td class="right"><span class="pill ${locked?'locked':'open'}">${locked?'Locked':'Open'}</span></td>
@@ -213,28 +214,32 @@
       const weekEnd = isoDate(addDays(ws, 7));
       log('Computed week bounds', { weekStart, weekEnd });
 
-      // 1) exact week_start
-      let { data: aData, error: aErr } = await queryPicksEq(uid, weekStart);
-      log('picks eq(week_start)', { count: aData?.length ?? 0, error: aErr?.message || null });
+      // 1) exact week
+      let { data: aData, error: aErr } = await selectAny(uid, { eq: weekStart });
+      log('picks * eq(week_start)', { count: aData?.length ?? 0, error: aErr?.message || null, keys: aData?.[0] ? Object.keys(aData[0]) : [] });
 
       // 2) week range
       let bData = null, bErr = null;
       if (!aData?.length){
-        const r = await queryPicksRange(uid, weekStart, weekEnd);
-        bData = r.data; bErr = r.error;
-        log('picks week range', { count: bData?.length ?? 0, error: bErr?.message || null });
+        const b = await selectAny(uid, { range: [weekStart, weekEnd] });
+        bData = b.data; bErr = b.error;
+        log('picks * week range', { count: bData?.length ?? 0, error: bErr?.message || null, keys: bData?.[0] ? Object.keys(bData[0]) : [] });
       }
 
-      // 3) recent (no filter)
+      // 3) recent
       let cData = null, cErr = null;
       if (!aData?.length && !bData?.length){
-        const r = await queryPicksRecent(uid);
-        cData = r.data; cErr = r.error;
-        log('picks recent (no filter)', { count: cData?.length ?? 0, error: cErr?.message || null });
+        const c = await selectAny(uid, { recent: true });
+        cData = c.data; cErr = c.error;
+        log('picks * recent (no filter)', { count: cData?.length ?? 0, error: cErr?.message || null, keys: cData?.[0] ? Object.keys(cData[0]) : [] });
       }
 
       const rows = aData?.length ? aData : bData?.length ? bData : cData?.length ? cData : [];
-      if (rows?.length) log('sample row', rows[0]);
+      if (rows?.length){
+        log('sample row', rows[0]);
+      } else {
+        log('note', 'No rows returned from picks for your user with any filter. If your data is in a different table/view, tell me its name.');
+      }
 
       render(rows);
     })();
