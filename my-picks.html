@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=109" />
+  <link rel="stylesheet" href="brand.css?v=110" />
   <style>
     /* Nuke hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
@@ -38,10 +38,10 @@
     .grid-2{display:grid;grid-template-columns:1fr 320px;gap:16px}
     @media (max-width: 960px){ .grid-2{grid-template-columns:1fr} }
 
-    /* Debug */
-    details.debug{margin-top:12px}
+    /* Debug (always visible) */
+    details.debug{margin:10px 0 14px}
     .dbg{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#0b1220;color:#d1e0ff;
-      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:260px;overflow:auto}
+      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:280px;overflow:auto}
     .dbg b{color:#93c5fd}
   </style>
 </head>
@@ -67,7 +67,13 @@
   <main class="wrap grid-2">
     <section class="card">
       <h1>My picks</h1>
-      <div class="muted" style="margin-bottom:12px">Your selections for the current gameweek.</div>
+      <div class="muted" style="margin-bottom:6px">Your selections for the current gameweek.</div>
+
+      <!-- Debug panel sits BEFORE any conditional UI so it's always visible -->
+      <details class="debug" open>
+        <summary><strong>Debug</strong> (what the server returned)</summary>
+        <div class="dbg" id="debugBox">Loading…</div>
+      </details>
 
       <div id="empty" class="empty" style="display:none">No picks found for your account.</div>
 
@@ -84,11 +90,6 @@
           <tbody id="tbody"></tbody>
         </table>
         <div class="meta" id="lastUpdated" style="margin-top:6px"></div>
-
-        <details class="debug">
-          <summary><strong>Debug</strong> (what the server returned)</summary>
-          <div class="dbg" id="debugBox">Loading…</div>
-        </details>
       </div>
     </section>
 
@@ -111,7 +112,7 @@
     });
   </script>
 
-  <!-- Page logic with multi-query + debug -->
+  <!-- Page logic with multi-query + ALWAYS-visible debug -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -123,7 +124,6 @@
     const dbg = $('debugBox');
     const navAdmin = $('navAdmin');
 
-    // --- small helpers ---
     const pad = n => String(n).padStart(2,'0');
     const startOfWeek = (d=new Date())=>{
       const x = new Date(d);
@@ -137,7 +137,6 @@
     const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
     const bool = v => v === true || v === 'true' || v === 1;
 
-    // field mappers
     const pickScore = r => {
       const hg = r.home ?? r.home_goals ?? r.home_score ?? r.h ?? r.pred_home ?? null;
       const ag = r.away ?? r.away_goals ?? r.away_score ?? r.a ?? r.pred_away ?? null;
@@ -158,21 +157,19 @@
 
     async function queryPicksEq(uid, weekStart){
       return supabase.from('picks')
-        .select('fixture_id, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
+        .select('fixture_id, week_start, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
         .eq('user_id', uid).eq('week_start', weekStart)
         .order('fixture_id', { ascending: true });
     }
-
     async function queryPicksRange(uid, weekStart, weekEnd){
       return supabase.from('picks')
-        .select('fixture_id, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at, week_start')
+        .select('fixture_id, week_start, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
         .eq('user_id', uid).gte('week_start', weekStart).lt('week_start', weekEnd)
         .order('week_start', { ascending: true });
     }
-
     async function queryPicksRecent(uid){
       return supabase.from('picks')
-        .select('fixture_id, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at, week_start')
+        .select('fixture_id, week_start, home_team, away_team, home, away, home_goals, away_goals, home_score, away_score, result, result_text, locked, created_at')
         .eq('user_id', uid).order('created_at', { ascending:false }).limit(30);
     }
 
@@ -219,32 +216,24 @@
       // 1) exact week_start
       let { data: aData, error: aErr } = await queryPicksEq(uid, weekStart);
       log('picks eq(week_start)', { count: aData?.length ?? 0, error: aErr?.message || null });
-      if (aErr) console.error(aErr);
 
       // 2) week range
       let bData = null, bErr = null;
-      if (!aData || aData.length === 0){
+      if (!aData?.length){
         const r = await queryPicksRange(uid, weekStart, weekEnd);
         bData = r.data; bErr = r.error;
         log('picks week range', { count: bData?.length ?? 0, error: bErr?.message || null });
-        if (bErr) console.error(bErr);
       }
 
-      // 3) recent
+      // 3) recent (no filter)
       let cData = null, cErr = null;
-      if ((!aData || aData.length === 0) && (!bData || bData.length === 0)){
+      if (!aData?.length && !bData?.length){
         const r = await queryPicksRecent(uid);
         cData = r.data; cErr = r.error;
         log('picks recent (no filter)', { count: cData?.length ?? 0, error: cErr?.message || null });
-        if (cErr) console.error(cErr);
       }
 
-      const rows = (aData && aData.length) ? aData
-                 : (bData && bData.length) ? bData
-                 : (cData && cData.length) ? cData
-                 : [];
-
-      // Show one sample row (first) to confirm column names
+      const rows = aData?.length ? aData : bData?.length ? bData : cData?.length ? cData : [];
       if (rows?.length) log('sample row', rows[0]);
 
       render(rows);
