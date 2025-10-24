@@ -3,206 +3,235 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Picks</title>
-  <link rel="stylesheet" href="brand.css?v=23" />
+  <title>My Picks • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=105" />
   <style>
-    .panel{background:#fff;border-radius:16px;padding:20px;max-width:1000px;width:100%;box-shadow:0 8px 20px rgba(0,0,0,.15)}
-    .toolbar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:10px}
-    .btn{background:#28428f;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
-    .btn.secondary{background:#475569}
-    .meta{font-size:.9rem;color:#475569;text-align:center;margin-top:6px}
+    /* Remove any hero/logo/wallpaper on this page */
+    body { background: #f8fafc !important; background-image: none !important; }
+    .hero, .page-hero, .wall, .wallpaper, .bg-hero, .brand-hero,
+    .logo, .logo-wrap, img.logo, header img[alt*="logo"],
+    .prem-hero, img[src*="prem-hero"], .prem-hero-img { display: none !important; }
 
-    table.pk{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden}
-    .pk th,.pk td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center}
-    .pk th{background:#f8fafc;text-transform:uppercase;letter-spacing:.03em}
-    .ok{color:#065f46;font-weight:700}
-    .exact{color:#0f766e;font-weight:800}
-    .miss{color:#b91c1c;font-weight:700}
-    .left{text-align:left}
-    .kick{color:#64748b;font-size:.9rem}
+    .wrap{max-width:1000px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    h1{margin:0 0 8px;color:#1f357a}
+    .muted{color:#64748b}
+    .top .bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+    .brand{display:flex;align-items:center;gap:8px;color:#1f357a;text-decoration:none;font-weight:900}
+    .brand .badge{display:inline-flex;height:28px;align-items:center;padding:0 10px;border-radius:999px;background:#1f357a;color:#fff;border:1px solid #1f357a}
+    .nav a{margin-left:14px;text-decoration:none;color:#334155;font-weight:700}
+    .nav a.active{color:#1f357a}
+    .nav .logout{color:#dc2626}
+    .tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 16px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 12px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#111827;font-weight:700;cursor:pointer;text-decoration:none}
+    .btn.primary{background:#1f357a;color:#fff;border-color:#1f357a}
+    table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
+    thead th{background:#f8fafc;color:#334155;font-weight:800;text-align:left;padding:10px;border-bottom:1px solid #e5e7eb}
+    tbody td{padding:10px;border-bottom:1px solid #eef2f7}
+    tbody tr:last-child td{border-bottom:none}
+    .right{text-align:right}
+    .center{text-align:center}
+    .pill{font-size:.75rem;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#1f357a;border:1px solid #c7d2fe;display:inline-block}
+    .pill.locked{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+    .pill.open{background:#fef3c7;color:#92400e;border-color:#fde68a}
+    .empty{padding:16px;border:1px dashed #cbd5e1;border-radius:12px;text-align:center;color:#64748b}
+    .meta{color:#475569;font-size:.9rem}
+    .grid-2{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    @media (max-width: 960px){ .grid-2{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <!-- Top nav -->
-  <nav class="topnav">
-    <a href="predict.html" data-nav="predict">Predict</a>
-    <a href="my-picks.html" class="active" data-nav="mypicks">My Picks</a>
-    <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-    <a href="profile.html" data-nav="profile">Profile</a>
-    <a href="admin.html" id="navAdmin" data-nav="admin" style="display:none">Admin</a>
-    <button class="logout" id="navLogout">Logout</button>
-  </nav>
+  <header class="top">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <div class="badge">WP</div>
+        Weekend Predictor
+      </a>
+      <nav class="nav">
+        <a href="predict.html" data-nav="predict">Predict</a>
+        <a href="my-picks.html" data-nav="my-picks" class="active">My Picks</a>
+        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+        <a href="profile.html" data-nav="profile">Profile</a>
+        <a href="rivals.html" data-nav="rivals">Rivals</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
+    </div>
+  </header>
 
-  <main class="landing">
-    <!-- Small logo -->
-    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
-      <rect x="2" y="2" width="60" height="60" rx="12" fill="#1E824C"></rect>
-      <circle cx="32" cy="32" r="16" fill="#FFF" stroke="#0E3E2A" stroke-width="3"></circle>
-      <path d="M32 16 l6 6 -6 4 -6-4z M32 48 l6-6 -6-4 -6 4z M16 32 l6-6 4 6 -4 6z M48 32 l-6-6 -4 6 4 6z" fill="#0E3E2A"></path>
-    </svg>
+  <main class="wrap grid-2">
+    <section class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <h1>My picks</h1>
+        <div class="tools">
+          <a class="btn" href="predict.html">Make / edit predictions</a>
+          <button id="refresh" class="btn">Refresh</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-bottom:12px">Your selections for the current gameweek.</div>
 
-    <section class="panel">
-      <h2 style="color:#1f357a;margin-bottom:8px;text-align:center">My Picks</h2>
-
-      <div class="toolbar">
-        <button id="prevBtn" class="btn secondary" title="Previous week">← Prev</button>
-        <div id="weekLabel" class="meta" style="min-width:260px;text-align:center">Week loading…</div>
-        <button id="thisWeekBtn" class="btn secondary" title="Jump to this week">This Week</button>
-        <button id="nextBtn" class="btn secondary" title="Next week">Next →</button>
+      <div id="empty" class="empty" style="display:none">
+        You haven’t made any picks for this week yet.<br/>
+        <a href="predict.html" class="btn primary" style="margin-top:10px">Make predictions</a>
       </div>
 
-      <table class="pk" id="table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Fixture</th>
-            <th>Kick-off</th>
-            <th>Your Pick</th>
-            <th>Result</th>
-            <th>Points</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-          <tr><td colspan="6" style="padding:18px;color:#64748b;">Loading…</td></tr>
-        </tbody>
-      </table>
-
-      <p id="totalLine" class="meta"></p>
-      <p id="status" class="meta"></p>
+      <div id="tableWrap" style="display:none">
+        <table aria-label="Your picks">
+          <thead>
+            <tr>
+              <th>Fixture</th>
+              <th class="center">Your Pick</th>
+              <th class="center">Result</th>
+              <th class="right">Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="meta" id="lastUpdated" style="margin-top:6px"></div>
+      </div>
     </section>
+
+    <aside class="card">
+      <div class="meta"><strong>Tip:</strong> Once your picks are <em>locked</em>, they cannot be changed.</div>
+      <div class="meta" style="margin-top:6px">Head-to-head: try the new <a href="rivals.html"><strong>Rivals</strong></a> page.</div>
+    </aside>
   </main>
 
-  <script type="module" src="supabase-config.js"></script>
+  <!-- Auth + logout wiring -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{ await supabase.auth.signOut(); }catch{}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
+
+  <!-- Page logic (RPC first, with graceful fallbacks; no hero/logo) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // --- Navbar admin visibility + logout ---
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.replace('login.html');
-        return;
-      }
-      document.getElementById('navLogout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        window.location.replace('login.html');
-      });
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-        if (!error && data?.is_admin) {
-          document.getElementById('navAdmin').style.display = '';
-        }
-      } catch {}
-    })();
+    // --- Helpers ---
+    const $ = (id)=> document.getElementById(id);
+    const tbody = $('tbody');
+    const empty = $('empty');
+    const tableWrap = $('tableWrap');
+    const lastUpdated = $('lastUpdated');
+    const refreshBtn = $('refresh');
+    const navAdmin = $('navAdmin');
 
-    // --- Elements ---
-    const tbody = document.getElementById('tbody');
-    const statusEl = document.getElementById('status');
-    const totalLine = document.getElementById('totalLine');
-    const weekLabel = document.getElementById('weekLabel');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const thisWeekBtn = document.getElementById('thisWeekBtn');
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function startOfWeek(d=new Date()){
+      const x = new Date(d);
+      const day = x.getDay(); // 0=Sun ... 1=Mon
+      x.setHours(0,0,0,0);
+      // Make Monday the start
+      const diff = (day === 0 ? -6 : 1 - day);
+      x.setDate(x.getDate() + diff);
+      return x;
+    }
+    function isoDate(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+    function fmt(n){ return n ?? '—'; }
+    function pickScoreRow(r){
+      // supports columns from common schemas
+      const hg = (r.home_goals ?? r.home_score ?? r.h ?? null);
+      const ag = (r.away_goals ?? r.away_score ?? r.a ?? null);
+      return (hg ?? ag) !== null ? `${hg ?? '–'} : ${ag ?? '–'}` : '—';
+    }
+    function bool(v){ return v === true || v === 'true' || v === 1; }
 
-    // --- Time helpers ---
-    function startOfWeek(d=new Date()){const x=new Date(d);const day=x.getDay();const diff=x.getDate()-day+(day===0?-6:1);x.setHours(0,0,0,0);return new Date(x.setDate(diff))}
-    function nextMonday(d){const x=new Date(d);const day=x.getDay();const add=((8-day)%7)||7;x.setDate(x.getDate()+add);x.setHours(0,0,0,0);return x}
-    function isoDate(d){return d.toISOString().slice(0,10)}
-
-    // --- State ---
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) window.location.replace('login.html');
-    const user = session.user;
-
-    let currentWeekStart = startOfWeek(new Date());
-
-    // Points logic (3 exact, 1 outcome)
-    function calcPoints(h,a,ph,pa){
-      if (h==null || a==null || ph==null || pa==null) return 0;
-      if (h===ph && a===pa) return 3;
-      const outcome = Math.sign(h-a), pickOut = Math.sign(ph-pa);
-      return outcome===pickOut ? 1 : 0;
+    async function checkAdmin(uid){
+      try{
+        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', uid).maybeSingle();
+        if (!error && data?.is_admin) navAdmin.style.display = '';
+      }catch{}
     }
 
-    // Load fixtures + your picks for the selected week
-    async function loadWeek(){
-      statusEl.textContent = '';
-      tbody.innerHTML = '<tr><td colspan="6" style="padding:18px;color:#64748b;">Loading…</td></tr>';
+    // --- Data loaders ---
+    async function loadMyPicks(uid){
+      const ws = startOfWeek(new Date());
+      const weekStartIso = isoDate(ws);
 
-      const weekEnd = nextMonday(new Date(currentWeekStart));
-      weekLabel.textContent = `${currentWeekStart.toDateString()} → ${weekEnd.toDateString()}`;
+      // 1) Try RPC my_picks({ uid, week_start })
+      try{
+        const { data, error } = await supabase.rpc('my_picks', { uid, week_start: weekStartIso });
+        if (!error && Array.isArray(data) && data.length) return data;
+      }catch{}
 
-      // Get fixtures in week; prefer featured for that week (they remain flagged after the week)
-      let { data: fixtures, error: fxErr } = await supabase
-        .from('fixtures')
-        .select('id, home_team, away_team, utc_date, home_score, away_score, featured')
-        .gte('utc_date', currentWeekStart.toISOString())
-        .lt('utc_date', weekEnd.toISOString())
-        .order('utc_date', { ascending: true });
+      // 2) Fallback table: predictions (self rows)
+      try{
+        const { data, error } = await supabase
+          .from('predictions')
+          .select('fixture_id, home_team, away_team, home_goals, away_goals, result, locked, created_at, week_start')
+          .eq('user_id', uid)
+          .gte('week_start', weekStartIso)
+          .order('created_at', { ascending: true });
+        if (!error && Array.isArray(data) && data.length) return data;
+      }catch{}
 
-      if (fxErr) { statusEl.textContent='Error loading fixtures.'; console.error(fxErr); return; }
+      // 3) Fallback table: picks (self rows)
+      try{
+        const { data, error } = await supabase
+          .from('picks')
+          .select('fixture_id, home_team, away_team, home_goals, away_goals, result, locked, created_at, week_start')
+          .eq('user_id', uid)
+          .gte('week_start', weekStartIso)
+          .order('created_at', { ascending: true });
+        if (!error && Array.isArray(data) && data.length) return data;
+      }catch{}
 
-      // If some weeks had no "featured" flag (early testing), still show whatever exists
-      const featured = (fixtures||[]).filter(f => f.featured);
-      const list = featured.length ? featured : (fixtures || []);
+      return [];
+    }
 
-      if (!list.length){
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:18px;color:#64748b;">No fixtures this week.</td></tr>';
-        totalLine.textContent = '';
+    function renderRows(rows){
+      tbody.innerHTML = '';
+      if (!rows?.length){
+        tableWrap.style.display = 'none';
+        empty.style.display = '';
         return;
       }
 
-      // Your predictions for those fixtures
-      const ids = list.map(f=>f.id);
-      const { data: preds, error: pErr } = await supabase
-        .from('predictions')
-        .select('fixture_id, home_goals, away_goals')
-        .eq('user_id', user.id)
-        .in('fixture_id', ids);
+      tableWrap.style.display = '';
+      empty.style.display = 'none';
 
-      if (pErr) { statusEl.textContent='Error loading your picks.'; console.error(pErr); return; }
-
-      const predMap = new Map((preds||[]).map(p=>[p.fixture_id,p]));
-
-      // Render
-      tbody.innerHTML='';
-      let total=0;
-      list.forEach((fx, i)=>{
-        const p = predMap.get(fx.id);
-        const pts = calcPoints(fx.home_score, fx.away_score, p?.home_goals ?? null, p?.away_goals ?? null);
-        total += pts;
-
-        const resTxt = (fx.home_score==null || fx.away_score==null)
-          ? '—'
-          : `${fx.home_score} : ${fx.away_score}`;
-
-        const ptsClass = pts===3 ? 'exact' : (pts===1 ? 'ok' : 'miss');
+      rows.forEach(r=>{
         const tr = document.createElement('tr');
+        const fixture = `${r.home_team ?? r.home ?? 'Home'} vs ${r.away_team ?? r.away ?? 'Away'}`;
+        const you = pickScoreRow(r);
+        const res = r.result ?? r.result_text ?? '—';
+        const locked = bool(r.locked);
         tr.innerHTML = `
-          <td>${i+1}</td>
-          <td class="left"><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
-          <td class="kick">${new Date(fx.utc_date).toLocaleString()}</td>
-          <td>${p ? `${p.home_goals} : ${p.away_goals}` : '—'}</td>
-          <td>${resTxt}</td>
-          <td class="${ptsClass}">${pts}</td>
+          <td>${fixture}</td>
+          <td class="center"><strong>${you}</strong></td>
+          <td class="center">${res}</td>
+          <td class="right"><span class="pill ${locked?'locked':'open'}">${locked?'Locked':'Open'}</span></td>
         `;
         tbody.appendChild(tr);
       });
-
-      totalLine.textContent = `Total points for the week: ${total}`;
+      lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
     }
 
-    // Week navigation
-    prevBtn.addEventListener('click', ()=>{ currentWeekStart = new Date(currentWeekStart.getTime() - 7*24*60*60*1000); loadWeek(); });
-    nextBtn.addEventListener('click', ()=>{ currentWeekStart = new Date(currentWeekStart.getTime() + 7*24*60*60*1000); loadWeek(); });
-    thisWeekBtn.addEventListener('click', ()=>{ currentWeekStart = startOfWeek(new Date()); loadWeek(); });
+    (async ()=>{
+      // Require sign-in
+      const { data:{ session } } = await supabase.auth.getSession();
+      if (!session?.user){ window.location.replace('login.html'); return; }
+      const uid = session.user.id;
 
-    // Initial load
-    await loadWeek();
+      await checkAdmin(uid);
+
+      // Load & render
+      const rows = await loadMyPicks(uid);
+      renderRows(rows);
+
+      refreshBtn.addEventListener('click', async ()=>{
+        const rows2 = await loadMyPicks(uid);
+        renderRows(rows2);
+      });
+    })();
   </script>
 </body>
 </html>
