@@ -60,7 +60,6 @@
   </header>
 
   <main class="wrap grid-2">
-    <!-- Left: Discover players -->
     <section class="card">
       <h1>Find rivals</h1>
       <div class="muted">Pick up to 5 rivals to track head-to-head all season.</div>
@@ -73,7 +72,6 @@
       <div id="allList" class="list" aria-live="polite"></div>
     </section>
 
-    <!-- Right: My rivals & head-to-head -->
     <section class="card">
       <div class="section-title">My rivals</div>
       <div id="myRivals" class="rivals"></div>
@@ -83,7 +81,6 @@
     </section>
   </main>
 
-  <!-- Logout listener -->
   <script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -96,7 +93,6 @@
     });
   </script>
 
-  <!-- Page logic (uses RPC to respect RLS) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -121,7 +117,11 @@
 
       // Admin flag (self row only)
       try{
-        const { data: me } = await supabase.from('profiles').select('is_admin, display_name, id').eq('id', uid).maybeSingle();
+        const { data: me } = await supabase
+          .from('profiles')
+          .select('is_admin, display_name, id')
+          .eq('id', uid)
+          .maybeSingle();
         state.me = { id: uid, name: me?.display_name || 'You' };
         if (me?.is_admin) navAdmin.style.display = '';
       }catch{
@@ -134,14 +134,14 @@
 
       // Normalize
       state.players = (rows || []).map(r => ({
-  id: r.user_id || r.id,
-  name: r.display_name || 'Unnamed',
-  points: Number(r.points ?? 0),
-  exacts: Number(r.correct_scores ?? r.exact_scores ?? r.exacts ?? 0),  <!-- ← updated -->
-  results: Number(r.correct_results ?? r.results ?? 0),
-  rank: r.rank ?? null,
-  badge: r.badge ?? null
-}));
+        id: r.user_id || r.id,
+        name: r.display_name || 'Unnamed',
+        points: Number(r.points ?? 0),
+        exacts: Number(r.correct_scores ?? r.exact_scores ?? r.exacts ?? 0),
+        results: Number(r.correct_results ?? r.results ?? 0),
+        rank: r.rank ?? null,
+        badge: r.badge ?? null
+      }));
       state.players.forEach(p => state.map.set(p.id, p));
 
       // Load saved rivals
@@ -154,7 +154,6 @@
       bindSearch();
     })();
 
-    // ---- UI ----
     function renderAll(){ renderPlayers(); renderRivals(); }
 
     function renderPlayers(){
@@ -211,7 +210,9 @@
       if (!state.rivals.length){ rivalsEmpty.style.display = ''; return; }
       rivalsEmpty.style.display = 'none';
 
-      const ranked = [...state.players].sort((a,b)=> (b.points||0) - (a.points||0)).map((p,i)=> ({...p, rank: p.rank ?? (i+1)}));
+      const ranked = [...state.players]
+        .sort((a,b)=> (b.points||0) - (a.points||0))
+        .map((p,i)=> ({...p, rank: p.rank ?? (i+1)}));
       const rankMap = new Map(ranked.map(p=> [p.id, p.rank]));
       const myRank = rankMap.get(mine.id) ?? null;
       const me = state.map.get(mine.id) || { points:0, exacts:0 };
@@ -283,7 +284,6 @@
       });
     }
 
-    // ---- Interactions ----
     function bindSearch(){
       search.addEventListener('input', renderPlayers);
       clearSearch.addEventListener('click', ()=>{
@@ -296,14 +296,23 @@
     function addRival(id){
       if (state.rivals.includes(id)) return;
       if (state.rivals.length >= MAX_RIVALS){ alert(`You can track up to ${MAX_RIVALS} rivals.`); return; }
-      state.rivals = [...state.rivals, id]; persistRivals(); renderAll();
+      state.rivals = [...state.rivals, id];
+      persistRivals();
+      renderAll();
     }
-    function removeRival(id){ state.rivals = state.rivals.filter(x=> x !== id); persistRivals(); renderAll(); }
-    function persistRivals(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state.rivals)); }catch{} }
+    function removeRival(id){
+      state.rivals = state.rivals.filter(x=> x !== id);
+      persistRivals();
+      renderAll();
+    }
+    function persistRivals(){
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(state.rivals)); }catch{}
+    }
 
-    // ---- Utils ----
     function pct(a,b){ return !b ? 0 : Math.round((a||0)/b*100); }
-    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function escapeHtml(s){
+      return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
   </script>
 </body>
 </html>
