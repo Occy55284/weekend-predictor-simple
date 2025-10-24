@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=113" />
+  <link rel="stylesheet" href="brand.css?v=114" />
   <style>
     /* Remove hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
@@ -26,7 +26,7 @@
 
     table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
     thead th{background:#f8fafc;color:#334155;font-weight:800;text-align:left;padding:10px;border-bottom:1px solid #e5e7eb}
-    tbody td{padding:10px;border-bottom:1px solid #eef2f7}
+    tbody td{padding:10px;border-bottom:1px solid #eef2f7;vertical-align:top}
     tbody tr:last-child td{border-bottom:none}
     .right{text-align:right}
     .center{text-align:center}
@@ -41,7 +41,7 @@
     /* Debug (always visible) */
     details.debug{margin:10px 0 14px}
     .dbg{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#0b1220;color:#d1e0ff;
-      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:300px;overflow:auto}
+      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:260px;overflow:auto}
     .dbg b{color:#93c5fd}
   </style>
 </head>
@@ -79,12 +79,12 @@
       <div id="tableWrap" style="display:none">
         <table aria-label="Your picks">
           <thead>
-          <tr>
-            <th>Fixture</th>
-            <th class="center">Your Pick</th>
-            <th class="center">Result</th>
-            <th class="right">Status</th>
-          </tr>
+            <tr>
+              <th>Fixture</th>
+              <th class="center">Your Pick</th>
+              <th class="center">Result</th>
+              <th class="right">Status</th>
+            </tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -111,7 +111,7 @@
     });
   </script>
 
-  <!-- Page logic: load picks then fetch fixtures by ID -->
+  <!-- Page logic: picks (picks) + fixture details (fixtures) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -123,7 +123,6 @@
     const dbg = $('debugBox');
     const navAdmin = $('navAdmin');
 
-    // ---------- helpers ----------
     const pad = n => String(n).padStart(2,'0');
     const startOfWeek = (d=new Date())=>{
       const x = new Date(d);
@@ -164,48 +163,24 @@
     };
 
     function render(rows){
-  tbody.innerHTML = '';
-  if (!rows?.length){ wrap.style.display='none'; empty.style.display=''; return; }
-  wrap.style.display=''; empty.style.display='none';
+      tbody.innerHTML = '';
+      if (!rows?.length){ wrap.style.display='none'; empty.style.display=''; return; }
+      wrap.style.display=''; empty.style.display='none';
 
-  rows.forEach(r=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>
-        ${r.fixtureText}
-        ${r.subText ? `<div class="muted" style="font-size:.85rem">${r.subText}</div>` : ''}
-      </td>
-      <td class="center"><strong>${r.pick}</strong></td>
-      <td class="center">${r.result}</td>
-      <td class="right"><span class="pill ${r.locked?'locked':'open'}">${r.locked?'Locked':'Open'}</span></td>
-    `;
-    tbody.appendChild(tr);
-  });
-  lastUpdated.textContent = `Loaded ${rows.length} pick${rows.length===1?'':'s'}.`;
-}
-
-
-    // ---------- data loaders ----------
-    async function loadPicks(uid, weekStart){
-      const { data, error } = await supabase
-        .from('picks')
-        .select('fixture_id, week_start, home, away, user_id')
-        .eq('user_id', uid)
-        .eq('week_start', weekStart)
-        .order('fixture_id', { ascending:true });
-
-      log('picks rows', { count: data?.length ?? 0, error: error?.message || null, keys: data?.[0] ? Object.keys(data[0]) : [] });
-      return data || [];
-    }
-
-    async function loadFixturesByIds(ids){
-      if (!ids.length) return [];
-      const { data, error } = await supabase
-        .from('fixtures')
-        .select('id, utc_date, home_team, away_team, home_score, away_score, status, competition, matchday, updated_at, featured')
-        .in('id', ids);
-      log('fixtures by id', { count: data?.length ?? 0, error: error?.message || null, keys: data?.[0] ? Object.keys(data[0]) : [] });
-      return data || [];
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            ${r.fixtureHtml}
+            ${r.subHtml ? `<div class="muted" style="font-size:.85rem">${r.subHtml}</div>` : ''}
+          </td>
+          <td class="center"><strong>${r.pick}</strong></td>
+          <td class="center">${r.result}</td>
+          <td class="right"><span class="pill ${r.locked?'locked':'open'}">${r.locked?'Locked':'Open'}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lastUpdated.textContent = `Loaded ${rows.length} pick${rows.length===1?'':'s'}.`;
     }
 
     (async ()=>{
@@ -224,48 +199,59 @@
       const weekStart = isoDate(startOfWeek(new Date()));
       log('Computed week_start', weekStart);
 
-      // 1) Picks
-      const picks = await loadPicks(uid, weekStart);
-      if (!picks.length){ render([]); return; }
+      // 1) Picks for this week
+      const { data: picks, error: pkErr } = await supabase
+        .from('picks')
+        .select('fixture_id, week_start, home, away, user_id')
+        .eq('user_id', uid)
+        .eq('week_start', weekStart)
+        .order('fixture_id', { ascending:true });
 
-      // 2) Fixtures (by id list)
+      log('picks rows', { count: picks?.length ?? 0, error: pkErr?.message || null, keys: picks?.[0] ? Object.keys(picks[0]) : [] });
+
+      if (!picks?.length){ render([]); return; }
+
+      // 2) Fetch fixture details by ID
       const ids = [...new Set(picks.map(p => p.fixture_id))];
       log('fixture ids', ids);
-      const fixtures = await loadFixturesByIds(ids);
 
-      const byId = new Map(fixtures.map(f => [String(f.id), f]));
+      const { data: fixtures, error: fxErr } = await supabase
+        .from('fixtures')
+        .select('id, utc_date, status, competition, matchday, home_team, away_team, home_score, away_score')
+        .in('id', ids);
 
+      log('fixtures by id', { count: fixtures?.length ?? 0, error: fxErr?.message || null, keys: fixtures?.[0] ? Object.keys(fixtures[0]) : [] });
+
+      const byId = new Map((fixtures || []).map(f => [String(f.id), f]));
+
+      // 3) Compose render rows
       const rows = picks.map(p => {
-  const fx = byId.get(String(p.fixture_id));
-  const homeName = fx?.home_team ?? `Fixture #${p.fixture_id}`;
-  const awayName = fx?.away_team ?? '';
-  const fixtureText = awayName
-    ? `<strong>${homeName}</strong> vs <strong>${awayName}</strong>`
-    : homeName;
+        const fx = byId.get(String(p.fixture_id));
+        const homeName = fx?.home_team ?? `Fixture #${p.fixture_id}`;
+        const awayName = fx?.away_team ?? '';
+        const fixtureHtml = awayName
+          ? `<strong>${homeName}</strong> vs <strong>${awayName}</strong>`
+          : homeName;
 
-  // format kickoff in local time
-  let kickoffText = '';
-  if (fx?.utc_date) {
-    const dt = new Date(fx.utc_date);
-    kickoffText = !isNaN(dt) ? `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}` : '';
-  }
+        // kickoff local time & status chip
+        let subBits = [];
+        if (fx?.utc_date){
+          const dt = new Date(fx.utc_date);
+          if (!isNaN(dt)) subBits.push(`${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`);
+        }
+        if (fx?.status){
+          const s = String(fx.status).toUpperCase();
+          subBits.push(s === 'IN_PLAY' ? 'Live' : s === 'FINISHED' ? 'FT' : s === 'SCHEDULED' ? 'Scheduled' : s);
+        }
 
-  // status chip (from fixtures.status if present)
-  const status = (fx?.status || '').toUpperCase(); // e.g., SCHEDULED, IN_PLAY, FINISHED
-  const statusText =
-    status === 'IN_PLAY' ? 'Live' :
-    status === 'FINISHED' ? 'FT' :
-    status === 'SCHEDULED' ? 'Scheduled' :
-    status || '';
-
-  return {
-    fixtureText,
-    subText: [kickoffText, statusText].filter(Boolean).join(' • '),
-    pick: pickScore(p),
-    result: fx ? resultFromFixture(fx) : '—',
-    locked: fx ? lockedFromFixture(fx) : false
-  };
-});
+        return {
+          fixtureHtml,
+          subHtml: subBits.join(' • '),
+          pick: pickScore(p),
+          result: fx ? resultFromFixture(fx) : '—',
+          locked: fx ? lockedFromFixture(fx) : false
+        };
+      });
 
       render(rows);
     })();
