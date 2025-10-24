@@ -134,14 +134,14 @@
 
       // Normalize
       state.players = (rows || []).map(r => ({
-        id: r.user_id || r.id,
-        name: r.display_name || 'Unnamed',
-        points: Number(r.points ?? 0),
-        exacts: Number(r.exact_scores ?? r.exacts ?? 0),
-        results: Number(r.correct_results ?? r.results ?? 0),
-        rank: r.rank ?? null,
-        badge: r.badge ?? null
-      }));
+  id: r.user_id || r.id,
+  name: r.display_name || 'Unnamed',
+  points: Number(r.points ?? 0),
+  exacts: Number(r.correct_scores ?? r.exact_scores ?? r.exacts ?? 0),  <!-- ← updated -->
+  results: Number(r.correct_results ?? r.results ?? 0),
+  rank: r.rank ?? null,
+  badge: r.badge ?? null
+}));
       state.players.forEach(p => state.map.set(p.id, p));
 
       // Load saved rivals
