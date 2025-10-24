@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rivals • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=100" />
+  <link rel="stylesheet" href="brand.css?v=101" />
   <style>
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
     .top .bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
@@ -96,22 +96,16 @@
     });
   </script>
 
-  <!-- Page logic -->
+  <!-- Page logic (uses RPC to respect RLS) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // --- Helpers ---
     const $ = (id)=> document.getElementById(id);
     const clamp = (n,min,max)=> Math.max(min, Math.min(max, n||0));
     const MAX_RIVALS = 5;
     const LS_KEY = 'wp_rivals';
 
-    const state = {
-      me: null,
-      players: [],
-      rivals: [], // array of user ids
-      map: new Map(), // id -> profile data
-    };
+    const state = { me: null, players: [], rivals: [], map: new Map() };
 
     const search = $('search');
     const clearSearch = $('clearSearch');
@@ -120,31 +114,37 @@
     const rivalsEmpty = $('rivalsEmpty');
     const navAdmin = $('navAdmin');
 
-    // --- Auth & bootstrap ---
     (async ()=>{
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user){ window.location.replace('login.html'); return; }
       const uid = session.user.id;
 
-      // Admin flag if present on profile
-      const { data: myProfile } = await supabase.from('profiles')
-        .select('id, display_name, points, exact_results, correct_results, rank, badge, is_admin')
-        .eq('id', uid).maybeSingle();
+      // Admin flag (self row only)
+      try{
+        const { data: me } = await supabase.from('profiles').select('is_admin, display_name, id').eq('id', uid).maybeSingle();
+        state.me = { id: uid, name: me?.display_name || 'You' };
+        if (me?.is_admin) navAdmin.style.display = '';
+      }catch{
+        state.me = { id: uid, name: 'You' };
+      }
 
-      state.me = normalize(myProfile || { id: uid, display_name: 'You' });
+      // Load players from RPC (same as leaderboard)
+      const { data: rows, error } = await supabase.rpc('leaderboard_v2');
+      if (error){ console.error('leaderboard_v2 error:', error); return; }
 
-      // Show admin link if applicable
-      if (state.me.is_admin) navAdmin.style.display = '';
+      // Normalize
+      state.players = (rows || []).map(r => ({
+        id: r.user_id || r.id,
+        name: r.display_name || 'Unnamed',
+        points: Number(r.points ?? 0),
+        exacts: Number(r.exact_scores ?? r.exacts ?? 0),
+        results: Number(r.correct_results ?? r.results ?? 0),
+        rank: r.rank ?? null,
+        badge: r.badge ?? null
+      }));
+      state.players.forEach(p => state.map.set(p.id, p));
 
-      // Load players (order by points desc if present)
-      const { data: players } = await supabase.from('profiles')
-        .select('id, display_name, points, exact_results, correct_results, rank, badge')
-        .order('points', { ascending:false, nullsFirst:false });
-
-      state.players = (players || []).map(normalize);
-      state.players.forEach(p=> state.map.set(p.id, p));
-
-      // Load rivals from localStorage
+      // Load saved rivals
       try{
         const saved = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
         state.rivals = Array.isArray(saved) ? saved.slice(0, MAX_RIVALS) : [];
@@ -154,24 +154,8 @@
       bindSearch();
     })();
 
-    function normalize(p){
-      return {
-        id: p.id,
-        name: p.display_name || 'Unnamed',
-        points: Number(p.points ?? 0),
-        exacts: Number(p.exact_results ?? 0),
-        results: Number(p.correct_results ?? 0),
-        rank: p.rank ?? null,
-        badge: p.badge ?? null,
-        is_admin: !!p.is_admin,
-      };
-    }
-
-    // --- UI renderers ---
-    function renderAll(){
-      renderPlayers();
-      renderRivals();
-    }
+    // ---- UI ----
+    function renderAll(){ renderPlayers(); renderRivals(); }
 
     function renderPlayers(){
       const q = (search.value || '').toLowerCase();
@@ -182,7 +166,7 @@
         .slice(0, 200);
 
       allList.innerHTML = '';
-      if (items.length === 0){
+      if (!items.length){
         const empty = document.createElement('div');
         empty.className = 'empty';
         empty.textContent = 'No players match your search.';
@@ -212,16 +196,11 @@
         allList.appendChild(row);
       }
 
-      // Bind add/remove
       allList.querySelectorAll('[data-add]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          addRival(btn.getAttribute('data-add'));
-        });
+        btn.addEventListener('click', ()=> addRival(btn.getAttribute('data-add')));
       });
       allList.querySelectorAll('[data-remove]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          removeRival(btn.getAttribute('data-remove'));
-        });
+        btn.addEventListener('click', ()=> removeRival(btn.getAttribute('data-remove')));
       });
     }
 
@@ -229,31 +208,25 @@
       myRivals.innerHTML = '';
       const mine = state.me;
 
-      if (!state.rivals.length){
-        rivalsEmpty.style.display = '';
-        return;
-      }
+      if (!state.rivals.length){ rivalsEmpty.style.display = ''; return; }
       rivalsEmpty.style.display = 'none';
 
-      // Create rank map if missing (derive rank by points if null)
-      const ranked = [...state.players]
-        .sort((a,b)=> (b.points||0) - (a.points||0))
-        .map((p,i)=> ({...p, rank: p.rank ?? (i+1)}));
+      const ranked = [...state.players].sort((a,b)=> (b.points||0) - (a.points||0)).map((p,i)=> ({...p, rank: p.rank ?? (i+1)}));
       const rankMap = new Map(ranked.map(p=> [p.id, p.rank]));
       const myRank = rankMap.get(mine.id) ?? null;
+      const me = state.map.get(mine.id) || { points:0, exacts:0 };
 
       for (const rid of state.rivals){
         const r = state.map.get(rid);
         if (!r) continue;
         const theirRank = rankMap.get(r.id) ?? null;
 
-        const deltaPoints = (mine.points||0) - (r.points||0);
-        const deltaExacts = (mine.exacts||0) - (r.exacts||0);
-        const deltaRank   = (myRank && theirRank) ? (theirRank - myRank) : null; // positive = you're ahead
+        const deltaPoints = (me.points||0) - (r.points||0);
+        const deltaExacts = (me.exacts||0) - (r.exacts||0);
+        const deltaRank   = (myRank && theirRank) ? (theirRank - myRank) : null;
 
-        // Bars (points)
-        const maxPts = Math.max(10, (mine.points||0), (r.points||0));
-        const myPct  = Math.round(clamp((mine.points||0) / maxPts, 0, 1) * 100);
+        const maxPts = Math.max(10, (me.points||0), (r.points||0));
+        const myPct  = Math.round(clamp((me.points||0) / maxPts, 0, 1) * 100);
         const rvPct  = Math.round(clamp((r.points||0) / maxPts, 0, 1) * 100);
 
         const card = document.createElement('div');
@@ -271,10 +244,10 @@
             <div class="mini muted">Points</div>
             <div class="bar" aria-label="Points comparison">
               <span style="width:${myPct}%"></span>
-              <span style="width:${rvPct}%; background:#64748b; position:absolute; left:auto; right:0"></span>
+              <span style="width:${rvPct}%; position:absolute; left:auto; right:0"></span>
             </div>
             <div class="mini" style="text-align:right">
-              <strong>${mine.points||0}</strong> vs <strong>${r.points||0}</strong>
+              <strong>${me.points||0}</strong> vs <strong>${r.points||0}</strong>
               <div class="${deltaPoints>=0?'delta pos':'delta neg'}">${deltaPoints>=0?'+':''}${deltaPoints}</div>
             </div>
           </div>
@@ -282,11 +255,11 @@
           <div class="metric-row">
             <div class="mini muted">Exact picks</div>
             <div class="bar">
-              <span style="width:${pct(mine.exacts, Math.max(1, mine.exacts, r.exacts))}%"></span>
-              <span style="width:${pct(r.exacts, Math.max(1, mine.exacts, r.exacts))}%; background:#64748b; position:absolute; left:auto; right:0"></span>
+              <span style="width:${pct(me.exacts, Math.max(1, me.exacts, r.exacts))}%"></span>
+              <span style="width:${pct(r.exacts, Math.max(1, me.exacts, r.exacts))}%; position:absolute; left:auto; right:0"></span>
             </div>
             <div class="mini" style="text-align:right">
-              <strong>${mine.exacts||0}</strong> vs <strong>${r.exacts||0}</strong>
+              <strong>${me.exacts||0}</strong> vs <strong>${r.exacts||0}</strong>
               <div class="${deltaExacts>=0?'delta pos':'delta neg'}">${deltaExacts>=0?'+':''}${deltaExacts}</div>
             </div>
           </div>
@@ -305,15 +278,12 @@
         myRivals.appendChild(card);
       }
 
-      // Remove handlers
       myRivals.querySelectorAll('[data-remove]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          removeRival(btn.getAttribute('data-remove'));
-        });
+        btn.addEventListener('click', ()=> removeRival(btn.getAttribute('data-remove')));
       });
     }
 
-    // --- Interactions ---
+    // ---- Interactions ----
     function bindSearch(){
       search.addEventListener('input', renderPlayers);
       clearSearch.addEventListener('click', ()=>{
@@ -325,30 +295,15 @@
 
     function addRival(id){
       if (state.rivals.includes(id)) return;
-      if (state.rivals.length >= MAX_RIVALS){
-        alert(`You can track up to ${MAX_RIVALS} rivals.`);
-        return;
-      }
-      state.rivals = [...state.rivals, id];
-      persistRivals();
-      renderAll();
+      if (state.rivals.length >= MAX_RIVALS){ alert(`You can track up to ${MAX_RIVALS} rivals.`); return; }
+      state.rivals = [...state.rivals, id]; persistRivals(); renderAll();
     }
+    function removeRival(id){ state.rivals = state.rivals.filter(x=> x !== id); persistRivals(); renderAll(); }
+    function persistRivals(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state.rivals)); }catch{} }
 
-    function removeRival(id){
-      state.rivals = state.rivals.filter(x=> x !== id);
-      persistRivals();
-      renderAll();
-    }
-
-    function persistRivals(){
-      try{ localStorage.setItem(LS_KEY, JSON.stringify(state.rivals)); }catch{}
-    }
-
-    // --- Utils ---
+    // ---- Utils ----
     function pct(a,b){ return !b ? 0 : Math.round((a||0)/b*100); }
-    function escapeHtml(s){
-      return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    }
+    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   </script>
 </body>
 </html>
