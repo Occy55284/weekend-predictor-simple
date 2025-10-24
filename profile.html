@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Your Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=100" />
+  <link rel="stylesheet" href="brand.css?v=101" />
   <style>
     .wrap{max-width:880px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
@@ -12,9 +12,7 @@
     h1{margin:0 0 10px;color:#1f357a}
     .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
     .field label{font-weight:700;color:#1f2937}
-    .field input{
-      height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:1rem
-    }
+    .field input{height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:1rem}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     .btn{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 14px;
          border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#111827;font-weight:700;text-decoration:none;cursor:pointer}
@@ -85,7 +83,7 @@
             <span id="badgeNone" class="muted">— none yet</span>
           </div>
 
-          <div class="muted">
+          <div class="muted" id="statsBlock">
             <div>Exact scores: <strong id="statExact">0</strong></div>
             <div>Correct results: <strong id="statResult">0</strong></div>
             <div>Points: <strong id="statPoints">0</strong></div>
@@ -123,11 +121,10 @@
     });
   </script>
 
-  <!-- Profile logic -->
+  <!-- Profile logic (uses RPCs to respect RLS) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // Helpers
     const $ = (id)=> document.getElementById(id);
     const statExact   = $('statExact');
     const statResult  = $('statResult');
@@ -155,40 +152,38 @@
     };
 
     (async ()=>{
-      // Require sign-in
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user){ window.location.replace('login.html'); return; }
       const uid = session.user.id;
 
-      // Load profile
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('id, display_name, points, exact_results, correct_results, rank, badge, is_admin')
-        .eq('id', uid)
-        .maybeSingle();
+      // Prefill name + admin flag (self row is allowed by RLS)
+      try{
+        const { data: me } = await supabase
+          .from('profiles')
+          .select('display_name, is_admin')
+          .eq('id', uid)
+          .maybeSingle();
+        if (me?.display_name) $('name').value = me.display_name;
+        if (me?.is_admin) navAdmin.style.display = '';
+      }catch{}
 
-      // Prefill name
-      const nameInput = $('name');
-      if (p?.display_name) nameInput.value = p.display_name;
+      // Season totals via RPC (RLS-safe)
+      const { data: sp, error } = await supabase.rpc('season_progress', { uid });
+      if (error){ console.error('season_progress error:', error); return; }
 
-      // Admin link
-      if (p?.is_admin) navAdmin.style.display = '';
-
-      // Stats
-      const exacts  = Number(p?.exact_results ?? 0);
-      const results = Number(p?.correct_results ?? 0);
-      const points  = Number(p?.points ?? 0);
-      const rank    = p?.rank ?? '—';
+      const exacts  = Number(sp?.exact_scores ?? sp?.exacts ?? 0);
+      const results = Number(sp?.correct_results ?? sp?.results ?? 0);
+      const points  = Number(sp?.points ?? 0);
+      const rank    = sp?.rank ?? null;
+      const badge   = (sp?.badge || computeBadge(exacts));
 
       statExact.textContent  = String(exacts);
       statResult.textContent = String(results);
       statPoints.textContent = String(points);
-      statRank.textContent   = rank === null ? '—' : `#${rank}`;
+      statRank.textContent   = rank ? `#${rank}` : '—';
 
-      // Badge
-      const badge = p?.badge || computeBadge(exacts);
       if (badge){
-        badgePill.textContent = badge.toUpperCase();
+        badgePill.textContent = String(badge).toUpperCase();
         badgePill.classList.remove('hide');
         badgeNone.classList.add('hide');
       }else{
@@ -196,12 +191,11 @@
         badgeNone.classList.remove('hide');
       }
 
-      // Progress to next milestone
-      const next = nextMilestone(exacts);
-      const pct = Math.max(0, Math.min(100, Math.round((exacts / (next.target||10)) * 100)));
-      barFill.style.width = pct + '%';
-      nextText.textContent = next.next
-        ? `Next milestone: ${next.next.toUpperCase()} (${next.target}) — ${next.need} to go`
+      const nm = nextMilestone(exacts);
+      const pct = nm.next ? Math.round((exacts / nm.target) * 100) : 100;
+      barFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      nextText.textContent = nm.next
+        ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
         : 'You’ve reached the top badge — GOAT!';
 
       // Save display name
@@ -212,11 +206,12 @@
         e.preventDefault();
         saveBtn.disabled = true; msg.textContent = 'Saving…';
         try{
-          const newName = nameInput.value.trim();
-          const { error } = await supabase.from('profiles')
+          const newName = $('name').value.trim();
+          const { error: uerr } = await supabase
+            .from('profiles')
             .update({ display_name: newName })
             .eq('id', uid);
-          if (error) throw error;
+          if (uerr) throw uerr;
           msg.innerHTML = '<span class="ok">Saved.</span>';
         }catch(err){
           msg.textContent = 'Could not save. Try again.';
