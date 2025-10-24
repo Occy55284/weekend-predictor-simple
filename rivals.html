@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rivals • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=100" />
+  <style>
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .top .bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+    .nav a{margin-left:14px;text-decoration:none;color:#334155;font-weight:700}
+    .nav a.active{color:#1f357a}
+    .nav .logout{color:#dc2626}
+    .grid-2{display:grid;grid-template-columns: 1fr 360px; gap:16px}
+    @media (max-width: 980px){ .grid-2{grid-template-columns:1fr} }
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px}
+    h1{margin:0 0 8px;color:#1f357a}
+    .muted{color:#64748b}
+    .search{display:flex;gap:8px;margin:8px 0 16px}
+    .search input{flex:1;height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:1rem}
+    .list{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
+    .row{display:flex;align-items:center;justify-content:space-between;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px}
+    .who{display:flex;align-items:center;gap:10px}
+    .pill{font-size:.75rem;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#1f357a;border:1px solid #c7d2fe}
+    .btn{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 12px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#111827;font-weight:700;cursor:pointer;text-decoration:none}
+    .btn.primary{background:#1f357a;color:#fff;border-color:#1f357a}
+    .btn.danger{background:#fff;color:#b91c1c;border-color:#fecaca}
+    .section-title{font-weight:800;color:#0f172a;margin-bottom:8px}
+    .mini{font-size:.85rem;color:#475569}
+    .rivals{display:flex;flex-direction:column;gap:10px}
+    .rival-card{border:1px solid #e5e7eb;border-radius:12px;padding:12px}
+    .metric-row{display:grid;grid-template-columns:120px 1fr 80px;gap:10px;align-items:center;margin:8px 0}
+    .bar{height:12px;background:#f1f5f9;border-radius:8px;position:relative;overflow:hidden;border:1px solid #e2e8f0}
+    .bar > span{position:absolute;left:0;top:0;bottom:0;background:#1f357a}
+    .delta.pos{color:#16a34a}
+    .delta.neg{color:#dc2626}
+    .empty{padding:16px;border:1px dashed #cbd5e1;border-radius:12px;text-align:center;color:#64748b}
+    .badge{display:inline-flex;height:28px;align-items:center;padding:0 10px;border-radius:999px;border:1px solid #c7d2fe;background:#eef2ff;color:#1f357a;font-weight:800;letter-spacing:.3px}
+    .brand{display:flex;align-items:center;gap:8px;color:#1f357a;text-decoration:none;font-weight:900}
+    .brand .badge{background:#1f357a;color:#fff;border-color:#1f357a}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <div class="badge">WP</div>
+        Weekend Predictor
+      </a>
+      <nav class="nav">
+        <a href="predict.html" data-nav="predict">Predict</a>
+        <a href="my-picks.html" data-nav="my-picks">My Picks</a>
+        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+        <a href="profile.html" data-nav="profile">Profile</a>
+        <a href="rivals.html" class="active">Rivals</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap grid-2">
+    <!-- Left: Discover players -->
+    <section class="card">
+      <h1>Find rivals</h1>
+      <div class="muted">Pick up to 5 rivals to track head-to-head all season.</div>
+
+      <div class="search">
+        <input id="search" type="search" placeholder="Search players by name…" />
+        <button id="clearSearch" class="btn">Clear</button>
+      </div>
+
+      <div id="allList" class="list" aria-live="polite"></div>
+    </section>
+
+    <!-- Right: My rivals & head-to-head -->
+    <section class="card">
+      <div class="section-title">My rivals</div>
+      <div id="myRivals" class="rivals"></div>
+      <div id="rivalsEmpty" class="empty" style="display:none">
+        No rivals yet — add a few from the list on the left.
+      </div>
+    </section>
+  </main>
+
+  <!-- Logout listener -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{ await supabase.auth.signOut(); }catch{}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
+
+  <!-- Page logic -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    // --- Helpers ---
+    const $ = (id)=> document.getElementById(id);
+    const clamp = (n,min,max)=> Math.max(min, Math.min(max, n||0));
+    const MAX_RIVALS = 5;
+    const LS_KEY = 'wp_rivals';
+
+    const state = {
+      me: null,
+      players: [],
+      rivals: [], // array of user ids
+      map: new Map(), // id -> profile data
+    };
+
+    const search = $('search');
+    const clearSearch = $('clearSearch');
+    const allList = $('allList');
+    const myRivals = $('myRivals');
+    const rivalsEmpty = $('rivalsEmpty');
+    const navAdmin = $('navAdmin');
+
+    // --- Auth & bootstrap ---
+    (async ()=>{
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user){ window.location.replace('login.html'); return; }
+      const uid = session.user.id;
+
+      // Admin flag if present on profile
+      const { data: myProfile } = await supabase.from('profiles')
+        .select('id, display_name, points, exact_results, correct_results, rank, badge, is_admin')
+        .eq('id', uid).maybeSingle();
+
+      state.me = normalize(myProfile || { id: uid, display_name: 'You' });
+
+      // Show admin link if applicable
+      if (state.me.is_admin) navAdmin.style.display = '';
+
+      // Load players (order by points desc if present)
+      const { data: players } = await supabase.from('profiles')
+        .select('id, display_name, points, exact_results, correct_results, rank, badge')
+        .order('points', { ascending:false, nullsFirst:false });
+
+      state.players = (players || []).map(normalize);
+      state.players.forEach(p=> state.map.set(p.id, p));
+
+      // Load rivals from localStorage
+      try{
+        const saved = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+        state.rivals = Array.isArray(saved) ? saved.slice(0, MAX_RIVALS) : [];
+      }catch{ state.rivals = []; }
+
+      renderAll();
+      bindSearch();
+    })();
+
+    function normalize(p){
+      return {
+        id: p.id,
+        name: p.display_name || 'Unnamed',
+        points: Number(p.points ?? 0),
+        exacts: Number(p.exact_results ?? 0),
+        results: Number(p.correct_results ?? 0),
+        rank: p.rank ?? null,
+        badge: p.badge ?? null,
+        is_admin: !!p.is_admin,
+      };
+    }
+
+    // --- UI renderers ---
+    function renderAll(){
+      renderPlayers();
+      renderRivals();
+    }
+
+    function renderPlayers(){
+      const q = (search.value || '').toLowerCase();
+      const mine = state.me?.id;
+      const items = state.players
+        .filter(p => p.id !== mine)
+        .filter(p => !q || p.name.toLowerCase().includes(q))
+        .slice(0, 200);
+
+      allList.innerHTML = '';
+      if (items.length === 0){
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'No players match your search.';
+        allList.appendChild(empty);
+        return;
+      }
+
+      for (const p of items){
+        const row = document.createElement('div');
+        row.className = 'row';
+        const isRival = state.rivals.includes(p.id);
+        row.innerHTML = `
+          <div class="who">
+            <div class="pill">${p.badge ? p.badge.toUpperCase() : 'PLAYER'}</div>
+            <div>
+              <div style="font-weight:800">${escapeHtml(p.name)}</div>
+              <div class="mini muted">Pts ${p.points ?? 0} • Exact ${p.exacts ?? 0}${p.rank ? ` • Rank #${p.rank}`: ''}</div>
+            </div>
+          </div>
+          <div>
+            ${isRival
+              ? `<button class="btn danger" data-remove="${p.id}">Remove</button>`
+              : `<button class="btn primary" data-add="${p.id}">Add Rival</button>`
+            }
+          </div>
+        `;
+        allList.appendChild(row);
+      }
+
+      // Bind add/remove
+      allList.querySelectorAll('[data-add]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          addRival(btn.getAttribute('data-add'));
+        });
+      });
+      allList.querySelectorAll('[data-remove]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          removeRival(btn.getAttribute('data-remove'));
+        });
+      });
+    }
+
+    function renderRivals(){
+      myRivals.innerHTML = '';
+      const mine = state.me;
+
+      if (!state.rivals.length){
+        rivalsEmpty.style.display = '';
+        return;
+      }
+      rivalsEmpty.style.display = 'none';
+
+      // Create rank map if missing (derive rank by points if null)
+      const ranked = [...state.players]
+        .sort((a,b)=> (b.points||0) - (a.points||0))
+        .map((p,i)=> ({...p, rank: p.rank ?? (i+1)}));
+      const rankMap = new Map(ranked.map(p=> [p.id, p.rank]));
+      const myRank = rankMap.get(mine.id) ?? null;
+
+      for (const rid of state.rivals){
+        const r = state.map.get(rid);
+        if (!r) continue;
+        const theirRank = rankMap.get(r.id) ?? null;
+
+        const deltaPoints = (mine.points||0) - (r.points||0);
+        const deltaExacts = (mine.exacts||0) - (r.exacts||0);
+        const deltaRank   = (myRank && theirRank) ? (theirRank - myRank) : null; // positive = you're ahead
+
+        // Bars (points)
+        const maxPts = Math.max(10, (mine.points||0), (r.points||0));
+        const myPct  = Math.round(clamp((mine.points||0) / maxPts, 0, 1) * 100);
+        const rvPct  = Math.round(clamp((r.points||0) / maxPts, 0, 1) * 100);
+
+        const card = document.createElement('div');
+        card.className = 'rival-card';
+        card.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="pill">${r.badge ? r.badge.toUpperCase() : 'RIVAL'}</div>
+              <div style="font-weight:800">${escapeHtml(r.name)}</div>
+            </div>
+            <button class="btn danger" data-remove="${r.id}">Remove</button>
+          </div>
+
+          <div class="metric-row">
+            <div class="mini muted">Points</div>
+            <div class="bar" aria-label="Points comparison">
+              <span style="width:${myPct}%"></span>
+              <span style="width:${rvPct}%; background:#64748b; position:absolute; left:auto; right:0"></span>
+            </div>
+            <div class="mini" style="text-align:right">
+              <strong>${mine.points||0}</strong> vs <strong>${r.points||0}</strong>
+              <div class="${deltaPoints>=0?'delta pos':'delta neg'}">${deltaPoints>=0?'+':''}${deltaPoints}</div>
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <div class="mini muted">Exact picks</div>
+            <div class="bar">
+              <span style="width:${pct(mine.exacts, Math.max(1, mine.exacts, r.exacts))}%"></span>
+              <span style="width:${pct(r.exacts, Math.max(1, mine.exacts, r.exacts))}%; background:#64748b; position:absolute; left:auto; right:0"></span>
+            </div>
+            <div class="mini" style="text-align:right">
+              <strong>${mine.exacts||0}</strong> vs <strong>${r.exacts||0}</strong>
+              <div class="${deltaExacts>=0?'delta pos':'delta neg'}">${deltaExacts>=0?'+':''}${deltaExacts}</div>
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <div class="mini muted">Rank</div>
+            <div class="mini muted">Season leaderboard</div>
+            <div class="mini" style="text-align:right">
+              ${myRank ? `#${myRank}` : '—'} vs ${theirRank ? `#${theirRank}` : '—'}
+              ${deltaRank === null ? '' : `<div class="${deltaRank>0?'delta pos': (deltaRank<0?'delta neg':'')}">
+                ${deltaRank>0?'+':''}${deltaRank} place${Math.abs(deltaRank)===1?'':'s'}
+              </div>`}
+            </div>
+          </div>
+        `;
+        myRivals.appendChild(card);
+      }
+
+      // Remove handlers
+      myRivals.querySelectorAll('[data-remove]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          removeRival(btn.getAttribute('data-remove'));
+        });
+      });
+    }
+
+    // --- Interactions ---
+    function bindSearch(){
+      search.addEventListener('input', renderPlayers);
+      clearSearch.addEventListener('click', ()=>{
+        search.value = '';
+        renderPlayers();
+        search.focus();
+      });
+    }
+
+    function addRival(id){
+      if (state.rivals.includes(id)) return;
+      if (state.rivals.length >= MAX_RIVALS){
+        alert(`You can track up to ${MAX_RIVALS} rivals.`);
+        return;
+      }
+      state.rivals = [...state.rivals, id];
+      persistRivals();
+      renderAll();
+    }
+
+    function removeRival(id){
+      state.rivals = state.rivals.filter(x=> x !== id);
+      persistRivals();
+      renderAll();
+    }
+
+    function persistRivals(){
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(state.rivals)); }catch{}
+    }
+
+    // --- Utils ---
+    function pct(a,b){ return !b ? 0 : Math.round((a||0)/b*100); }
+    function escapeHtml(s){
+      return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+  </script>
+</body>
+</html>
