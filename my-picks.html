@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=106" />
+  <link rel="stylesheet" href="brand.css?v=107" />
   <style>
     /* Remove any hero/logo/wallpaper on this page */
     body { background: #f8fafc !important; background-image: none !important; }
@@ -61,11 +61,10 @@
   <main class="wrap grid-2">
     <section class="card">
       <h1>My picks</h1>
-      <div class="muted" style="margin-bottom:12px">Your selections for the current gameweek.</div>
+      <div class="muted" style="margin-bottom:12px">Your most recent selections.</div>
 
       <div id="empty" class="empty" style="display:none">
-        You haven’t made any picks for this week yet.<br/>
-        <a href="predict.html" class="pill" style="margin-top:10px;display:inline-block">Make predictions</a>
+        No picks found for your account.
       </div>
 
       <div id="tableWrap" style="display:none">
@@ -103,11 +102,10 @@
     });
   </script>
 
-  <!-- Page logic (RPC-first, many fallbacks) -->
+  <!-- Page logic (no week filter; multiple sources; buttonless) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // --- Helpers ---
     const $ = (id)=> document.getElementById(id);
     const tbody = $('tbody');
     const empty = $('empty');
@@ -115,28 +113,19 @@
     const lastUpdated = $('lastUpdated');
     const navAdmin = $('navAdmin');
 
-    const pad = (n)=> String(n).padStart(2,'0');
-    const startOfWeek = (d=new Date())=>{
-      const x = new Date(d);
-      const day = x.getDay(); // 0 Sun, 1 Mon...
-      x.setHours(0,0,0,0);
-      const diff = (day === 0 ? -6 : 1 - day); // Monday start
-      x.setDate(x.getDate() + diff);
-      return x;
-    };
-    const isoDate = (d)=> `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
     const bool = (v)=> v === true || v === 'true' || v === 1;
-    const scoreFrom = (r)=>{
-      const hg = r.home_goals ?? r.home_score ?? r.h ?? r.pred_home ?? null;
-      const ag = r.away_goals ?? r.away_score ?? r.a ?? r.pred_away ?? null;
+
+    function pickScore(r){
+      const hg = r.home_goals ?? r.home_score ?? r.h ?? r.pred_home ?? r.home_prediction ?? null;
+      const ag = r.away_goals ?? r.away_score ?? r.a ?? r.pred_away ?? r.away_prediction ?? null;
       if (hg == null && ag == null) return '—';
       return `${hg ?? '–'} : ${ag ?? '–'}`;
-    };
-    const teamsFrom = (r)=>{
-      const home = r.home_team ?? r.home ?? r.home_name ?? 'Home';
-      const away = r.away_team ?? r.away ?? r.away_name ?? 'Away';
+    }
+    function pickTeams(r){
+      const home = r.home_team ?? r.home ?? r.home_name ?? r.ht ?? 'Home';
+      const away = r.away_team ?? r.away ?? r.away_name ?? r.at ?? 'Away';
       return `${home} vs ${away}`;
-    };
+    }
 
     async function ensureAdmin(uid){
       try{
@@ -145,19 +134,24 @@
       }catch{}
     }
 
-    // --- Loaders ---
-    async function loadFromRPC(uid, week_start){
+    // 1) RPCs first (no date filter; most recent 30)
+    async function loadFromRPC(uid){
       const rpcNames = ['my_picks','get_my_picks','week_picks'];
       for (const fn of rpcNames){
         try{
-          const { data, error } = await supabase.rpc(fn, { uid, week_start });
-          if (!error && Array.isArray(data) && data.length) return data;
+          const { data, error } = await supabase.rpc(fn, { uid });
+          if (!error && Array.isArray(data) && data.length) {
+            // sort newest first if created_at exists
+            data.sort((a,b)=> new Date(b.created_at||0) - new Date(a.created_at||0));
+            return data.slice(0,30);
+          }
         }catch{}
       }
       return null;
     }
 
-    async function loadFromTables(uid, week_start){
+    // 2) Tables/views (self rows; no week filter; most recent 30)
+    async function loadFromTables(uid){
       const sources = [
         { table:'predictions' },
         { table:'picks' },
@@ -168,10 +162,10 @@
         try{
           const { data, error } = await supabase
             .from(s.table)
-            .select('fixture_id, home_team, away_team, home_goals, away_goals, result, result_text, locked, created_at, week_start, home, away, home_score, away_score, h, a, pred_home, pred_away')
+            .select('fixture_id, home_team, away_team, home_goals, away_goals, result, result_text, locked, created_at, home, away, home_score, away_score, h, a, pred_home, pred_away, home_prediction, away_prediction')
             .eq('user_id', uid)
-            .gte('week_start', week_start)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false })
+            .limit(30);
           if (!error && Array.isArray(data) && data.length) return data;
         }catch{}
       }
@@ -179,17 +173,10 @@
     }
 
     async function loadMyPicks(uid){
-      const ws = startOfWeek(new Date());
-      const week_start = isoDate(ws);
-
-      // 1) RPC(s)
-      const rpcRows = await loadFromRPC(uid, week_start);
+      const rpcRows = await loadFromRPC(uid);
       if (rpcRows) return rpcRows;
-
-      // 2) Tables/views
-      const tblRows = await loadFromTables(uid, week_start);
+      const tblRows = await loadFromTables(uid);
       if (tblRows) return tblRows;
-
       return [];
     }
 
@@ -205,8 +192,8 @@
 
       rows.forEach(r=>{
         const tr = document.createElement('tr');
-        const fixture = teamsFrom(r);
-        const pick = scoreFrom(r);
+        const fixture = pickTeams(r);
+        const pick = pickScore(r);
         const res = r.result_text ?? r.result ?? '—';
         const locked = bool(r.locked);
         tr.innerHTML = `
@@ -217,7 +204,7 @@
         `;
         tbody.appendChild(tr);
       });
-      lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      lastUpdated.textContent = `Showing your most recent ${rows.length} picks`;
     }
 
     (async ()=>{
