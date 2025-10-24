@@ -4,16 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Your Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=103" />
+  <link rel="stylesheet" href="brand.css?v=104" />
   <style>
     .wrap{max-width:880px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
     h1{margin:0 0 10px;color:#1f357a}
     .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
     .field label{font-weight:700;color:#1f2937}
     .field input{height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:1rem}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
-    .btn{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 14px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#111827;font-weight:700;text-decoration:none;cursor:pointer}
+    .btn{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 14px;
+         border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#111827;font-weight:700;text-decoration:none;cursor:pointer}
     .btn.primary{background:#1f357a;color:#fff;border-color:#1f357a}
     .msg{margin-top:8px}
     .ok{color:#16a34a}
@@ -31,11 +33,6 @@
     .nav a.active{color:#1f357a}
     .nav .logout{color:#dc2626}
     .hide{display:none}
-    /* Debug */
-    details.debug{margin-top:12px}
-    .dbg{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-         white-space:pre-wrap;background:#0b1220;color:#d1e0ff;border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:300px;overflow:auto}
-    .dbg b{color:#93c5fd}
   </style>
 </head>
 <body>
@@ -58,7 +55,6 @@
   </header>
 
   <main class="wrap">
-    <!-- Profile editor -->
     <section class="card">
       <h1>Your profile</h1>
       <form id="form">
@@ -75,7 +71,6 @@
       <div id="message" class="msg"></div>
     </section>
 
-    <!-- Badge & progress -->
     <section class="card">
       <div class="grid">
         <div>
@@ -86,7 +81,7 @@
             <span id="badgeNone" class="muted">— none yet</span>
           </div>
 
-          <div class="muted" id="statsBlock">
+          <div class="muted">
             <div>Exact scores: <strong id="statExact">0</strong></div>
             <div>Correct results: <strong id="statResult">0</strong></div>
             <div>Points: <strong id="statPoints">0</strong></div>
@@ -97,11 +92,6 @@
             <div id="barFill" style="width:0%"></div>
           </div>
           <div id="nextText" class="muted">Next milestone: ROOKIE (10) — 10 to go</div>
-
-          <details class="debug" open>
-            <summary><strong>Debug</strong> (what the server returned)</summary>
-            <div class="dbg" id="debugBox">Loading…</div>
-          </details>
         </div>
 
         <div>
@@ -129,12 +119,11 @@
     });
   </script>
 
-  <!-- Profile logic with instrumentation -->
+  <!-- Profile logic -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
     const $ = (id)=> document.getElementById(id);
-    const D = $('debugBox');
     const statExact   = $('statExact');
     const statResult  = $('statResult');
     const statPoints  = $('statPoints');
@@ -154,106 +143,69 @@
     };
     const nextMilestone = (exacts)=>{
       if (exacts >= 30) return { next:null, need:0, target:30 };
-      if (exacts >= 20) return { next:'goat', need:30 - exacts, target:30 };
-      if (exacts >= 15) return { next:'pro',  need:20 - exacts, target:20 };
+      if (exacts >= 20) return { next:'goat',    need:30 - exacts, target:30 };
+      if (exacts >= 15) return { next:'pro',     need:20 - exacts, target:20 };
       if (exacts >= 10) return { next:'amateur', need:15 - exacts, target:15 };
       return { next:'rookie', need:10 - (exacts||0), target:10 };
     };
 
-    const show = (label, obj)=> {
-      const safe = (v)=> typeof v === 'string' ? v : JSON.stringify(v, null, 2);
-      D.textContent += `\n\n=== ${label} ===\n` + safe(obj);
-      console.log('[profile.debug]', label, obj);
-    };
-
-    const pick = (o, keys)=> keys.find(k => o && Object.prototype.hasOwnProperty.call(o, k));
-
-    function normalize(rec){
-      if (!rec) return { exacts:0, results:0, points:0, rank:null, badge:null };
-      const ek = pick(rec, ['exact_scores','exacts','exact_results','exact','exact_count']);
-      const rk = pick(rec, ['correct_results','results','correct','result_count']);
-      const pk = pick(rec, ['points','pts','total_points']);
-      const rk2= pick(rec, ['rank','position']);
-      return {
-        exacts:  Number(rec[ek] ?? 0),
-        results: Number(rec[rk] ?? 0),
-        points:  Number(rec[pk] ?? 0),
-        rank:    rec[rk2] ?? null,
-        badge:   rec.badge ?? null
-      };
-    }
-
     (async ()=>{
-      D.textContent = ''; // clear
-
-      const { data:{ session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user){ window.location.replace('login.html'); return; }
       const uid = session.user.id;
-      show('Session UID', uid);
 
       // Prefill name + admin
       try{
-        const { data: me } = await supabase.from('profiles').select('display_name,is_admin').eq('id', uid).maybeSingle();
-        show('profiles (self)', me);
+        const { data: me } = await supabase
+          .from('profiles')
+          .select('display_name, is_admin')
+          .eq('id', uid)
+          .maybeSingle();
         if (me?.display_name) $('name').value = me.display_name;
         if (me?.is_admin) navAdmin.style.display = '';
-      }catch(err){ show('profiles (self) error', String(err)); }
+      }catch{}
 
-      // Try season_progress with { uid }
-      let sp = null, errA=null, errB=null;
+      // Season totals via RPC
+      let rec = null;
       try{
         const rsp = await supabase.rpc('season_progress', { uid });
-        show('season_progress({uid}) raw', rsp);
-        if (!rsp.error) sp = rsp.data;
-      }catch(e){ errA = e; show('season_progress({uid}) exception', String(e)); }
-
-      // Try season_progress with { user_id }
-      if (!sp){
-        try{
-          const rsp2 = await supabase.rpc('season_progress', { user_id: uid });
-          show('season_progress({user_id}) raw', rsp2);
-          if (!rsp2.error) sp = rsp2.data;
-        }catch(e){ errB = e; show('season_progress({user_id}) exception', String(e)); }
-      }
-
-      // If array, pick my row or first
-      let rec = null;
-      if (Array.isArray(sp)){
-        rec = sp.find(r => (r.user_id||r.id) === uid) || sp[0] || null;
-      }else{
-        rec = sp || null;
-      }
-
-      // Fallback to leaderboard_v2 if needed
+        if (!rsp.error) rec = Array.isArray(rsp.data) ? rsp.data[0] : rsp.data;
+      }catch{}
       if (!rec){
         try{
           const lb = await supabase.rpc('leaderboard_v2');
-          show('leaderboard_v2 raw', lb);
           if (!lb.error && Array.isArray(lb.data)){
             rec = lb.data.find(r => (r.user_id||r.id) === uid) || null;
           }
-        }catch(e){ show('leaderboard_v2 exception', String(e)); }
+        }catch{}
       }
 
-      show('Chosen record', rec);
+      const exacts  = Number(rec?.correct_scores ?? rec?.exact_scores ?? 0);
+      const results = Number(rec?.correct_results ?? rec?.results ?? 0);
+      const points  = Number(rec?.points ?? 0);
+      const rank    = rec?.rank ?? null;
+      const badge   = rec?.badge || computeBadge(exacts);
 
-      const s = normalize(rec || {});
-      show('Normalized', s);
+      statExact.textContent  = String(exacts);
+      statResult.textContent = String(results);
+      statPoints.textContent = String(points);
+      statRank.textContent   = rank ? `#${rank}` : '—';
 
-      // Update UI
-      statExact.textContent  = String(s.exacts);
-      statResult.textContent = String(s.results);
-      statPoints.textContent = String(s.points);
-      statRank.textContent   = s.rank ? `#${s.rank}` : '—';
+      if (badge){
+        badgePill.textContent = String(badge).toUpperCase();
+        badgePill.classList.remove('hide');
+        badgeNone.classList.add('hide');
+      }else{
+        badgePill.classList.add('hide');
+        badgeNone.classList.remove('hide');
+      }
 
-      const badge = s.badge || computeBadge(s.exacts);
-      if (badge){ badgePill.textContent = String(badge).toUpperCase(); badgePill.classList.remove('hide'); badgeNone.classList.add('hide'); }
-      else{ badgePill.classList.add('hide'); badgeNone.classList.remove('hide'); }
-
-      const nm = nextMilestone(s.exacts);
-      const pct = nm.next ? Math.round((s.exacts / nm.target) * 100) : 100;
+      const nm = nextMilestone(exacts);
+      const pct = nm.next ? Math.round((exacts / nm.target) * 100) : 100;
       barFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
-      nextText.textContent = nm.next ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go` : 'You’ve reached the top badge — GOAT!';
+      nextText.textContent = nm.next
+        ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
+        : 'You’ve reached the top badge — GOAT!';
 
       // Save display name
       const form = $('form');
@@ -264,7 +216,10 @@
         saveBtn.disabled = true; msg.textContent = 'Saving…';
         try{
           const newName = $('name').value.trim();
-          const { error: uerr } = await supabase.from('profiles').update({ display_name: newName }).eq('id', uid);
+          const { error: uerr } = await supabase
+            .from('profiles')
+            .update({ display_name: newName })
+            .eq('id', uid);
           if (uerr) throw uerr;
           msg.innerHTML = '<span class="ok">Saved.</span>';
         }catch(err){
