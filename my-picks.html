@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=112" />
+  <link rel="stylesheet" href="brand.css?v=113" />
   <style>
-    /* Nuke hero/logo/wallpaper */
+    /* Remove hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
     .hero,.page-hero,.wall,.wallpaper,.bg-hero,.brand-hero,
     .logo,.logo-wrap,img.logo,header img[alt*="logo"],
@@ -111,7 +111,7 @@
     });
   </script>
 
-  <!-- Page logic: join picks with fixtures client-side -->
+  <!-- Page logic: load picks then fetch fixtures by ID -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -142,39 +142,26 @@
       console.log('[my-picks.debug]', label, obj);
     };
 
-    function teamNamesFromFixture(f){
-      const home = f.home_team ?? f.home_name ?? f.home ?? f.ht_name ?? f.homeTeam ?? f.ht ?? null;
-      const away = f.away_team ?? f.away_name ?? f.away ?? f.at_name ?? f.awayTeam ?? f.at ?? null;
-      return {
-        home: home || `Fixture #${fixtureKey(f)}`,
-        away: away || ''
-      };
-    }
-
-    function fixtureKey(f){
-      // common possibilities for the ID in fixture-like tables
-      return f.fixture_id ?? f.id ?? f.match_id ?? f.game_id ?? f.event_id ?? null;
-    }
-
-    function kickoffMillis(f){
-      const k = f.kickoff ?? f.kickoff_at ?? f.start_time ?? f.kickoff_time ?? f.date ?? f.datetime ?? null;
-      const t = (typeof k === 'string' || k instanceof String) ? Date.parse(k) : (k instanceof Date ? k.getTime() : null);
-      return Number.isFinite(t) ? t : null;
-    }
-
-    function lockedFromFixture(f){
-      if (typeof f.locked !== 'undefined') return bool(f.locked);
-      const ms = kickoffMillis(f);
-      if (ms != null) return (Date.now() >= ms);
-      return false;
-    }
-
-    function pickScore(p){
+    const pickScore = p => {
       const hg = p.home ?? p.home_goals ?? p.home_score ?? p.h ?? p.pred_home ?? null;
       const ag = p.away ?? p.away_goals ?? p.away_score ?? p.a ?? p.pred_away ?? null;
       if (hg == null && ag == null) return '—';
       return `${hg ?? '–'} : ${ag ?? '–'}`;
-    }
+    };
+
+    const resultFromFixture = f => {
+      const hs = f.home_score ?? f.hs ?? null;
+      const as = f.away_score ?? f.as ?? null;
+      if (hs == null && as == null) return '—';
+      return `${hs ?? '–'} : ${as ?? '–'}`;
+    };
+
+    const lockedFromFixture = f => {
+      const k = f.utc_date ?? f.kickoff ?? f.kickoff_at ?? f.start_time ?? f.datetime ?? null;
+      const t = (typeof k === 'string' || k instanceof String) ? Date.parse(k) : (k instanceof Date ? k.getTime() : null);
+      if (Number.isFinite(t)) return (Date.now() >= t);
+      return false;
+    };
 
     function render(rows){
       tbody.innerHTML = '';
@@ -186,7 +173,7 @@
         tr.innerHTML = `
           <td>${r.fixtureText}</td>
           <td class="center"><strong>${r.pick}</strong></td>
-          <td class="center">${r.result ?? '—'}</td>
+          <td class="center">${r.result}</td>
           <td class="right"><span class="pill ${r.locked?'locked':'open'}">${r.locked?'Locked':'Open'}</span></td>
         `;
         tbody.appendChild(tr);
@@ -196,10 +183,9 @@
 
     // ---------- data loaders ----------
     async function loadPicks(uid, weekStart){
-      // exact week (you already confirmed this returns rows)
       const { data, error } = await supabase
         .from('picks')
-        .select('fixture_id, week_start, home, away, user_id, created_at')
+        .select('fixture_id, week_start, home, away, user_id')
         .eq('user_id', uid)
         .eq('week_start', weekStart)
         .order('fixture_id', { ascending:true });
@@ -208,38 +194,14 @@
       return data || [];
     }
 
-    async function loadFixturesForWeek(weekStart){
-      // try several likely tables/views
-      const candidates = ['fixtures','matches','games','schedule','vw_fixtures'];
-      for (const table of candidates){
-        try{
-          const { data, error } = await supabase
-            .from(table)
-            .select('*')
-            .eq('week_start', weekStart);
-          if (!error && Array.isArray(data) && data.length){
-            log(`fixtures source: ${table}`, { count: data.length, keys: Object.keys(data[0]) });
-            return { table, rows: data };
-          }else{
-            if (error) log(`fixtures ${table} error`, error.message);
-            else log(`fixtures ${table} empty`, { count: 0 });
-          }
-        }catch(e){
-          log(`fixtures ${table} exception`, String(e));
-        }
-      }
-      // As a fallback, try without week filter and just map by IDs (we’ll still match on fixture_id)
-      for (const table of candidates){
-        try{
-          const { data, error } = await supabase.from(table).select('*').limit(200);
-          if (!error && Array.isArray(data) && data.length){
-            log(`fixtures fallback source: ${table}`, { count: data.length, keys: Object.keys(data[0]) });
-            return { table, rows: data };
-          }
-        }catch(e){}
-      }
-      log('fixtures', 'No fixture table found.');
-      return { table: null, rows: [] };
+    async function loadFixturesByIds(ids){
+      if (!ids.length) return [];
+      const { data, error } = await supabase
+        .from('fixtures')
+        .select('id, utc_date, home_team, away_team, home_score, away_score, status, competition, matchday, updated_at, featured')
+        .in('id', ids);
+      log('fixtures by id', { count: data?.length ?? 0, error: error?.message || null, keys: data?.[0] ? Object.keys(data[0]) : [] });
+      return data || [];
     }
 
     (async ()=>{
@@ -258,46 +220,32 @@
       const weekStart = isoDate(startOfWeek(new Date()));
       log('Computed week_start', weekStart);
 
+      // 1) Picks
       const picks = await loadPicks(uid, weekStart);
+      if (!picks.length){ render([]); return; }
 
-      // Build a lookup by fixture_id
-      const wantIds = [...new Set(picks.map(p => p.fixture_id))];
-      log('fixture ids', wantIds);
+      // 2) Fixtures (by id list)
+      const ids = [...new Set(picks.map(p => p.fixture_id))];
+      log('fixture ids', ids);
+      const fixtures = await loadFixturesByIds(ids);
 
-      const { table: fixtureTable, rows: fixtures } = await loadFixturesForWeek(weekStart);
+      const byId = new Map(fixtures.map(f => [String(f.id), f]));
 
-      // Map fixtures by common id keys
-      const byId = new Map();
-      const idKeys = ['fixture_id','id','match_id','game_id','event_id'];
-      for (const f of fixtures){
-        const fidKey = idKeys.find(k => typeof f[k] !== 'undefined');
-        if (fidKey) byId.set(String(f[fidKey]), f);
-      }
-
-      // Compose rows for display
-      const out = picks.map(p => {
-        const fx = byId.get(String(p.fixture_id)) || {};
-        const names = teamNamesFromFixture(fx);
-        const fixtureText = names.away
-          ? `<strong>${names.home}</strong> vs <strong>${names.away}</strong>`
-          : `Fixture #${p.fixture_id}`;
-        const locked = lockedFromFixture(fx);
-        // if fixture view has a result string, try to pick it up
-        const result = fx.result_text ?? fx.result ?? null;
+      const rows = picks.map(p => {
+        const fx = byId.get(String(p.fixture_id));
+        const homeName = fx?.home_team ?? `Fixture #${p.fixture_id}`;
+        const awayName = fx?.away_team ?? '';
+        const fixtureText = awayName ? `<strong>${homeName}</strong> vs <strong>${awayName}</strong>` : homeName;
 
         return {
           fixtureText,
           pick: pickScore(p),
-          result,
-          locked
+          result: fx ? resultFromFixture(fx) : '—',
+          locked: fx ? lockedFromFixture(fx) : false
         };
       });
 
-      if (!out.length){
-        log('note', 'No rows to render — either no picks for this week, or fixture table not found / not joined by week_start. If you can tell me your fixture table name and its columns for team names + kickoff, I’ll wire it exactly.');
-      }
-
-      render(out);
+      render(rows);
     })();
   </script>
 </body>
