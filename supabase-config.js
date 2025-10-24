@@ -21,8 +21,10 @@ if (typeof window !== 'undefined') {
 
 // ---- Optional helper: recommended redirect target for magic links ----
 export function getEmailRedirectTo() {
-  // Return to profile page on this same origin
-  return `${window.location.origin}/profile.html`
+  // Send users straight to Make Predictions after login
+  return `${window.location.origin}/predict.html`;
+}
+
 }
 
 // ---- Debug ping (safe) ----
