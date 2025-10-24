@@ -232,18 +232,36 @@
       const byId = new Map(fixtures.map(f => [String(f.id), f]));
 
       const rows = picks.map(p => {
-        const fx = byId.get(String(p.fixture_id));
-        const homeName = fx?.home_team ?? `Fixture #${p.fixture_id}`;
-        const awayName = fx?.away_team ?? '';
-        const fixtureText = awayName ? `<strong>${homeName}</strong> vs <strong>${awayName}</strong>` : homeName;
+  const fx = byId.get(String(p.fixture_id));
+  const homeName = fx?.home_team ?? `Fixture #${p.fixture_id}`;
+  const awayName = fx?.away_team ?? '';
+  const fixtureText = awayName
+    ? `<strong>${homeName}</strong> vs <strong>${awayName}</strong>`
+    : homeName;
 
-        return {
-          fixtureText,
-          pick: pickScore(p),
-          result: fx ? resultFromFixture(fx) : '—',
-          locked: fx ? lockedFromFixture(fx) : false
-        };
-      });
+  // format kickoff in local time
+  let kickoffText = '';
+  if (fx?.utc_date) {
+    const dt = new Date(fx.utc_date);
+    kickoffText = !isNaN(dt) ? `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}` : '';
+  }
+
+  // status chip (from fixtures.status if present)
+  const status = (fx?.status || '').toUpperCase(); // e.g., SCHEDULED, IN_PLAY, FINISHED
+  const statusText =
+    status === 'IN_PLAY' ? 'Live' :
+    status === 'FINISHED' ? 'FT' :
+    status === 'SCHEDULED' ? 'Scheduled' :
+    status || '';
+
+  return {
+    fixtureText,
+    subText: [kickoffText, statusText].filter(Boolean).join(' • '),
+    pick: pickScore(p),
+    result: fx ? resultFromFixture(fx) : '—',
+    locked: fx ? lockedFromFixture(fx) : false
+  };
+});
 
       render(rows);
     })();
