@@ -126,7 +126,7 @@
         const emailRedirectTo=buildRedirect('/predict.html');
         const {data,error}=await supabase.auth.signInWithOtp({
           email,
-          options:{emailRedirectTo}
+          options:{ emailRedirectTo: new URL('/predict.html', location.origin).href }
         });
         if(error)throw error;
         msg.innerHTML='<span class="ok">Check your inbox for the sign-in link.</span>';
