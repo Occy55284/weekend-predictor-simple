@@ -3,231 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=104" />
+  <title>My Profile • Weekend Predictor</title>
+
+  <link rel="stylesheet" href="brand.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js?v=3"></script>
+
   <style>
-    .wrap{max-width:880px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
-          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
-    h1{margin:0 0 10px;color:#1f357a}
-    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
-    .field label{font-weight:700;color:#1f2937}
-    .field input{height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:1rem}
-    .actions{display:flex;gap:8px;flex-wrap:wrap}
-    .btn{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 14px;
-         border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#111827;font-weight:700;text-decoration:none;cursor:pointer}
-    .btn.primary{background:#1f357a;color:#fff;border-color:#1f357a}
-    .msg{margin-top:8px}
-    .ok{color:#16a34a}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    @media (max-width:880px){ .grid{grid-template-columns:1fr} }
-    .big{font-weight:800;color:#0f172a}
-    .muted{color:#64748b}
-    .bar{height:10px;background:#eef2ff;border-radius:8px;overflow:hidden;border:1px solid #c7d2fe}
-    .bar > div{height:100%;background:#1f357a}
-    .badge-pill{display:inline-flex;height:28px;align-items:center;padding:0 10px;border-radius:999px;border:1px solid #c7d2fe;background:#eef2ff;color:#1f357a;font-weight:800;letter-spacing:.3px}
-    .top .bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
-    .brand{display:flex;align-items:center;gap:8px;color:#1f357a;text-decoration:none;font-weight:900}
-    .brand .badge{display:inline-flex;height:28px;align-items:center;padding:0 10px;border-radius:999px;background:#1f357a;color:#fff;border:1px solid #1f357a}
-    .nav a{margin-left:14px;text-decoration:none;color:#334155;font-weight:700}
-    .nav a.active{color:#1f357a}
-    .nav .logout{color:#dc2626}
-    .hide{display:none}
+    :root{
+      --text:#e9eefc; --muted:#9aa7c7; --border:rgba(255,255,255,.08);
+      --accent:#8ab3ff; --bg1:rgba(11,18,32,.85); --bg2:rgba(14,22,48,.85);
+    }
+    html,body{height:100%;margin:0;}
+    body{
+      color:var(--text);
+      font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,system-ui,sans-serif;
+      background:linear-gradient(180deg,var(--bg1),var(--bg2)),url("prem-hero.jpg") center/cover no-repeat fixed;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+      min-height:100vh;padding:20px;
+    }
+    .card{
+      width:100%;max-width:420px;background:rgba(255,255,255,.05);
+      border:1px solid var(--border);backdrop-filter:blur(10px);
+      border-radius:20px;padding:28px 24px;box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    h1{margin:0 0 12px;font-weight:800;}
+    .muted{color:var(--muted);margin-bottom:12px;}
+    .info{margin-top:20px;text-align:left;}
+    .info p{margin:8px 0;}
+    a.btn{display:inline-block;margin-top:20px;padding:12px 18px;border-radius:10px;border:1px solid var(--border);text-decoration:none;color:var(--text);}
+    a.btn:hover{border-color:#2a3a5a;}
   </style>
 </head>
 <body>
-  <header class="top">
-    <div class="bar">
-      <a class="brand" href="index.html">
-        <div class="badge">WP</div>
-        Weekend Predictor
-      </a>
-      <nav class="nav">
-        <a href="predict.html" data-nav="predict">Predict</a>
-        <a href="my-picks.html" data-nav="my-picks">My Picks</a>
-        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-        <a href="profile.html" data-nav="profile" class="active">Profile</a>
-        <a href="rivals.html" data-nav="rivals">Rivals</a>
-        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a class="logout" id="navLogout" href="login.html">Logout</a>
-      </nav>
+  <main class="card">
+    <h1>My Profile</h1>
+    <p class="muted" id="status">Loading...</p>
+    <div class="info" id="profile-info" style="display:none;">
+      <p><strong>Email:</strong> <span id="email"></span></p>
+      <p><strong>Username:</strong> <span id="username"></span></p>
+      <p><strong>Total Points:</strong> <span id="points"></span></p>
     </div>
-  </header>
-
-  <main class="wrap">
-    <section class="card">
-      <h1>Your profile</h1>
-      <form id="form">
-        <div class="field">
-          <label for="name">Display name</label>
-          <input id="name" type="text" placeholder="Your name" required />
-        </div>
-        <div class="actions">
-          <button id="save" type="submit" class="btn primary">Save changes</button>
-          <a class="btn" href="predict.html">Go to predictions</a>
-          <a class="btn" href="rivals.html">Open Rivals</a>
-        </div>
-      </form>
-      <div id="message" class="msg"></div>
-    </section>
-
-    <section class="card">
-      <div class="grid">
-        <div>
-          <div class="big" style="margin-bottom:6px;">Your Status</div>
-          <div class="muted" style="margin-bottom:10px;">Badges are earned from exact score predictions.</div>
-          <div style="margin-bottom:8px">
-            <span id="badgePill" class="badge-pill hide"></span>
-            <span id="badgeNone" class="muted">— none yet</span>
-          </div>
-
-          <div class="muted">
-            <div>Exact scores: <strong id="statExact">0</strong></div>
-            <div>Correct results: <strong id="statResult">0</strong></div>
-            <div>Points: <strong id="statPoints">0</strong></div>
-            <div>Season rank: <strong id="statRank">—</strong></div>
-          </div>
-
-          <div class="bar" style="margin:12px 0 6px">
-            <div id="barFill" style="width:0%"></div>
-          </div>
-          <div id="nextText" class="muted">Next milestone: ROOKIE (10) — 10 to go</div>
-        </div>
-
-        <div>
-          <div class="big" style="margin-bottom:6px;">How badges work</div>
-          <ul class="muted">
-            <li>Rookie (10), Amateur (15), Pro (20), GOAT (30) — based on total exact scores.</li>
-            <li>Badges appear next to your name on the Leaderboard.</li>
-            <li>Scoring: 5 pts exact score • 3 pts correct result.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+    <a href="leaderboard.html" class="btn">Leaderboard</a>
+    <a href="index.html" class="btn">Home</a>
   </main>
 
-  <!-- Logout -->
-  <script type="module">
-    import { supabase } from './supabase-config.js';
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const navLogout = document.getElementById('navLogout');
-      navLogout?.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        try{ await supabase.auth.signOut(); }catch{}
-        window.location.replace('login.html');
-      });
-    });
-  </script>
-
-  <!-- Profile logic -->
-  <script type="module">
-    import { supabase } from './supabase-config.js';
-
-    const $ = (id)=> document.getElementById(id);
-    const statExact   = $('statExact');
-    const statResult  = $('statResult');
-    const statPoints  = $('statPoints');
-    const statRank    = $('statRank');
-    const badgePill   = $('badgePill');
-    const badgeNone   = $('badgeNone');
-    const barFill     = $('barFill');
-    const nextText    = $('nextText');
-    const navAdmin    = $('navAdmin');
-
-    const computeBadge = (exacts)=>{
-      if (exacts >= 30) return 'goat';
-      if (exacts >= 20) return 'pro';
-      if (exacts >= 15) return 'amateur';
-      if (exacts >= 10) return 'rookie';
-      return null;
-    };
-    const nextMilestone = (exacts)=>{
-      if (exacts >= 30) return { next:null, need:0, target:30 };
-      if (exacts >= 20) return { next:'goat',    need:30 - exacts, target:30 };
-      if (exacts >= 15) return { next:'pro',     need:20 - exacts, target:20 };
-      if (exacts >= 10) return { next:'amateur', need:15 - exacts, target:15 };
-      return { next:'rookie', need:10 - (exacts||0), target:10 };
-    };
-
-    (async ()=>{
+  <script>
+    (async () => {
+      await supabase.auth.getSession();
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user){ window.location.replace('login.html'); return; }
-      const uid = session.user.id;
+      const status = document.getElementById('status');
+      const info = document.getElementById('profile-info');
 
-      // Prefill name + admin
-      try{
-        const { data: me } = await supabase
-          .from('profiles')
-          .select('display_name, is_admin')
-          .eq('id', uid)
-          .maybeSingle();
-        if (me?.display_name) $('name').value = me.display_name;
-        if (me?.is_admin) navAdmin.style.display = '';
-      }catch{}
-
-      // Season totals via RPC
-      let rec = null;
-      try{
-        const rsp = await supabase.rpc('season_progress', { uid });
-        if (!rsp.error) rec = Array.isArray(rsp.data) ? rsp.data[0] : rsp.data;
-      }catch{}
-      if (!rec){
-        try{
-          const lb = await supabase.rpc('leaderboard_v2');
-          if (!lb.error && Array.isArray(lb.data)){
-            rec = lb.data.find(r => (r.user_id||r.id) === uid) || null;
-          }
-        }catch{}
+      if (!session) {
+        status.textContent = 'Not signed in. Redirecting...';
+        setTimeout(() => window.location.replace('login.html'), 1200);
+        return;
       }
 
-      const exacts  = Number(rec?.correct_scores ?? rec?.exact_scores ?? 0);
-      const results = Number(rec?.correct_results ?? rec?.results ?? 0);
-      const points  = Number(rec?.points ?? 0);
-      const rank    = rec?.rank ?? null;
-      const badge   = rec?.badge || computeBadge(exacts);
+      const user = session.user;
+      document.getElementById('email').textContent = user.email || 'Unknown';
+      status.textContent = 'Welcome!';
+      info.style.display = 'block';
 
-      statExact.textContent  = String(exacts);
-      statResult.textContent = String(results);
-      statPoints.textContent = String(points);
-      statRank.textContent   = rank ? `#${rank}` : '—';
-
-      if (badge){
-        badgePill.textContent = String(badge).toUpperCase();
-        badgePill.classList.remove('hide');
-        badgeNone.classList.add('hide');
-      }else{
-        badgePill.classList.add('hide');
-        badgeNone.classList.remove('hide');
+      // Optional: load extra profile data from your table
+      try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (error) throw error;
+        document.getElementById('username').textContent = data.username || 'N/A';
+        document.getElementById('points').textContent = data.points || 0;
+      } catch (err) {
+        console.warn('Profile data not found, showing defaults.');
+        document.getElementById('username').textContent = 'N/A';
+        document.getElementById('points').textContent = 0;
       }
-
-      const nm = nextMilestone(exacts);
-      const pct = nm.next ? Math.round((exacts / nm.target) * 100) : 100;
-      barFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
-      nextText.textContent = nm.next
-        ? `Next milestone: ${nm.next.toUpperCase()} (${nm.target}) — ${nm.need} to go`
-        : 'You’ve reached the top badge — GOAT!';
-
-      // Save display name
-      const form = $('form');
-      const saveBtn = $('save');
-      const msg = $('message');
-      form?.addEventListener('submit', async (e)=>{
-        e.preventDefault();
-        saveBtn.disabled = true; msg.textContent = 'Saving…';
-        try{
-          const newName = $('name').value.trim();
-          const { error: uerr } = await supabase
-            .from('profiles')
-            .update({ display_name: newName })
-            .eq('id', uid);
-          if (uerr) throw uerr;
-          msg.innerHTML = '<span class="ok">Saved.</span>';
-        }catch(err){
-          msg.textContent = 'Could not save. Try again.';
-        }finally{
-          saveBtn.disabled = false;
-        }
-      });
     })();
   </script>
 </body>
