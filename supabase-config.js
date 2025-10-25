@@ -1,26 +1,30 @@
-/* supabase-config.js — UMD-compatible, no imports/exports */
-;(function () {
-  // Your actual project values:
-  const SUPABASE_URL = 'https://xxqykjiuowunwdiskhnk.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I';
+// supabase-config.js
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-  // Ensure the UMD library is loaded
-  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-    console.error('[supabase-config] Supabase UMD library not loaded before config.');
-    return;
-  }
+// ---- Public project settings ----
+// You can keep these window fallbacks if you prefer setting them elsewhere.
+const SUPABASE_URL =
+  (typeof window !== 'undefined' && window.SUPABASE_URL) ||
+  'https://xxqykjiuowunwdiskhnk.supabase.co'
 
-  // Create a client instance
-  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY =
+  (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cXlraml1b3d1bndkaXNraG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MjY0MTcsImV4cCI6MjA3MjMwMjQxN30.jdmL2nU07BwoSHxaGavnymhBpxA2HYnPOzNerR_Qa6I'
 
-  // Expose the client as window.supabase so all pages can use it
-  window.supabase = client;
+// ---- Create client (v2) ----
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-  // Optional helper for redirect URL
-  window.getEmailRedirectTo = function () {
-    return `${window.location.origin}/predict.html`;
-  };
+// Expose for non-module usage too
+if (typeof window !== 'undefined') {
+  window.supabase = supabase
+}
 
-  // Debug (you can remove this later)
-  console.log('[supabase-config] client ready:', typeof window.supabase.auth?.signInWithOtp === 'function');
-})();
+// ---- Optional helper: recommended redirect target for magic links ----
+export function getEmailRedirectTo() {
+  // Send users straight to Make Predictions after login
+  return `${window.location.origin}/predict.html`;
+}
+
+// ---- Debug ping (safe) ----
+console.log('[supabase-config] URL:', SUPABASE_URL)
+console.log('[supabase-config] Anon key present:', !!SUPABASE_ANON_KEY)
