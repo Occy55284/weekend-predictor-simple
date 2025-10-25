@@ -5,18 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign In • Weekend Predictor</title>
 
+  <!-- your styles -->
   <link rel="stylesheet" href="brand.css" />
-  <script defer src="supabase-config.js"></script>
+
+  <!-- ✅ LOAD SUPABASE LIBRARY FIRST (UMD build exposes window.supabase) -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+
+  <!-- ✅ THEN YOUR CONFIG (creates the client using the global) -->
+  <script src="supabase-config.js"></script>
 
   <style>
     :root{
-      --bg-start:#0b1220;
-      --bg-end:#0e1630;
-      --text:#e9eefc;
-      --muted:#9aa7c7;
-      --border:rgba(255,255,255,.08);
-      --accent:#8ab3ff;
-      --red-glow:#ff4d4d;
+      --bg-start:#0b1220; --bg-end:#0e1630; --text:#e9eefc; --muted:#9aa7c7;
+      --border:rgba(255,255,255,.08); --accent:#8ab3ff; --red-glow:#ff4d4d;
     }
     html,body{height:100%; margin:0;}
     body{
@@ -27,8 +29,7 @@
         linear-gradient(180deg, rgba(11,18,32,.85), rgba(14,22,48,.85)),
         url("prem-hero.jpg") center/cover no-repeat fixed;
       -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      text-align:center;
-      animation: fadeInBody .8s ease forwards; opacity:0;
+      text-align:center; animation: fadeInBody .8s ease forwards; opacity:0;
     }
     @keyframes fadeInBody { to { opacity:1; } }
 
@@ -51,7 +52,8 @@
     }
 
     .card{
-      width:100%; max-width:420px; background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      width:100%; max-width:420px;
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
       border:1px solid var(--border); backdrop-filter: blur(10px); border-radius:20px;
       padding:28px 24px; box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: rise .5s ease .2s both;
     }
@@ -80,12 +82,10 @@
     button[type="submit"]:active{ transform: translateY(1px); }
 
     .msg{min-height:22px; margin-top:6px; font-size:.95rem;}
-    .ok{color:#67f79c;}
-    .err{color:#ff8b8b;}
+    .ok{color:#67f79c;} .err{color:#ff8b8b;}
 
     .links{margin-top:16px; display:flex; gap:16px; justify-content:center; flex-wrap:wrap; font-size:.95rem;}
-    .links a{color:#9ec0ff; text-decoration:none;}
-    .links a:hover{color:#fff;}
+    .links a{color:#9ec0ff; text-decoration:none;} .links a:hover{color:#fff;}
   </style>
 </head>
 <body>
@@ -116,13 +116,10 @@
   </main>
 
   <script>
-    // Helper: build a safe redirect URL that exactly matches what you've allowed in Supabase Auth
+    // Build a redirect URL that must be whitelisted in Supabase Auth settings
     function buildRedirect(pathname) {
-      try {
-        return new URL(pathname, window.location.origin).href; // e.g., https://yourdomain/predict.html
-      } catch (_) {
-        return window.location.origin + pathname; // fallback
-      }
+      try { return new URL(pathname, window.location.origin).href; }
+      catch (_) { return window.location.origin + pathname; }
     }
 
     const form = document.getElementById('login-form');
@@ -140,13 +137,11 @@
 
       try {
         const emailRedirectTo = buildRedirect('/predict.html');
+
+        // ✅ This requires that supabase-config.js created a global `supabase` using window.supabase.createClient(...)
         const { data, error } = await supabase.auth.signInWithOtp({
           email,
-          options: {
-            emailRedirectTo,
-            // uncomment if you want accounts auto-created on first sign-in:
-            // shouldCreateUser: true
-          }
+          options: { emailRedirectTo /*, shouldCreateUser: true */ }
         });
 
         if (error) throw error;
