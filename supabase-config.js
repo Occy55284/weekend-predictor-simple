@@ -10,10 +10,10 @@
     return;
   }
 
-  // Create a *client instance*
+  // Create a client instance
   const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Expose the client as `window.supabase` so your pages can call supabase.auth...
+  // Expose the client as window.supabase so all pages can use it
   window.supabase = client;
 
   // Optional helper for redirect URL
@@ -21,7 +21,6 @@
     return `${window.location.origin}/predict.html`;
   };
 
-  // Debug (you can comment this out)
-  // console.log('[supabase-config] client ready:', typeof window.supabase.auth?.signInWithOtp === 'function');
+  // Debug (you can remove this later)
+  console.log('[supabase-config] client ready:', typeof window.supabase.auth?.signInWithOtp === 'function');
 })();
-
