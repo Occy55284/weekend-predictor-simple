@@ -7,84 +7,78 @@
 
   <link rel="stylesheet" href="brand.css" />
 
-  <!-- Load Supabase in the right order -->
+  <!-- ✅ Load Supabase in correct order -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js?v=3"></script>
 
   <style>
-    :root{ --text:#e9eefc; --muted:#9aa7c7; --border:rgba(255,255,255,.08); }
+    :root{
+      --text:#e9eefc; --muted:#9aa7c7; --border:rgba(255,255,255,.08);
+      --bg1:rgba(11,18,32,.85); --bg2:rgba(14,22,48,.85);
+    }
     html,body{height:100%;margin:0;}
     body{
       color:var(--text);
       font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,system-ui,sans-serif;
-      min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center;
-      background:linear-gradient(180deg, rgba(11,18,32,.85), rgba(14,22,48,.85)), url("prem-hero.jpg") center/cover no-repeat fixed;
+      background:linear-gradient(180deg,var(--bg1),var(--bg2)),url("prem-hero.jpg") center/cover no-repeat fixed;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+      min-height:100vh;
       -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
     }
     .card{
-      width:100%;max-width:560px;padding:28px 24px;border-radius:20px;
-      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-      border:1px solid var(--border); backdrop-filter: blur(10px);
+      width:100%;max-width:540px;padding:28px 24px;border-radius:20px;
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.05));
+      border:1px solid var(--border);backdrop-filter:blur(10px);
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
     .muted{color:var(--muted);}
-    .hidden{display:none;}
-    a.btn{display:inline-block;margin-top:14px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);text-decoration:none;color:var(--text);}
   </style>
 </head>
 <body>
   <main class="card">
     <h1>Finalizing sign-in…</h1>
     <p class="muted" id="status">Please wait a moment.</p>
-
-    <div id="signed-in" class="hidden">
-      <p>You're signed in ✅</p>
-      <a class="btn" href="leaderboard.html">Go to Leaderboard</a>
-      <a class="btn" href="profile.html" style="margin-left:8px">Profile</a>
-    </div>
-
-    <div id="not-signed" class="hidden">
-      <p>We couldn’t verify your sign-in.</p>
-      <a class="btn" href="login.html">Try again</a>
-    </div>
   </main>
 
   <script>
     (async () => {
       const status = document.getElementById('status');
-      const ok = document.getElementById('signed-in');
-      const fail = document.getElementById('not-signed');
 
-      // 1) Trigger Supabase to read magic-link tokens from URL and set session
-      // For email OTP magic links, supabase-js v2 will finalize the session when you call getSession()
       try {
+        // ⚡ Step 1: Claim the session from the magic link
         await supabase.auth.getSession();
-      } catch (e) {
-        console.warn('getSession() error:', e);
-      }
+        const { data: { session } } = await supabase.auth.getSession();
 
-      // 2) Re-check session
-      const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          status.textContent = 'You are now signed in. Redirecting…';
 
-      if (session) {
-        status.textContent = 'Signed in.';
-        ok.classList.remove('hidden');
+          // ✅ Step 2: Redirect automatically to your actual prediction page
+          // Update this if your real file name differs (e.g., predictions.html or make-picks.html)
+          setTimeout(() => {
+            window.location.replace('predictions.html');
+          }, 1000);
 
-        // OPTIONAL: If you want to auto-redirect after finalizing:
-        // window.location.replace('leaderboard.html');
-      } else {
-        status.textContent = 'Not signed in.';
-        fail.classList.remove('hidden');
-      }
-
-      // 3) Keep listening (useful if tokens arrive slightly after load)
-      supabase.auth.onAuthStateChange((_evt, sess) => {
-        if (sess) {
-          ok.classList.remove('hidden');
-          fail.classList.add('hidden');
-          status.textContent = 'Signed in.';
-          // window.location.replace('leaderboard.html');
+        } else {
+          status.textContent = 'Session not found. Redirecting to login…';
+          setTimeout(() => {
+            window.location.replace('login.html');
+          }, 1500);
         }
-      });
+
+        // ⚡ Step 3: Listen for any delayed token arrivals (just in case)
+        supabase.auth.onAuthStateChange((_event, newSession) => {
+          if (newSession) {
+            window.location.replace('predictions.html');
+          }
+        });
+
+      } catch (err) {
+        console.error('Auth error:', err);
+        status.textContent = 'Error signing in. Redirecting to login…';
+        setTimeout(() => {
+          window.location.replace('login.html');
+        }, 2000);
+      }
     })();
   </script>
 </body>
