@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=114" />
+  <link rel="stylesheet" href="brand.css?v=115" />
   <style>
     /* Remove hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
@@ -37,12 +37,6 @@
     .meta{color:#475569;font-size:.9rem}
     .grid-2{display:grid;grid-template-columns:1fr 320px;gap:16px}
     @media (max-width: 960px){ .grid-2{grid-template-columns:1fr} }
-
-    /* Debug (always visible) */
-    details.debug{margin:10px 0 14px}
-    .dbg{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#0b1220;color:#d1e0ff;
-      border-radius:12px;padding:12px;border:1px solid #1e293b;max-height:260px;overflow:auto}
-    .dbg b{color:#93c5fd}
   </style>
 </head>
 <body>
@@ -68,11 +62,6 @@
     <section class="card">
       <h1>My picks</h1>
       <div class="muted" style="margin-bottom:6px">Your selections for the current gameweek.</div>
-
-      <details class="debug" open>
-        <summary><strong>Debug</strong> (what the server returned)</summary>
-        <div class="dbg" id="debugBox">Loading…</div>
-      </details>
 
       <div id="empty" class="empty" style="display:none">No picks found for your account.</div>
 
@@ -120,7 +109,6 @@
     const empty = $('empty');
     const wrap = $('tableWrap');
     const lastUpdated = $('lastUpdated');
-    const dbg = $('debugBox');
     const navAdmin = $('navAdmin');
 
     const pad = n => String(n).padStart(2,'0');
@@ -134,12 +122,6 @@
     };
     const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
     const bool = v => v === true || v === 'true' || v === 1;
-
-    const log = (label, obj) => {
-      const safe = v => (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
-      dbg.textContent += `\n\n=== ${label} ===\n` + safe(obj);
-      console.log('[my-picks.debug]', label, obj);
-    };
 
     const pickScore = p => {
       const hg = p.home ?? p.home_goals ?? p.home_score ?? p.h ?? p.pred_home ?? null;
@@ -184,8 +166,6 @@
     }
 
     (async ()=>{
-      dbg.textContent = '';
-
       const { data:{ session } } = await supabase.auth.getSession();
       if (!session?.user){ window.location.replace('login.html'); return; }
       const uid = session.user.id;
@@ -197,7 +177,6 @@
       }catch{}
 
       const weekStart = isoDate(startOfWeek(new Date()));
-      log('Computed week_start', weekStart);
 
       // 1) Picks for this week
       const { data: picks, error: pkErr } = await supabase
@@ -207,20 +186,14 @@
         .eq('week_start', weekStart)
         .order('fixture_id', { ascending:true });
 
-      log('picks rows', { count: picks?.length ?? 0, error: pkErr?.message || null, keys: picks?.[0] ? Object.keys(picks[0]) : [] });
-
-      if (!picks?.length){ render([]); return; }
+      if (pkErr || !picks?.length){ render([]); return; }
 
       // 2) Fetch fixture details by ID
       const ids = [...new Set(picks.map(p => p.fixture_id))];
-      log('fixture ids', ids);
-
-      const { data: fixtures, error: fxErr } = await supabase
+      const { data: fixtures } = await supabase
         .from('fixtures')
         .select('id, utc_date, status, competition, matchday, home_team, away_team, home_score, away_score')
         .in('id', ids);
-
-      log('fixtures by id', { count: fixtures?.length ?? 0, error: fxErr?.message || null, keys: fixtures?.[0] ? Object.keys(fixtures[0]) : [] });
 
       const byId = new Map((fixtures || []).map(f => [String(f.id), f]));
 
