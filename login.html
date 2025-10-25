@@ -5,87 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign In • Weekend Predictor</title>
 
-  <!-- your styles -->
   <link rel="stylesheet" href="brand.css" />
 
-  <!-- ✅ LOAD SUPABASE LIBRARY FIRST (UMD build exposes window.supabase) -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <!-- ✅ Load Supabase UMD first -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
-  <!-- ✅ THEN YOUR CONFIG (creates the client using the global) -->
+  <!-- ✅ Then your Supabase config -->
   <script src="supabase-config.js"></script>
 
   <style>
     :root{
-      --bg-start:#0b1220; --bg-end:#0e1630; --text:#e9eefc; --muted:#9aa7c7;
-      --border:rgba(255,255,255,.08); --accent:#8ab3ff; --red-glow:#ff4d4d;
+      --bg-start:#0b1220; --bg-end:#0e1630; --text:#e9eefc;
+      --muted:#9aa7c7; --border:rgba(255,255,255,.08);
+      --accent:#8ab3ff; --red-glow:#ff4d4d;
     }
-    html,body{height:100%; margin:0;}
+    html,body{height:100%;margin:0;}
     body{
       color:var(--text);
-      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
-      display:flex; align-items:center; justify-content:center; min-height:100vh;
-      background:
-        linear-gradient(180deg, rgba(11,18,32,.85), rgba(14,22,48,.85)),
+      font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,system-ui,sans-serif;
+      display:flex;align-items:center;justify-content:center;min-height:100vh;
+      background:linear-gradient(180deg,rgba(11,18,32,.85),rgba(14,22,48,.85)),
         url("prem-hero.jpg") center/cover no-repeat fixed;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      text-align:center; animation: fadeInBody .8s ease forwards; opacity:0;
+      text-align:center;animation:fadeInBody .8s ease forwards;opacity:0;
     }
-    @keyframes fadeInBody { to { opacity:1; } }
+    @keyframes fadeInBody{to{opacity:1;}}
 
-    .top{position:fixed; top:24px; left:50%; transform:translateX(-50%);
-      display:flex; flex-direction:column; align-items:center; gap:14px;}
-    .logo{width:96px; height:96px; border-radius:999px; display:grid; place-items:center;
-      background:#0c1a34; border:1px solid var(--border);
-      box-shadow:0 0 25px rgba(122,164,255,.25), inset 0 0 20px rgba(122,164,255,.10);
-      animation: glowPulse 4s ease-in-out infinite;}
-    .logo img{width:64px; height:64px; object-fit:contain; border-radius:50%;}
-    .name{font-weight:800; font-size:28px; letter-spacing:.3px; text-shadow:0 0 10px var(--red-glow);
-      animation: redPulse 4s ease-in-out infinite;}
-    @keyframes glowPulse {
-      0%,100%{ box-shadow:0 0 20px rgba(122,164,255,.25), inset 0 0 20px rgba(122,164,255,.1); }
-      50%{ box-shadow:0 0 40px rgba(122,164,255,.45), inset 0 0 30px rgba(122,164,255,.2); }
-    }
-    @keyframes redPulse {
-      0%,100%{ text-shadow:0 0 10px rgba(255,77,77,.5), 0 0 20px rgba(255,77,77,.3); }
-      50%{ text-shadow:0 0 20px rgba(255,77,77,.8), 0 0 40px rgba(255,77,77,.6); }
-    }
+    .top{position:fixed;top:24px;left:50%;transform:translateX(-50%);
+      display:flex;flex-direction:column;align-items:center;gap:14px;}
+    .logo{width:96px;height:96px;border-radius:999px;display:grid;place-items:center;
+      background:#0c1a34;border:1px solid var(--border);
+      box-shadow:0 0 25px rgba(122,164,255,.25),inset 0 0 20px rgba(122,164,255,.10);
+      animation:glowPulse 4s ease-in-out infinite;}
+    .logo img{width:64px;height:64px;object-fit:contain;border-radius:50%;}
+    .name{font-weight:800;font-size:28px;letter-spacing:.3px;text-shadow:0 0 10px var(--red-glow);
+      animation:redPulse 4s ease-in-out infinite;}
+    @keyframes glowPulse{0%,100%{box-shadow:0 0 20px rgba(122,164,255,.25),inset 0 0 20px rgba(122,164,255,.1);}50%{box-shadow:0 0 40px rgba(122,164,255,.45),inset 0 0 30px rgba(122,164,255,.2);}}
+    @keyframes redPulse{0%,100%{text-shadow:0 0 10px rgba(255,77,77,.5),0 0 20px rgba(255,77,77,.3);}50%{text-shadow:0 0 20px rgba(255,77,77,.8),0 0 40px rgba(255,77,77,.6);}}
 
     .card{
-      width:100%; max-width:420px;
-      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-      border:1px solid var(--border); backdrop-filter: blur(10px); border-radius:20px;
-      padding:28px 24px; box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: rise .5s ease .2s both;
+      width:100%;max-width:420px;
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.05));
+      border:1px solid var(--border);backdrop-filter:blur(10px);border-radius:20px;
+      padding:28px 24px;box-shadow:0 10px 30px rgba(0,0,0,.35);animation:rise .5s ease .2s both;
     }
-    @keyframes rise { from{ transform:translateY(10px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
-
-    h1{margin:0 0 6px; font-size:1.7rem; font-weight:850; letter-spacing:-.01em;}
-    p.sub{margin:0 0 22px; color:var(--muted);}
-
-    form{display:grid; gap:14px; margin-top:10px;}
-    label{display:block; text-align:left; font-size:.9rem; color:#cfe0ff;}
-    input[type="email"]{
-      width:100%; padding:14px 14px; border-radius:12px; border:1px solid var(--border);
-      background:rgba(8,16,34,.6); color:var(--text); outline:none;
+    @keyframes rise{from{transform:translateY(10px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+    h1{margin:0 0 6px;font-size:1.7rem;font-weight:850;letter-spacing:-.01em;}
+    p.sub{margin:0 0 22px;color:var(--muted);}
+    form{display:grid;gap:14px;margin-top:10px;}
+    label{display:block;text-align:left;font-size:.9rem;color:#cfe0ff;}
+    input[type=\"email\"]{
+      width:100%;padding:14px 14px;border-radius:12px;border:1px solid var(--border);
+      background:rgba(8,16,34,.6);color:var(--text);outline:none;
     }
-    input[type="email"]::placeholder{ color:#a8b6d5; }
-
-    button[type="submit"]{
-      padding:14px 18px; border-radius:12px; border:1px solid var(--border);
-      background:transparent; color:var(--text); font-weight:800; cursor:pointer;
-      box-shadow:0 0 20px rgba(122,164,255,.15), inset 0 0 10px rgba(122,164,255,.1);
-      animation: glowPulse 4s ease-in-out infinite;
-      transition: box-shadow .2s ease, border-color .2s ease, transform .05s ease, opacity .2s ease;
+    input[type=\"email\"]::placeholder{color:#a8b6d5;}
+    button[type=\"submit\"]{
+      padding:14px 18px;border-radius:12px;border:1px solid var(--border);
+      background:transparent;color:var(--text);font-weight:800;cursor:pointer;
+      box-shadow:0 0 20px rgba(122,164,255,.15),inset 0 0 10px rgba(122,164,255,.1);
+      animation:glowPulse 4s ease-in-out infinite;
+      transition:box-shadow .2s ease,border-color .2s ease,transform .05s ease,opacity .2s ease;
     }
-    button[disabled]{opacity:.6; cursor:not-allowed;}
-    button[type="submit"]:hover{ border-color:#2a3a5a; box-shadow:0 0 30px rgba(122,164,255,.45), inset 0 0 20px rgba(122,164,255,.2); }
-    button[type="submit"]:active{ transform: translateY(1px); }
-
-    .msg{min-height:22px; margin-top:6px; font-size:.95rem;}
-    .ok{color:#67f79c;} .err{color:#ff8b8b;}
-
-    .links{margin-top:16px; display:flex; gap:16px; justify-content:center; flex-wrap:wrap; font-size:.95rem;}
-    .links a{color:#9ec0ff; text-decoration:none;} .links a:hover{color:#fff;}
+    button[disabled]{opacity:.6;cursor:not-allowed;}
+    button[type=\"submit\"]:hover{border-color:#2a3a5a;box-shadow:0 0 30px rgba(122,164,255,.45),inset 0 0 20px rgba(122,164,255,.2);}
+    button[type=\"submit\"]:active{transform:translateY(1px);}
+    .msg{min-height:22px;margin-top:6px;font-size:.95rem;}
+    .ok{color:#67f79c;}.err{color:#ff8b8b;}
+    .links{margin-top:16px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:.95rem;}
+    .links a{color:#9ec0ff;text-decoration:none;}.links a:hover{color:#fff;}
   </style>
 </head>
 <body>
@@ -116,42 +102,32 @@
   </main>
 
   <script>
-    // Build a redirect URL that must be whitelisted in Supabase Auth settings
-    function buildRedirect(pathname) {
-      try { return new URL(pathname, window.location.origin).href; }
-      catch (_) { return window.location.origin + pathname; }
-    }
+    function buildRedirect(pathname){try{return new URL(pathname,window.location.origin).href;}catch(_){return window.location.origin+pathname;}}
 
-    const form = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
-    const msg = document.getElementById('msg');
-    const btn = document.getElementById('send-link');
+    const form=document.getElementById('login-form');
+    const emailInput=document.getElementById('email');
+    const msg=document.getElementById('msg');
+    const btn=document.getElementById('send-link');
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit',async(e)=>{
       e.preventDefault();
-      const email = emailInput.value.trim();
-      if (!email) return;
-
-      btn.disabled = true;
-      msg.textContent = 'Sending…';
-
-      try {
-        const emailRedirectTo = buildRedirect('/predict.html');
-
-        // ✅ This requires that supabase-config.js created a global `supabase` using window.supabase.createClient(...)
-        const { data, error } = await supabase.auth.signInWithOtp({
+      const email=emailInput.value.trim();
+      if(!email)return;
+      btn.disabled=true;
+      msg.textContent='Sending…';
+      try{
+        const emailRedirectTo=buildRedirect('/predict.html');
+        const {data,error}=await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo /*, shouldCreateUser: true */ }
+          options:{emailRedirectTo}
         });
-
-        if (error) throw error;
-        console.log('OTP sent:', data);
-        msg.innerHTML = '<span class="ok">Check your inbox for the sign-in link.</span>';
-      } catch (err) {
+        if(error)throw error;
+        msg.innerHTML='<span class="ok">Check your inbox for the sign-in link.</span>';
+      }catch(err){
         console.error(err);
-        msg.innerHTML = '<span class="err">' + (err?.message || 'Could not send link.') + '</span>';
-      } finally {
-        btn.disabled = false;
+        msg.innerHTML='<span class="err">'+(err?.message||'Could not send link.')+'</span>';
+      }finally{
+        btn.disabled=false;
       }
     });
   </script>
