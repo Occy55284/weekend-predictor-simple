@@ -1,185 +1,84 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Weekend Predictor</title>
-  <meta name="description" content="Pick five featured fixtures, lock your scores, and climb the leaderboard with friends. Zero spreadsheets. Just weekend glory." />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="brand.css" />
+  <script defer src="supabase-config.js"></script>
   <style>
     :root{
-      --ink:#0b1222; --ink-2:#1c2747; --muted:#64748b; --muted-2:#94a3b8;
-      --brand:#274796; --brand-2:#1f357a; --glow:#96b4ff; --ok:#16a34a; --card:#0f172a;
-      --ring:rgba(150,180,255,.5);
+      --bg-start:#0b1220;
+      --bg-end:#0e1630;
+      --text:#e9eefc;
+      --muted:#9aa7c7;
+      --border:rgba(255,255,255,.06);
+      --accent:#8ab3ff;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --glow:#7aa4ff;
+      --red-glow:#ff4d4d;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    html,body{height:100%; margin:0;}
     body{
-      margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:#eef2ff; background:
-        radial-gradient(1200px 600px at 60% -200px, rgba(56,95,212,.25), transparent 60%),
-        radial-gradient(1000px 600px at -200px 80%, rgba(36,63,151,.35), transparent 50%),
-        linear-gradient(180deg, #0a1229 0%, #0b1531 100%);
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 800px at 80% -10%, rgba(138,179,255,.12), transparent 40%),
+                  linear-gradient(180deg, var(--bg-start), var(--bg-end));
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh;
+      animation: fadeInBody 1s ease forwards;
+      opacity: 0;
+      text-align:center;
     }
+    @keyframes fadeInBody { to { opacity: 1; } }
 
-    /* Top nav */
-    .top {position:sticky; top:0; z-index:50; backdrop-filter: blur(10px);}
-    .bar {
-      max-width:1120px; margin:0 auto; padding:16px 20px;
-      display:flex; align-items:center; justify-content:space-between;
+    .logo{
+      width:110px; height:110px; border-radius:999px; background:#0c1a34; display:grid; place-items:center;
+      border:1px solid var(--border); box-shadow:0 0 25px rgba(122,164,255,.25), inset 0 0 20px rgba(122,164,255,.1);
+      animation: fadeInUp 1.5s ease forwards, glowPulse 4s ease-in-out infinite;
+      opacity:0; margin-bottom:24px;
     }
-    .brand {display:flex; align-items:center; gap:10px; text-decoration:none; color:#fff;}
-    .badge {
-      width:34px; height:34px; border-radius:10px;
-      background:linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
-      box-shadow:0 0 0 6px rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.35);
-      display:grid; place-items:center; font-weight:900; letter-spacing:.5px;
-    }
-    .brand span{font-weight:800; letter-spacing:.2px}
+    .logo img{width:70px; height:70px; object-fit:contain; border-radius:50%;}
+    .name{font-weight:800; font-size:36px; letter-spacing:.4px; animation: fadeInUp 1.8s ease forwards, redGlowPulse 4s ease-in-out infinite;
+      opacity:0; margin-bottom:40px; color:var(--text); text-shadow:0 0 10px var(--red-glow);}
 
-    .nav {display:flex; align-items:center; gap:10px}
-    .btn {
-      display:inline-flex; align-items:center; justify-content:center; gap:8px;
-      height:44px; padding:0 16px; font-weight:700; border:1px solid rgba(255,255,255,.12);
-      background:rgba(17,24,39,.45); color:#fff; text-decoration:none; border-radius:12px;
-      transition:transform .1s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.25);
-    }
-    .btn:hover{ transform:translateY(-1px); border-color:rgba(255,255,255,.18) }
-    .btn.primary{
-      border-color:rgba(150,180,255,.35);
-      background:linear-gradient(180deg, rgba(30,58,138,.7), rgba(23,37,84,.85));
-      box-shadow: 0 6px 24px rgba(38,71,179,.45), 0 0 0 1px rgba(255,255,255,.06) inset;
-    }
-    .btn.ghost{ background:transparent }
+    @keyframes glowPulse {0%,100%{box-shadow:0 0 20px rgba(122,164,255,.25),inset 0 0 20px rgba(122,164,255,.1);}50%{box-shadow:0 0 40px rgba(122,164,255,.45),inset 0 0 30px rgba(122,164,255,.2);}}
+    @keyframes redGlowPulse {0%,100%{text-shadow:0 0 10px rgba(255,77,77,.5),0 0 20px rgba(255,77,77,.3);}50%{text-shadow:0 0 20px rgba(255,77,77,.8),0 0 40px rgba(255,77,77,.6);}}
+    @keyframes fadeInUp {0%{opacity:0;transform:translateY(20px);}100%{opacity:1;transform:translateY(0);}}
 
-    /* Hero */
-    .wrap{ max-width:1120px; margin:0 auto; padding:24px 20px 56px }
-    .hero { display:grid; grid-template-columns: 1.1fr 0.9fr; align-items:center; gap:30px; }
-    @media (max-width:960px){
-      .hero{ grid-template-columns: 1fr; padding-top:18px }
-      .mock{ order:-1 }
-    }
+    .hero{display:flex;flex-direction:column;align-items:center;max-width:720px;text-align:center;animation:fadeInUp 2s ease forwards;opacity:0;}
+    .kicker{color:var(--muted);font-weight:700;letter-spacing:.12em;font-size:12px;text-transform:uppercase;margin-bottom:18px;}
+    .title{font-size:clamp(40px,7vw,80px);line-height:1.1;font-weight:850;letter-spacing:-.02em;margin:0 0 18px;}
+    .subtitle{color:var(--muted);font-size:clamp(16px,2.2vw,20px);max-width:46ch;margin:0 0 40px;}
 
-    .kicker { color:var(--glow); font-weight:800; letter-spacing:1.2px; text-transform:uppercase; font-size:.85rem }
-    h1 { font-size: clamp(36px, 6vw, 64px); line-height:1.02; margin:6px 0 10px; letter-spacing:-.5px }
-    .lead { color:#cbd5e1; font-size: clamp(16px, 2.3vw, 20px); line-height:1.55; margin-bottom:18px; }
-    .cta { display:flex; gap:12px; flex-wrap:wrap; margin-top:10px }
-    .hint { color:var(--muted-2); font-size:.9rem; margin-top:6px }
+    .primary-cta{display:inline-block;font-weight:800;text-decoration:none;background:transparent;color:var(--text);border:1px solid var(--border);padding:16px 100px;border-radius:12px;transition:border-color .2s ease,box-shadow .2s ease;animation:glowPulse 4s ease-in-out infinite;box-shadow:0 0 20px rgba(122,164,255,.15),inset 0 0 10px rgba(122,164,255,.1);}
+    .primary-cta:hover{border-color:#2a3a5a;box-shadow:0 0 30px rgba(122,164,255,.45),inset 0 0 20px rgba(122,164,255,.2);}
 
-    /* Mock card */
-    .mock {
-      position:relative; border-radius:18px; overflow:hidden;
-      background:linear-gradient(180deg, rgba(2,6,23,.9), rgba(2,6,23,.7));
-      border:1px solid rgba(255,255,255,.07);
-      box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04) inset;
-    }
-    .mock .head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.08) }
-    .mock .title { font-weight:800; letter-spacing:.3px }
-    .mock .body { padding:14px 16px 16px }
-    .row { display:grid; grid-template-columns: 2fr 70px 70px; align-items:center; gap:10px; padding:10px 0; border-bottom:1px dashed rgba(255,255,255,.08) }
-    .row:last-child{ border-bottom:0 }
-    .fixture { color:#e5e7eb; font-weight:700 }
-    .badge { font-size:.75rem; padding:4px 8px; border-radius:999px; background:rgba(56,95,212,.16); border:1px solid rgba(150,180,255,.25) }
-    .ghost-btn { display:inline-flex; height:36px; align-items:center; justify-content:center; gap:8px; padding:0 12px; font-weight:700; border-radius:10px; background:rgba(148,163,184,.1); border:1px solid rgba(148,163,184,.25); color:#e2e8f0; text-decoration:none }
-    .footnote { color:#a3b2cc; font-size:.85rem; margin-top:14px }
-    .hide{display:none}
+    nav{margin-top:40px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
+    nav a{color:var(--accent);text-decoration:none;font-weight:600;transition:color .2s ease;}
+    nav a:hover{color:#fff;}
+
+    .foot{margin-top:48px;color:var(--muted);font-size:14px;}
+    .link{color:var(--accent);text-decoration:none;}
+    .link:hover{filter:brightness(1.15);}
   </style>
 </head>
 <body>
-  <header class="top">
-    <div class="bar">
-      <a class="brand" href="index.html">
-        <div class="badge">WP</div>
-        <span>Weekend Predictor</span>
-      </a>
-      <nav class="nav">
-        <a id="getStartedTop" class="btn primary" href="login.html">Get started</a>
-        <a id="toPredict" class="btn ghost hide" href="predict.html">Go to predictions</a>
-        <button id="navLogout" class="btn ghost hide" type="button">Logout</button>
-      </nav>
-    </div>
-  </header>
+  <div class="logo"><img src="assets/brand-logo.png" alt="Weekend Predictor Logo" /></div>
+  <div class="name">Weekend Predictor</div>
 
-  <main class="wrap">
-    <section class="hero">
-      <div>
-        <div class="kicker">Pick • Lock • Climb</div>
-        <h1>Predict 5 fixtures.<br/>Top the leaderboard.</h1>
-        <p class="lead">A clean, zero-fuss predictor for matchday weekends. Make your picks in minutes, lock them before kick-off, and chase bragging rights all season.</p>
-
-        <!-- Only one CTA button -->
-        <div class="cta">
-          <a id="ctaPrimary" class="btn primary" href="login.html">Get started</a>
-        </div>
-
-        <div class="hint">Already have an account? We’ll take you straight to your predictions.</div>
-      </div>
-
-      <div class="mock">
-        <div class="head">
-          <div class="title">This Week’s Predictions</div>
-          <span class="badge">GW • Live</span>
-        </div>
-        <div class="body">
-          <div class="row">
-            <div class="fixture">Arsenal vs Chelsea</div>
-            <div>H <span class="footnote">2</span></div>
-            <div>A <span class="footnote">1</span></div>
-          </div>
-          <div class="row">
-            <div class="fixture">Brighton vs Spurs</div>
-            <div>H <span class="footnote">1</span></div>
-            <div>A <span class="footnote">1</span></div>
-          </div>
-          <div class="row">
-            <div class="fixture">Man City vs Newcastle</div>
-            <div>H <span class="footnote">3</span></div>
-            <div>A <span class="footnote">0</span></div>
-          </div>
-          <div class="footnote">Sign in to see your fixtures and lock your picks.</div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <script type="module">
-    import { supabase } from './supabase-config.js';
-
-    (async ()=>{
-      // Check session to tailor CTAs
-      const { data: { session } } = await supabase.auth.getSession();
-      const signedIn = !!session?.user;
-
-      const el = (id)=>document.getElementById(id);
-      const getStartedTop = el('getStartedTop');
-      const toPredict = el('toPredict');
-      const navLogout = el('navLogout');
-      const ctaPrimary = el('ctaPrimary');
-
-      if (signedIn) {
-        // Logged in view
-        getStartedTop?.classList.add('hide');
-        toPredict?.classList.remove('hide');
-        navLogout?.classList.remove('hide');
-        if (ctaPrimary) ctaPrimary.href = 'predict.html';
-      } else {
-        // Logged out view
-        getStartedTop?.classList.remove('hide');
-        toPredict?.classList.add('hide');
-        navLogout?.classList.add('hide');
-        if (ctaPrimary) ctaPrimary.href = 'login.html';
-      }
-
-      // Logout
-      navLogout?.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        try{ await supabase.auth.signOut(); }catch{}
-        window.location.replace('login.html');
-      });
-    })();
-  </script>
+  <section class="hero">
+    <div class="kicker">Pick • Lock • Climb</div>
+    <h1 class="title">Predict 5 fixtures.<br/>Top the leaderboard.</h1>
+    <p class="subtitle">Make your weekend picks in minutes. Lock them before kick-off and chase bragging rights all season.</p>
+    <a class="primary-cta" href="login.html">Get started</a>
+    <nav>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="my-picks.html">My Picks</a>
+      <a href="profile.html">Profile</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+    <div class="foot">Already have an account? <a class="link" href="login.html">Sign in</a>.</div>
+  </section>
 </body>
 </html>
