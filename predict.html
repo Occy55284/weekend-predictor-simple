@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Make Predictions • Weekend Predictor</title>
+  <title>Predictions • Weekend Predictor</title>
 
   <link rel="stylesheet" href="brand.css" />
 
-  <!-- ✅ Load Supabase in correct order -->
+  <!-- Supabase in correct order -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="supabase-config.js?v=3"></script>
+  <script src="supabase-config.js?v=4"></script>
 
   <style>
     :root{
@@ -21,63 +21,88 @@
       color:var(--text);
       font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,system-ui,sans-serif;
       background:linear-gradient(180deg,var(--bg1),var(--bg2)),url("prem-hero.jpg") center/cover no-repeat fixed;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-      min-height:100vh;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center;
     }
     .card{
-      width:100%;max-width:540px;padding:28px 24px;border-radius:20px;
+      width:100%; max-width:640px; padding:28px 24px; border-radius:20px;
       background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.05));
-      border:1px solid var(--border);backdrop-filter:blur(10px);
-      box-shadow:0 10px 30px rgba(0,0,0,.35);
+      border:1px solid var(--border); backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
     }
     .muted{color:var(--muted);}
+    .hidden{display:none;}
+    a.btn{display:inline-block;margin-top:14px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);text-decoration:none;color:var(--text);}
+    a.btn:hover{border-color:#2a3a5a;}
   </style>
 </head>
 <body>
   <main class="card">
     <h1>Finalizing sign-in…</h1>
     <p class="muted" id="status">Please wait a moment.</p>
+
+    <div id="signed-in" class="hidden">
+      <p>You’re signed in ✅</p>
+      <a class="btn" href="leaderboard.html">Leaderboard</a>
+      <a class="btn" href="profile.html" style="margin-left:8px">Profile</a>
+    </div>
+
+    <div id="not-signed" class="hidden">
+      <p>We couldn’t verify your sign-in.</p>
+      <a class="btn" href="login.html">Try again</a>
+    </div>
   </main>
 
   <script>
     (async () => {
       const status = document.getElementById('status');
+      const ok = document.getElementById('signed-in');
+      const fail = document.getElementById('not-signed');
+
+      // If you later move your predictions UI to a different file,
+      // set DEST to that path. For now we stay on this page.
+      const DEST = 'predict.html';
 
       try {
-        // ⚡ Step 1: Claim the session from the magic link
+        // 1) Hydrate session from magic-link tokens
         await supabase.auth.getSession();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
-          status.textContent = 'You are now signed in. Redirecting…';
+          status.textContent = 'Signed in.';
+          ok.classList.remove('hidden');
 
-          // ✅ Step 2: Redirect automatically to your actual prediction page
-          // Update this if your real file name differs (e.g., predictions.html or make-picks.html)
-          setTimeout(() => {
-            window.location.replace('predictions.html');
-          }, 1000);
+          // If this page is NOT the final predictions UI, redirect:
+          if (DEST && DEST !== window.location.pathname.split('/').pop()) {
+            setTimeout(() => window.location.replace(DEST), 600);
+          }
 
+          // If your predictions UI has an initializer, call it:
+          if (typeof window.initPredictions === 'function') {
+            window.initPredictions(session);
+          }
         } else {
-          status.textContent = 'Session not found. Redirecting to login…';
-          setTimeout(() => {
-            window.location.replace('login.html');
-          }, 1500);
+          status.textContent = 'Not signed in.';
+          fail.classList.remove('hidden');
         }
 
-        // ⚡ Step 3: Listen for any delayed token arrivals (just in case)
-        supabase.auth.onAuthStateChange((_event, newSession) => {
-          if (newSession) {
-            window.location.replace('predictions.html');
+        // 2) Handle delayed token arrival just in case
+        supabase.auth.onAuthStateChange((_evt, sess) => {
+          if (sess) {
+            ok.classList.remove('hidden');
+            fail.classList.add('hidden');
+            status.textContent = 'Signed in.';
+            if (DEST && DEST !== window.location.pathname.split('/').pop()) {
+              window.location.replace(DEST);
+            }
+            if (typeof window.initPredictions === 'function') {
+              window.initPredictions(sess);
+            }
           }
         });
-
       } catch (err) {
         console.error('Auth error:', err);
-        status.textContent = 'Error signing in. Redirecting to login…';
-        setTimeout(() => {
-          window.location.replace('login.html');
-        }, 2000);
+        status.textContent = 'Error finalizing sign-in. Redirecting…';
+        setTimeout(() => window.location.replace('login.html'), 1200);
       }
     })();
   </script>
