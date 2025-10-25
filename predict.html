@@ -3,108 +3,290 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Predictions • Weekend Predictor</title>
-
-  <link rel="stylesheet" href="brand.css" />
-
-  <!-- Supabase in correct order -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="supabase-config.js?v=4"></script>
-
+  <title>Make Predictions • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=96" />
   <style>
-    :root{
-      --text:#e9eefc; --muted:#9aa7c7; --border:rgba(255,255,255,.08);
-      --bg1:rgba(11,18,32,.85); --bg2:rgba(14,22,48,.85);
-    }
-    html,body{height:100%;margin:0;}
-    body{
-      color:var(--text);
-      font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,system-ui,sans-serif;
-      background:linear-gradient(180deg,var(--bg1),var(--bg2)),url("prem-hero.jpg") center/cover no-repeat fixed;
-      min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center;
-    }
-    .card{
-      width:100%; max-width:640px; padding:28px 24px; border-radius:20px;
-      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.05));
-      border:1px solid var(--border); backdrop-filter: blur(10px);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-    }
-    .muted{color:var(--muted);}
-    .hidden{display:none;}
-    a.btn{display:inline-block;margin-top:14px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);text-decoration:none;color:var(--text);}
-    a.btn:hover{border-color:#2a3a5a;}
+    .wrap{max-width:960px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    .card h2{margin:0 0 10px;color:#1f357a}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{background:#f8fafc;text-transform:uppercase;font-size:.85rem;letter-spacing:.03em}
+    input[type="number"]{width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center}
+    .meta{color:#475569;font-size:.9rem;margin:6px 0 0}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .msg{margin-top:10px;font-weight:600}
+    .ok{color:#16a34a}.err{color:#b91c1c}.muted{color:#64748b}
+    .empty{padding:10px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
   </style>
+
+  <!-- Supabase client -->
+  <script type="module" src="supabase-config.js"></script>
+
+  <!-- Early logout wiring -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{ await supabase.auth.signOut(); }catch{}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
 </head>
-<body>
-  <main class="card">
-    <h1>Finalizing sign-in…</h1>
-    <p class="muted" id="status">Please wait a moment.</p>
-
-    <div id="signed-in" class="hidden">
-      <p>You’re signed in ✅</p>
-      <a class="btn" href="leaderboard.html">Leaderboard</a>
-      <a class="btn" href="profile.html" style="margin-left:8px">Profile</a>
+<body class="bg-hero">
+  <header class="top">
+    <div class="inner">
+      <a class="logo" href="index.html">WP</a>
+      <nav class="topnav">
+        <a href="predict.html" data-nav="predict" class="active">Predict</a>
+        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+        <a href="profile.html" data-nav="profile">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
     </div>
+  </header>
 
-    <div id="not-signed" class="hidden">
-      <p>We couldn’t verify your sign-in.</p>
-      <a class="btn" href="login.html">Try again</a>
-    </div>
+  <main class="wrap">
+    <section class="card">
+      <h2>This Week’s Predictions</h2>
+      <div id="weekLabel" class="meta">—</div>
+
+      <div id="empty" class="empty" style="display:none">
+        <div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>
+      </div>
+
+      <table id="table" style="display:none">
+        <thead>
+          <tr>
+            <th>Fixture</th>
+            <th style="width:120px">Home</th>
+            <th style="width:120px">Away</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="actions" style="margin-top:10px">
+        <button class="btn" id="lockBtn" type="button">Lock my picks</button>
+      </div>
+      <div id="msg" class="msg"></div>
+      <p class="meta">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.</p>
+    </section>
+
+    <section class="card">
+      <h2>Season Progress</h2>
+      <div class="meta" id="progress">—</div>
+    </section>
   </main>
 
-  <script>
-    (async () => {
-      const status = document.getElementById('status');
-      const ok = document.getElementById('signed-in');
-      const fail = document.getElementById('not-signed');
+  <script type="module">
+    import { supabase } from './supabase-config.js';
 
-      // If you later move your predictions UI to a different file,
-      // set DEST to that path. For now we stay on this page.
-      const DEST = 'predict.html';
+    // --- Elements & helpers ---
+    const $ = (sel)=>document.querySelector(sel);
+    const tbody = $('#tbody');
+    const table = $('#table');
+    const emptyBox = $('#empty');
+    const msg = $('#msg');
+    const lockBtn = $('#lockBtn');
+    const weekLabel = $('#weekLabel');
+    const progressEl = $('#progress');
 
-      try {
-        // 1) Hydrate session from magic-link tokens
-        await supabase.auth.getSession();
-        const { data: { session } } = await supabase.auth.getSession();
+    function pad(n){return String(n).padStart(2,'0')}
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
 
-        if (session) {
-          status.textContent = 'Signed in.';
-          ok.classList.remove('hidden');
+    function startOfWeek(d=new Date()){
+      const x = new Date(d);
+      const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
+      x.setHours(0,0,0,0);
+      x.setDate(x.getDate() - (day - 1));
+      return x;
+    }
+    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-          // If this page is NOT the final predictions UI, redirect:
-          if (DEST && DEST !== window.location.pathname.split('/').pop()) {
-            setTimeout(() => window.location.replace(DEST), 600);
-          }
+    const weekStart = startOfWeek(); // Monday (local time)
+    const weekEnd = addDays(weekStart, 7); // next Monday
+    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
 
-          // If your predictions UI has an initializer, call it:
-          if (typeof window.initPredictions === 'function') {
-            window.initPredictions(session);
-          }
-        } else {
-          status.textContent = 'Not signed in.';
-          fail.classList.remove('hidden');
+    // --- Auth gate ---
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
+    const user = session.user;
+
+    // Show Admin link if applicable
+    (async ()=>{
+      try{
+        const { data, error } = await supabase
+          .from('profiles').select('is_admin').eq('id', user.id).single();
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
+      }catch{}
+    })();
+
+    // --- Load fixtures (featured) for this week using utc_date bounds ---
+    async function loadFixtures(){
+      tbody.innerHTML = '';
+      msg.textContent = '';
+
+      const { data: fixtures, error } = await supabase
+        .from('fixtures')
+        .select('id, utc_date, home_team, away_team')
+        .eq('featured', true)
+        .gte('utc_date', new Date(weekStart).toISOString())
+        .lt('utc_date', new Date(weekEnd).toISOString())
+        .order('utc_date', { ascending: true });
+
+      if (error) {
+        emptyBox.style.display = 'block';
+        table.style.display = 'none';
+        emptyBox.innerHTML = `<div class="err">Could not load fixtures.</div>`;
+        console.error(error);
+        return { fixtures: [], error };
+      }
+
+      if (!fixtures || fixtures.length === 0) {
+        emptyBox.style.display = 'block';
+        table.style.display = 'none';
+        emptyBox.innerHTML = `<div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>`;
+        return { fixtures: [], error: null };
+      }
+
+      emptyBox.style.display = 'none';
+      table.style.display = '';
+
+      fixtures.forEach(fx=>{
+        const tr = document.createElement('tr');
+        tr.dataset.fixtureId = String(fx.id);
+        tr.innerHTML = `
+          <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
+          <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home"></td>
+          <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="away"></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      return { fixtures, error: null };
+    }
+
+    // --- Prefill user picks for this week from view public.picks ---
+    async function prefillPicks(){
+      const { data: picks, error } = await supabase
+        .from('picks')
+        .select('fixture_id, home, away')
+        .eq('user_id', user.id)
+        .eq('week_start', isoDate(weekStart));
+
+      if (error) { console.error(error); return; }
+
+      const map = new Map((picks||[]).map(p=>[String(p.fixture_id), p]));
+      [...tbody.querySelectorAll('tr')].forEach(tr=>{
+        const fid = tr.dataset.fixtureId;
+        const p = map.get(String(fid));
+        if (p){
+          tr.querySelector('input[data-k="home"]').value = p.home ?? '';
+          tr.querySelector('input[data-k="away"]').value = p.away ?? '';
+        }
+      });
+    }
+
+    function readPayload(){
+      const rows = [...tbody.querySelectorAll('tr')];
+      return rows.map(tr=>{
+        const fid = String(tr.dataset.fixtureId);
+        const home = Number(tr.querySelector('input[data-k="home"]').value || 0);
+        const away = Number(tr.querySelector('input[data-k="away"]').value || 0);
+        return { fixture_id: fid, home_goals: home, away_goals: away };
+      });
+    }
+
+    function disableInputs(){
+      [...tbody.querySelectorAll('input')].forEach(i=>i.disabled = true);
+      lockBtn.disabled = true;
+    }
+
+    // --- NEW: Enforce lock state on UI if already locked this week ---
+    async function enforceLockUI() {
+      const { data: lockRow, error } = await supabase
+        .from('pick_locks')
+        .select('locked_at, week_start')
+        .eq('user_id', user.id)
+        .eq('week_start', isoDate(weekStart))
+        .maybeSingle();
+
+      if (error) {
+        console.error('lock check error', error);
+        return;
+      }
+
+      if (lockRow) {
+        // Disable all inputs + lock button, show message
+        disableInputs();
+        const ts = lockRow.locked_at ? new Date(lockRow.locked_at).toLocaleString() : '';
+        msg.innerHTML = `<span class="muted">Locked on ${ts}. Changes are disabled.</span>`;
+      }
+    }
+
+    // --- Lock flow: save predictions, then lock the week ---
+    lockBtn.addEventListener('click', async ()=>{
+      lockBtn.disabled = true; msg.textContent = 'Locking…';
+      try{
+        const payload = readPayload().map(p => ({
+          user_id: user.id,
+          fixture_id: p.fixture_id,
+          home_goals: p.home_goals,
+          away_goals: p.away_goals
+        }));
+
+        if (!payload.length){
+          msg.innerHTML = '<span class="err">No fixtures to lock.</span>';
+          lockBtn.disabled = false;
+          return;
         }
 
-        // 2) Handle delayed token arrival just in case
-        supabase.auth.onAuthStateChange((_evt, sess) => {
-          if (sess) {
-            ok.classList.remove('hidden');
-            fail.classList.add('hidden');
-            status.textContent = 'Signed in.';
-            if (DEST && DEST !== window.location.pathname.split('/').pop()) {
-              window.location.replace(DEST);
-            }
-            if (typeof window.initPredictions === 'function') {
-              window.initPredictions(sess);
-            }
-          }
-        });
-      } catch (err) {
-        console.error('Auth error:', err);
-        status.textContent = 'Error finalizing sign-in. Redirecting…';
-        setTimeout(() => window.location.replace('login.html'), 1200);
+        // 1) Save into base table: predictions
+        const { error: upErr } = await supabase
+          .from('predictions')
+          .upsert(payload, { onConflict: 'user_id,fixture_id' });
+        if (upErr) throw upErr;
+
+        // 2) Lock the week
+        const { error: lockErr } = await supabase
+          .from('pick_locks')
+          .upsert({ user_id: user.id, week_start: isoDate(weekStart) }, { onConflict: 'user_id,week_start' });
+        if (lockErr) throw lockErr;
+
+        msg.innerHTML = '<span class="ok">Your picks are saved and locked for this week.</span>';
+        disableInputs();
+      } catch(e){
+        console.error(e);
+        msg.innerHTML = '<span class="err">Could not lock picks.</span>';
+        lockBtn.disabled = false;
+      }
+    });
+
+    // --- Season progress via RPC (non-blocking) ---
+    (async ()=>{
+      try{
+        const { data: totals } = await supabase.rpc('season_progress', { uid: user.id });
+        if (totals?.points != null){
+          const s = Array.isArray(totals) ? totals[0] : totals;
+          progressEl.textContent = `Points: ${s.points ?? 0} • Rank: ${s.rank ?? '—'}`;
+        } else {
+          progressEl.textContent = `Track your points as results roll in.`;
+        }
+      }catch{
+        progressEl.textContent = `Track your points as results roll in.`;
       }
     })();
+
+    // --- Boot ---
+    const { fixtures } = await loadFixtures();
+    if (fixtures && fixtures.length) await prefillPicks();
+    await enforceLockUI();   // <- check & freeze if already locked
   </script>
 </body>
 </html>
