@@ -89,7 +89,7 @@
     </section>
   </main>
 
-  <!-- Logout wiring -->
+  <!-- 🚪 Logout wiring -->
   <script type="module">
     import { supabase } from './supabase-config.js'
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -102,7 +102,7 @@
     });
   </script>
 
-  <!-- Page logic -->
+  <!-- 📊 Page logic -->
   <script type="module">
     import { supabase } from './supabase-config.js'
 
@@ -148,7 +148,7 @@
       // If no rank in data, compute dense rank by points desc
       const sorted = [...rows].sort((a,b)=>(b.points??0)-(a.points??0))
       let rank = 0, prev = null
-      return sorted.map((r, idx) => {
+      return sorted.map((r) => {
         if (prev === null || (r.points??0) !== prev) { rank += 1; prev = (r.points??0) }
         return { ...r, rank }
       })
@@ -164,6 +164,13 @@
         results: Number(r.results ?? r.correct_result ?? 0),
         rank: r.rank ?? null
       }))
+    }
+
+    function escapeHtml(s='') {
+      return String(s)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#39;')
     }
 
     function render(rows) {
@@ -191,13 +198,6 @@
         tbody.appendChild(tr)
       })
       status.textContent = ''
-    }
-
-    function escapeHtml(s='') {
-      return String(s)
-        .replaceAll('&','&amp;').replaceAll('<','&lt;')
-        .replaceAll('>','&gt;').replaceAll('"','&quot;')
-        .replaceAll("'",'&#39;')
     }
 
     function filterRows(all, q) {
@@ -252,7 +252,7 @@
       emptyEl.style.display = 'block'
     }
 
-    // Search
+    // 🔎 Search
     searchI.addEventListener('input', () => {
       const q = searchI.value
       const rows = filterRows(allRows, q)
