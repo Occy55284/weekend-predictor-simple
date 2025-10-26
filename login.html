@@ -19,6 +19,11 @@
     .footer { margin-top: 18px; font-size: 12px; opacity: .7; text-align: center; }
     a { color:#8ecaff; }
   </style>
+
+  <!-- Auto-redirect returning users (handled here and in auth.js) -->
+  <script type="module">
+    import './auth.js'
+  </script>
 </head>
 <body>
   <div class="wrap">
@@ -32,13 +37,12 @@
     <div id="msg" class="msg"></div>
 
     <div class="footer">
-      Having trouble? <a href="./index.html">Go back</a>
+      <a href="./index.html">Back to home</a>
     </div>
   </div>
 
   <script type="module">
     import { supabase } from './supabase-config.js'
-    import './auth.js' // boot + onAuthStateChange (safe to include here too)
 
     const emailInput = document.getElementById('email')
     const sendBtn = document.getElementById('send')
@@ -53,7 +57,7 @@
       }
       sendBtn.disabled = true
 
-      // Land the user directly on predict.html after the link is clicked
+      // Make the magic link land directly on predict.html
       const emailRedirectTo = `${location.origin}/predict.html`
 
       const { error } = await supabase.auth.signInWithOtp({
