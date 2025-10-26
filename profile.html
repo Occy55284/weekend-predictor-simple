@@ -168,4 +168,114 @@
       } catch {}
       if (!teams.length) {
         teams = [
-          'Arsenal','Aston Vi
+          'Arsenal','Aston Villa','Bournemouth','Brentford','Brighton',
+          'Chelsea','Crystal Palace','Everton','Fulham','Ipswich',
+          'Leicester','Liverpool','Man City','Man United','Newcastle',
+          'Nottingham Forest','Southampton','Spurs','West Ham','Wolves'
+        ]
+      }
+      // Fill the select
+      const current = teamEl.value
+      teamEl.innerHTML = '<option value="">— Select a team —</option>' +
+        teams.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
+      if (current) teamEl.value = current
+    }
+
+    function escapeHtml(s='') {
+      return String(s)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#39;')
+    }
+
+    async function loadProfile() {
+      status.textContent = 'Loading your profile…'
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name, team')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error(error)
+        status.innerHTML = '<span class="err">Could not load profile.</span>'
+        return
+      }
+
+      if (data) {
+        nameEl.value = data.display_name ?? ''
+        teamEl.value = data.team ?? ''
+      } else {
+        // no row yet — keep empty form
+      }
+
+      status.textContent = ''
+    }
+
+    async function loadOverview() {
+      try {
+        // Prefer an RPC if you have it
+        const { data } = await supabase.rpc('season_progress', { uid: user.id })
+        if (Array.isArray(data) && data.length) {
+          ptsEl.textContent = data[0].points ?? 0
+          rankEl.textContent = data[0].rank ?? '—'
+        } else if (data && typeof data === 'object') {
+          ptsEl.textContent = data.points ?? 0
+          rankEl.textContent = data.rank ?? '—'
+        } else {
+          // Fallback: try a view called leaderboard for this user
+          const { data: lb } = await supabase
+            .from('leaderboard')
+            .select('points, rank')
+            .eq('user_id', user.id)
+            .maybeSingle()
+          ptsEl.textContent = lb?.points ?? '—'
+          rankEl.textContent = lb?.rank ?? '—'
+        }
+      } catch {
+        ptsEl.textContent = '—'
+        rankEl.textContent = '—'
+      }
+    }
+
+    async function saveProfile() {
+      const display_name = nameEl.value.trim()
+      const team = teamEl.value.trim()
+
+      if (!display_name) {
+        status.innerHTML = '<span class="err">Please enter a display name.</span>'
+        return
+      }
+
+      saveBtn.disabled = true
+      status.textContent = 'Saving…'
+
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(
+          { id: user.id, display_name, team },
+          { onConflict: 'id' }
+        )
+
+      if (error) {
+        console.error(error)
+        status.innerHTML = '<span class="err">Could not save your profile.</span>'
+        saveBtn.disabled = false
+        return
+      }
+
+      status.innerHTML = '<span class="ok">Profile saved.</span>'
+      saveBtn.disabled = false
+    }
+
+    // Wire up
+    saveBtn.addEventListener('click', saveProfile)
+    resetBtn.addEventListener('click', loadProfile)
+
+    // Boot
+    await populateTeams()
+    await loadProfile()
+    await loadOverview()
+  </script>
+</body>
+</html>
