@@ -1,47 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Leaderboard • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=90" />
-  <style>
-    .wrap{max-width:1100px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
-          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
-    h1{margin:0 0 8px;color:#1f357a}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .tabs{display:flex;gap:6px;flex-wrap:wrap}
-    .tab{padding:6px 10px;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;font-weight:700;cursor:pointer}
-    .tab.active{background:#e0e7ff;border-color:#93c5fd;color:#1f357a}
-    .meta{color:#475569;font-size:.9rem}
-    .note{color:#1f2937;font-size:.9rem;margin-top:6px}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
-    th{background:#f8fafc;text-transform:uppercase;font-size:.82rem;letter-spacing:.03em}
-    .rank{width:60px;text-align:center;font-weight:800}
-    .name{font-weight:700}
-    .pts{font-weight:800}
-    .ghost{background:transparent;border:1px solid #cbd5e1;border-radius:10px;height:38px;padding:0 12px;font-weight:700}
-    .range{height:38px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 8px}
-    .badge{border-radius:999px;padding:2px 8px;font-size:.75rem;font-weight:700;display:inline-block;margin-left:8px;vertical-align:middle}
-    .badge.rookie{background:#cdd5f0;color:#1f357a}
-    .badge.amateur{background:#5c7ddf;color:#fff}
-    .badge.pro{background:linear-gradient(135deg,#1f357a,#2c4ba8);color:#fff}
-    .badge.goat{background:linear-gradient(135deg,#2c4ba8,#7c3aed);color:#fff;box-shadow:0 0 8px rgba(124,58,237,.4)}
-  </style>
-  <script type="module" src="supabase-config.js"></script>
+  <link rel="stylesheet" href="brand.css?v=96" />
+
+  <!-- ✅ Early auth gate: redirect signed-out users before paint -->
   <script type="module">
-    import { supabase } from './supabase-config.js';
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const navLogout = document.getElementById('navLogout');
-      navLogout?.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        try{ await supabase.auth.signOut(); }catch{}
-        window.location.replace('login.html');
-      });
-    });
+    import { supabase } from './supabase-config.js'
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      window.location.replace('login.html')
+      throw new Error('Redirecting to login')
+    }
   </script>
+
+  <style>
+    .wrap{max-width:960px;margin:0 auto;padding:16px}
+    .card{
+      background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+      box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin:16px 0
+    }
+    .card h2{margin:0 0 10px;color:#1f357a}
+    .meta{color:#475569;font-size:.92rem;margin:6px 0 0}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+    .toolbar input[type="search"]{
+      flex:1 1 220px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px;
+    }
+    .status{margin-top:8px; font-weight:600}
+    .ok{color:#16a34a}.err{color:#b91c1c}.muted{color:#64748b}
+
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{
+      background:#f8fafc;text-transform:uppercase;font-size:.8rem;letter-spacing:.03em;color:#475569
+    }
+    tbody tr.me{background:#fff7ed} /* highlight current user */
+    .rank{font-weight:800;color:#0f172a}
+    .name{font-weight:700}
+    .team{color:#475569}
+    .points{font-weight:800}
+    .small{font-size:.9rem;color:#64748b}
+    .empty{padding:12px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;margin-top:10px}
+  </style>
 </head>
 <body class="bg-hero">
   <header class="top">
@@ -59,26 +61,27 @@
 
   <main class="wrap">
     <section class="card">
-      <h1>Leaderboard</h1>
-      <div class="controls">
-        <div class="tabs">
-          <button id="tabWeek" class="tab active" type="button">This week</button>
-          <button id="tabSeason" class="tab" type="button">Season</button>
-        </div>
-        <input id="range" class="range" type="week" />
-        <button id="refreshBtn" class="ghost" type="button">Refresh</button>
-        <div class="meta" id="lastUpdated">—</div>
+      <h2>Season Leaderboard</h2>
+      <div class="meta" id="subtitle">Live season standings</div>
+
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search by name or team…" />
       </div>
-      <div class="note">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result</div>
-      <div class="meta" id="status" style="margin-top:6px;">—</div>
-      <table>
+
+      <div id="status" class="status muted">Loading leaderboard…</div>
+
+      <div id="empty" class="empty" style="display:none">
+        No leaderboard data yet. Once games are scored, standings will appear here.
+      </div>
+
+      <table id="table" style="display:none">
         <thead>
           <tr>
-            <th class="rank">#</th>
+            <th style="width:72px">Rank</th>
             <th>Player</th>
-            <th style="width:160px">Correct scores</th>
-            <th style="width:170px">Correct results</th>
-            <th style="width:110px">Points</th>
+            <th style="width:200px">Team</th>
+            <th style="width:120px">Points</th>
+            <th style="width:160px">Breakdown</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -86,61 +89,175 @@
     </section>
   </main>
 
+  <!-- Logout wiring -->
   <script type="module">
-    import { supabase } from './supabase-config.js';
-    (async ()=>{
+    import { supabase } from './supabase-config.js'
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
+
+  <!-- Page logic -->
+  <script type="module">
+    import { supabase } from './supabase-config.js'
+
+    const $ = (s)=>document.querySelector(s)
+    const tbody   = $('#tbody')
+    const table   = $('#table')
+    const emptyEl = $('#empty')
+    const status  = $('#status')
+    const searchI = $('#search')
+
+    // Get current user (safe since we gated early)
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session.user
+
+    // Show Admin link if applicable
+    ;(async ()=>{
       try{
-        const { data:{ session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
-        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
-        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
+        const { data, error } = await supabase
+          .from('profiles').select('is_admin').eq('id', user.id).single()
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = ''
       }catch{}
     })();
 
-    const tbody = document.getElementById('tbody');
-    const statusEl = document.getElementById('status');
-    const tabWeek = document.getElementById('tabWeek');
-    const tabSeason = document.getElementById('tabSeason');
-    const rangeEl = document.getElementById('range');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const lastUpdatedEl = document.getElementById('lastUpdated');
+    // ---- Data loaders ----
 
-    function pad(n){return String(n).padStart(2,'0')}
-    function startOfWeek(d=new Date()){ const x=new Date(d); const day=x.getDay()===0?7:x.getDay(); x.setHours(0,0,0,0); x.setDate(x.getDate()-(day-1)); return x; }
-    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
-    function fmt(n){ return new Intl.NumberFormat().format(n||0) }
-
-    let currentTab = 'week';
-    function setTab(t){ currentTab=t; tabWeek.classList.toggle('active',t==='week'); tabSeason.classList.toggle('active',t==='season'); }
-    function renderRows(rows){
-      tbody.innerHTML='';
-      if(!rows?.length){ tbody.innerHTML = `<tr><td colspan="5" class="meta">No data to show.</td></tr>`; return; }
-      rows.forEach((r,i)=>{
-        const badge = r.badge && String(r.badge).toLowerCase();
-        const nameHtml = badge ? `${r.display_name||'—'} <span class="badge ${badge}">${badge.toUpperCase()}</span>` : `${r.display_name||'—'}`;
-        const tr=document.createElement('tr');
-        tr.innerHTML = `<td class="rank">${i+1}</td><td class="name">${nameHtml}</td><td>${fmt(r.correct_scores)}</td><td>${fmt(r.correct_results)}</td><td class="pts">${fmt(r.points)}</td>`;
-        tbody.appendChild(tr);
-      });
+    // Try a view first: public.leaderboard
+    async function loadFromView() {
+      // Expecting columns like:
+      // user_id, display_name, team, points, exacts, results, rank (rank optional)
+      return await supabase
+        .from('leaderboard')
+        .select('user_id, display_name, team, points, exacts, results, rank')
+        .order('points', { ascending: false })
+        .limit(200)
     }
 
-    async function fetchSeason(){ const { data, error } = await supabase.rpc('leaderboard_v2'); if (error) throw error; return data||[]; }
-    async function fetchWeek(weekStart){ const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) }); if (error) throw error; return data||[]; }
-
-    async function load(which){
-      setTab(which); statusEl.textContent='Loading…'; tbody.innerHTML='';
-      const ws = rangeEl.valueAsDate ? startOfWeek(rangeEl.valueAsDate) : startOfWeek(new Date());
-      try{
-        const rows = which==='week' ? await fetchWeek(ws) : await fetchSeason();
-        renderRows(rows); statusEl.textContent=''; lastUpdatedEl.textContent=`Updated ${new Date().toLocaleTimeString()}`;
-      }catch(e){ console.error(e); statusEl.textContent='Could not load leaderboard.'; }
+    // Fallback: RPC season_leaderboard() returning rows with same-ish shape
+    async function loadFromRpc() {
+      return await supabase.rpc('season_leaderboard')
     }
 
-    refreshBtn.addEventListener('click', ()=>load(currentTab));
-    tabWeek.addEventListener('click', ()=>load('week'));
-    tabSeason.addEventListener('click', ()=>load('season'));
+    function computeDenseRanks(rows) {
+      // If no rank in data, compute dense rank by points desc
+      const sorted = [...rows].sort((a,b)=>(b.points??0)-(a.points??0))
+      let rank = 0, prev = null
+      return sorted.map((r, idx) => {
+        if (prev === null || (r.points??0) !== prev) { rank += 1; prev = (r.points??0) }
+        return { ...r, rank }
+      })
+    }
 
-    await load('week');
+    function normaliseRows(rows) {
+      return rows.map(r => ({
+        user_id: r.user_id ?? r.id ?? r.uid ?? null,
+        display_name: r.display_name ?? r.name ?? r.player ?? '—',
+        team: r.team ?? r.club ?? '',
+        points: Number(r.points ?? r.total_points ?? 0),
+        exacts: Number(r.exacts ?? r.exact ?? r.correct_exact ?? 0),
+        results: Number(r.results ?? r.correct_result ?? 0),
+        rank: r.rank ?? null
+      }))
+    }
+
+    function render(rows) {
+      tbody.innerHTML = ''
+      if (!rows.length) {
+        table.style.display = 'none'
+        emptyEl.style.display = 'block'
+        status.textContent = ''
+        return
+      }
+      emptyEl.style.display = 'none'
+      table.style.display = ''
+
+      const me = user.id
+      rows.forEach(r => {
+        const tr = document.createElement('tr')
+        if (r.user_id === me) tr.classList.add('me')
+        tr.innerHTML = `
+          <td class="rank">#${r.rank}</td>
+          <td><span class="name">${escapeHtml(r.display_name)}</span></td>
+          <td><span class="team">${escapeHtml(r.team || '')}</span></td>
+          <td class="points">${r.points}</td>
+          <td class="small">Exacts: ${r.exacts ?? 0} • Results: ${r.results ?? 0}</td>
+        `
+        tbody.appendChild(tr)
+      })
+      status.textContent = ''
+    }
+
+    function escapeHtml(s='') {
+      return String(s)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#39;')
+    }
+
+    function filterRows(all, q) {
+      if (!q) return all
+      const needle = q.trim().toLowerCase()
+      return all.filter(r =>
+        (r.display_name || '').toLowerCase().includes(needle) ||
+        (r.team || '').toLowerCase().includes(needle)
+      )
+    }
+
+    // ---- Boot ----
+    let allRows = []
+    try {
+      status.textContent = 'Loading leaderboard…'
+
+      // 1) Try view
+      let rows = []
+      let { data: viewRows, error: viewErr } = await loadFromView()
+      if (viewErr) {
+        console.warn('leaderboard view error', viewErr)
+      }
+      if (viewRows && viewRows.length) {
+        rows = normaliseRows(viewRows)
+        if (!rows[0].rank) rows = computeDenseRanks(rows)
+      } else {
+        // 2) Fallback to RPC
+        const { data: rpcRows, error: rpcErr } = await loadFromRpc()
+        if (rpcErr) {
+          console.warn('leaderboard rpc error', rpcErr)
+        }
+        if (rpcRows && rpcRows.length) {
+          rows = normaliseRows(rpcRows)
+          if (!rows[0].rank) rows = computeDenseRanks(rows)
+        }
+      }
+
+      if (!rows.length) {
+        emptyEl.style.display = 'block'
+        table.style.display = 'none'
+        status.textContent = ''
+        allRows = []
+        return
+      }
+
+      allRows = rows
+      render(allRows)
+    } catch (e) {
+      console.error(e)
+      status.innerHTML = '<span class="err">Could not load leaderboard.</span>'
+      table.style.display = 'none'
+      emptyEl.style.display = 'block'
+    }
+
+    // Search
+    searchI.addEventListener('input', () => {
+      const q = searchI.value
+      const rows = filterRows(allRows, q)
+      render(rows)
+    })
   </script>
 </body>
 </html>
