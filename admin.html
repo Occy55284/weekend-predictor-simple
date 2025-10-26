@@ -1,303 +1,312 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=60" />
+  <link rel="stylesheet" href="brand.css?v=96" />
+
+  <!-- ✅ Early auth + admin-only gate -->
+  <script type="module">
+    import { supabase } from './supabase-config.js'
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      window.location.replace('login.html')
+      throw new Error('Redirecting to login')
+    }
+    const { data, error } = await supabase
+      .from('profiles').select('is_admin').eq('id', session.user.id).single()
+    if (error || !data?.is_admin) {
+      window.location.replace('predict.html')
+      throw new Error('Not an admin')
+    }
+  </script>
+
   <style>
-    .wrap{max-width:1000px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin:16px 0}
     .card h2{margin:0 0 10px;color:#1f357a}
-    .row-actions{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{background:#28428f;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .meta{font-size:.9rem;color:#475569}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
-    th{background:#f8fafc;text-transform:uppercase;font-size:.85rem;letter-spacing:.03em}
+
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0 14px}
+    .btn{padding:10px 14px;border:1px solid #1f357a;background:#1f357a;color:#fff;border-radius:10px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:#fff;color:#1f357a}
+    .btn.ghost{background:#fff;border-color:#cbd5e1;color:#0f172a}
+    .counter{margin-left:auto;color:#475569;font-weight:700}
     .muted{color:#64748b}
-    .count{font-weight:800;color:#1f357a}
-    .list{list-style:none;margin:8px 0 0;padding:0}
-    .list li{padding:6px 0;border-bottom:1px dashed #e5e7eb}
-    .small{font-size:.95rem}
-    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#ecfeff;color:#164e63;font-weight:800;font-size:.8rem}
-    .errors{background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:10px;display:none}
-    .errors pre{white-space:pre-wrap;margin:0}
+    .status{margin-top:8px;font-weight:700}
+    .ok{color:#16a34a}.err{color:#b91c1c}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{background:#f8fafc;text-transform:uppercase;font-size:.8rem;letter-spacing:.03em;color:#475569}
+    td.center, th.center{text-align:center}
+    .featured-row{background:#f7fee7}
+    .small{font-size:.9rem;color:#64748b}
   </style>
 </head>
-<body>
-  <!-- Top nav -->
-  <nav class="topnav">
-    <a href="predict.html" data-nav="predict">Predict</a>
-    <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-    <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-    <a href="profile.html" data-nav="profile">Profile</a>
-    <a href="admin.html" class="active" data-nav="admin">Admin</a>
-    <button class="logout" id="navLogout">Logout</button>
-  </nav>
+<body class="bg-hero">
+  <header class="top">
+    <div class="inner">
+      <a class="logo" href="index.html">WP</a>
+      <nav class="topnav">
+        <a href="predict.html" data-nav="predict">Predict</a>
+        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+        <a href="profile.html" data-nav="profile">Profile</a>
+        <a href="admin.html" data-nav="admin" class="active">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
+    </div>
+  </header>
 
   <main class="wrap">
-    <!-- Header -->
-    <section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <div>
-        <h2>Admin Dashboard</h2>
-        <div class="meta">Week of <span id="weekLabel">—</span></div>
-      </div>
-      <div class="row-actions">
-        <button id="lockBtn" class="btn">Lock Week for Everyone</button>
-      </div>
-    </section>
-
-    <!-- Featured fixtures -->
     <section class="card">
-      <h2>Pick This Week’s Featured Fixtures</h2>
-      <p class="meta">Select <b>exactly 5</b> fixtures for players to predict. Then click <b>Save Featured</b>.</p>
+      <h2>Feature This Week’s 5 Fixtures</h2>
+      <div class="small muted" id="weekLabel">—</div>
 
-      <div class="row-actions" style="margin:8px 0 10px">
-        <span class="pill">Selected: <span id="selectedCount">0</span>/5</span>
-        <button id="saveFeaturedBtn" class="btn" disabled>Save Featured</button>
-        <span id="saveStatus" class="meta"></span>
+      <div class="toolbar">
+        <button id="prevWeek" class="btn ghost" type="button">⟵ Prev week</button>
+        <button id="thisWeek" class="btn ghost" type="button">This week</button>
+        <button id="nextWeek" class="btn ghost" type="button">Next week ⟶</button>
+
+        <button id="refresh" class="btn secondary" type="button">Refresh</button>
+        <button id="save" class="btn" type="button">Save featured</button>
+
+        <div id="selCount" class="counter">Selected: 0 / 5</div>
       </div>
 
-      <table>
+      <table id="table" style="display:none">
         <thead>
           <tr>
-            <th>Pick</th>
-            <th>Date (UTC)</th>
+            <th class="center" style="width:60px">Pick</th>
+            <th style="width:180px">Date/Time</th>
             <th>Fixture</th>
-            <th>Status / Result</th>
+            <th style="width:120px">Current</th>
           </tr>
         </thead>
-        <tbody id="fixturesBody">
-          <tr><td colspan="4" class="muted">Loading fixtures…</td></tr>
-        </tbody>
+        <tbody id="tbody"></tbody>
       </table>
-    </section>
 
-    <!-- Submissions (ONLY those who picked) -->
-    <section class="card">
-      <h2>Who Has Submitted Picks (This Week)</h2>
-      <div class="meta" id="subsMeta">Loading…</div>
-      <ul class="list" id="listPicked"></ul>
-    </section>
+      <div id="empty" class="small muted" style="display:none">
+        No fixtures found for this week. Add fixtures first, then feature 5 of them here.
+      </div>
 
-    <!-- Error box (so “loading” doesn’t hang silently) -->
-    <section class="card errors" id="errorBox">
-      <strong>Errors</strong>
-      <pre id="errorText"></pre>
+      <div id="status" class="status muted">Loading…</div>
     </section>
   </main>
 
-  <script type="module" src="supabase-config.js"></script>
+  <!-- 🚪 Logout wiring -->
   <script type="module">
-    import { supabase } from './supabase-config.js';
+    import { supabase } from './supabase-config.js'
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
 
-    // ---------- Utilities ----------
-    const $ = (id)=>document.getElementById(id);
-    const fixturesBody = $('fixturesBody');
-    const saveBtn = $('saveFeaturedBtn');
-    const saveStatus = $('saveStatus');
-    const selectedCountEl = $('selectedCount');
-    const listPicked = $('listPicked');
-    const subsMeta = $('subsMeta');
-    const lockBtn = $('lockBtn');
-    const weekLabel = $('weekLabel');
-    const errorBox = $('errorBox');
-    const errorText = $('errorText');
+  <!-- 🧠 Page logic -->
+  <script type="module">
+    import { supabase } from './supabase-config.js'
 
-    function showError(e){
-      console.error(e);
-      errorText.textContent = String(e?.message || e);
-      errorBox.style.display = 'block';
+    // Elements
+    const tbody = document.getElementById('tbody')
+    const table = document.getElementById('table')
+    const empty = document.getElementById('empty')
+    const status = document.getElementById('status')
+    const weekLabel = document.getElementById('weekLabel')
+    const selCount = document.getElementById('selCount')
+    const btnPrev = document.getElementById('prevWeek')
+    const btnNext = document.getElementById('nextWeek')
+    const btnThis = document.getElementById('thisWeek')
+    const btnRefresh = document.getElementById('refresh')
+    const btnSave = document.getElementById('save')
+
+    // Helpers
+    function pad(n){return String(n).padStart(2,'0')}
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+    function startOfWeek(d=new Date()){
+      const x = new Date(d)
+      const day = x.getDay() === 0 ? 7 : x.getDay() // Mon=1..Sun=7
+      x.setHours(0,0,0,0)
+      x.setDate(x.getDate() - (day - 1))
+      return x
+    }
+    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+
+    let currentWeekStart = startOfWeek()
+    const maxFeatured = 5
+    let currentRows = [] // rows loaded for week
+
+    function formatDateTime(iso){
+      try{
+        const d = new Date(iso)
+        return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`
+      }catch{ return iso }
     }
 
-    function startOfWeekUTC(d=new Date()){
-      // Monday 00:00 UTC .. next Monday 00:00 UTC
-      const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-      const dow = dt.getUTCDay(); // 0..6, 1=Mon
-      const offset = dow === 0 ? -6 : 1 - dow;
-      dt.setUTCDate(dt.getUTCDate() + offset);
-      return dt;
-    }
-    function isoDate(d){ return d.toISOString().slice(0,10); }
-
-    let weekStart, weekEnd;
-    function setWeekWindow(){
-      weekStart = startOfWeekUTC(new Date());
-      weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate()+7);
-      weekLabel.textContent = `${weekStart.toUTCString().slice(0,16)} — ${new Date(weekEnd-1).toUTCString().slice(0,16)}`;
+    function updateWeekLabel(){
+      const end = addDays(currentWeekStart, 6)
+      weekLabel.textContent = `Week of ${currentWeekStart.toLocaleDateString()} (Mon–Sun) • Range: ${currentWeekStart.toLocaleDateString()} – ${end.toLocaleDateString()}`
     }
 
-    function updateSelectedCounter(){
-      const n = document.querySelectorAll('.feat:checked').length;
-      selectedCountEl.textContent = n;
-      saveBtn.disabled = (n !== 5);
+    function selectedIds(){
+      return [...tbody.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value)
+    }
+    function updateCounter(){
+      const n = selectedIds().length
+      selCount.textContent = `Selected: ${n} / ${maxFeatured}`
     }
 
-    // ---------- Data ----------
-    let fixtures = [];
-
-    async function secureSession(){
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
-      document.getElementById('navLogout').onclick = async ()=>{ await supabase.auth.signOut(); window.location.replace('login.html'); };
-      // require admin
-      const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).maybeSingle();
-      if (error) throw error;
-      if (!data?.is_admin) { window.location.replace('predict.html'); throw new Error('Admins only'); }
-      return session.user;
-    }
-
-    async function loadFixtures(){
-      fixturesBody.innerHTML = '<tr><td colspan="4" class="muted">Loading fixtures…</td></tr>';
-      const { data, error } = await supabase
-        .from('fixtures')
-        .select('id,home_team,away_team,utc_date,home_score,away_score,status,featured')
-        .gte('utc_date', isoDate(weekStart))
-        .lt('utc_date', isoDate(weekEnd))
-        .order('utc_date', { ascending: true });
-
-      if (error) { fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>`; throw error; }
-      fixtures = data || [];
-      if (!fixtures.length) {
-        fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">No fixtures for this week (yet).</td></tr>`;
-        return;
+    function renderRows(rows){
+      tbody.innerHTML = ''
+      if (!rows.length){
+        table.style.display = 'none'
+        empty.style.display = 'block'
+        return
       }
-      // render
-      fixturesBody.innerHTML = '';
-      for (const f of fixtures){
-        const dt = new Date(f.utc_date); // timestampz
-        const datestr = dt.toISOString().replace('T',' ').slice(0,16) + ' UTC';
-        const res = (f.home_score ?? '') !== '' && (f.away_score ?? '') !== ''
-            ? `${f.home_score}–${f.away_score}`
-            : (f.status || '—');
-        const tr = document.createElement('tr');
+      empty.style.display = 'none'
+      table.style.display = ''
+
+      rows.forEach(r=>{
+        const tr = document.createElement('tr')
+        tr.className = r.featured ? 'featured-row' : ''
         tr.innerHTML = `
-          <td><input type="checkbox" class="feat" data-id="${f.id}" ${f.featured ? 'checked':''} /></td>
-          <td>${datestr}</td>
-          <td>${f.home_team || '?'} vs ${f.away_team || '?'}</td>
-          <td class="muted">${res}</td>
-        `;
-        fixturesBody.appendChild(tr);
+          <td class="center">
+            <input type="checkbox" value="${String(r.id)}" ${r.featured ? 'checked' : ''} />
+          </td>
+          <td>${formatDateTime(r.utc_date)}</td>
+          <td><strong>${escapeHtml(r.home_team)}</strong> vs <strong>${escapeHtml(r.away_team)}</strong></td>
+          <td>${r.featured ? '<span class="small">Featured</span>' : ''}</td>
+        `
+        tbody.appendChild(tr)
+      })
+
+      // Enforce max 5
+      tbody.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+        cb.addEventListener('change', (e)=>{
+          const checked = selectedIds()
+          if (checked.length > maxFeatured){
+            // Undo the last change
+            e.target.checked = false
+          }
+          // row highlight + badge
+          const tr = e.target.closest('tr')
+          if (e.target.checked) { tr.classList.add('featured-row') }
+          else { tr.classList.remove('featured-row') }
+          updateCounter()
+        })
+      })
+
+      updateCounter()
+    }
+
+    function escapeHtml(s='') {
+      return String(s)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#39;')
+    }
+
+    async function loadWeek(){
+      status.textContent = 'Loading…'
+      tbody.innerHTML = ''
+      table.style.display = 'none'
+      empty.style.display = 'none'
+
+      const weekStart = new Date(currentWeekStart)
+      const weekEnd = addDays(weekStart, 7)
+
+      const { data: fixtures, error } = await supabase
+        .from('fixtures')
+        .select('id, utc_date, home_team, away_team, featured')
+        .gte('utc_date', weekStart.toISOString())
+        .lt('utc_date', weekEnd.toISOString())
+        .order('utc_date', { ascending: true })
+
+      if (error) {
+        console.error(error)
+        status.innerHTML = '<span class="err">Could not load fixtures.</span>'
+        empty.style.display = 'block'
+        return
       }
-      document.querySelectorAll('.feat').forEach(cb=>cb.addEventListener('change', updateSelectedCounter));
-      updateSelectedCounter();
+
+      currentRows = fixtures || []
+      renderRows(currentRows)
+      status.textContent = ''
     }
 
     async function saveFeatured(){
-      const checks = Array.from(document.querySelectorAll('.feat'));
-      const picked = checks.filter(c=>c.checked).map(c=>c.dataset.id);
-      if (picked.length !== 5){ alert('Please select exactly 5 fixtures.'); return; }
-      saveBtn.disabled = true; saveStatus.textContent = 'Saving…';
-      try{
-        const idsAll = fixtures.map(f=>f.id);
-        if (idsAll.length){
-          const { error: e1 } = await supabase.from('fixtures')
-            .update({ featured: false }).in('id', idsAll);
-          if (e1) throw e1;
+      const chosen = new Set(selectedIds())
+      if (chosen.size === 0){
+        status.innerHTML = '<span class="err">Select up to 5 fixtures to feature.</span>'
+        return
+      }
+      if (chosen.size > maxFeatured){
+        status.innerHTML = '<span class="err">You can only feature 5 fixtures.</span>'
+        return
+      }
+
+      btnSave.disabled = true
+      status.textContent = 'Saving…'
+
+      // Determine ids to set true / false within the loaded week
+      const allIds = currentRows.map(r => r.id)
+      const toTrue = allIds.filter(id => chosen.has(String(id)))
+      const toFalse = allIds.filter(id => !chosen.has(String(id)))
+
+      try {
+        // Set featured=false for those not selected (limit scope to week rows only)
+        if (toFalse.length){
+          const { error: e1 } = await supabase
+            .from('fixtures')
+            .update({ featured: false })
+            .in('id', toFalse)
+          if (e1) throw e1
         }
-        const { error: e2 } = await supabase.from('fixtures')
-          .update({ featured: true }).in('id', picked);
-        if (e2) throw e2;
+        // Set featured=true for selected
+        if (toTrue.length){
+          const { error: e2 } = await supabase
+            .from('fixtures')
+            .update({ featured: true })
+            .in('id', toTrue)
+          if (e2) throw e2
+        }
 
-        saveStatus.textContent = 'Saved.';
-        await loadFixtures();
-        await loadSubmissions();
-      } catch(e){
-        saveStatus.textContent = 'Error saving.';
-        showError(e);
+        status.innerHTML = '<span class="ok">Featured fixtures saved.</span>'
+        await loadWeek()
+      } catch (e){
+        console.error(e)
+        status.innerHTML = '<span class="err">Could not save featured fixtures.</span>'
       } finally {
-        saveBtn.disabled = false;
-        setTimeout(()=>saveStatus.textContent='', 1500);
+        btnSave.disabled = false
       }
     }
 
-    async function lockWeek(){
-      lockBtn.disabled = true;
-      try{
-        const { error } = await supabase
-          .from('global_locks')
-          .upsert({ week_start: isoDate(weekStart), locked: true }, { onConflict: 'week_start' });
-        if (error) throw error;
-        alert('Week locked for everyone.');
-      } catch(e){ showError(e); alert('Could not lock the week.'); }
-      finally { lockBtn.disabled=false; }
-    }
+    // Wire week controls
+    btnPrev.addEventListener('click', async ()=>{
+      currentWeekStart = addDays(currentWeekStart, -7)
+      updateWeekLabel()
+      await loadWeek()
+    })
+    btnNext.addEventListener('click', async ()=>{
+      currentWeekStart = addDays(currentWeekStart, 7)
+      updateWeekLabel()
+      await loadWeek()
+    })
+    btnThis.addEventListener('click', async ()=>{
+      currentWeekStart = startOfWeek()
+      updateWeekLabel()
+      await loadWeek()
+    })
+    btnRefresh.addEventListener('click', loadWeek)
+    btnSave.addEventListener('click', saveFeatured)
 
-    async function loadSubmissions(){
-      listPicked.innerHTML = ''; subsMeta.textContent = 'Loading…';
-
-      const featured = fixtures.filter(f=>f.featured);
-      const featuredIds = featured.map(f=>f.id);
-      const totalNeeded = featuredIds.length;
-
-      if (totalNeeded === 0){
-        subsMeta.textContent = 'No featured fixtures selected yet.';
-        return;
-      }
-
-      // Predictions on featured fixtures
-      const { data: preds, error: prErr } = await supabase
-        .from('predictions')
-        .select('user_id, fixture_id')
-        .in('fixture_id', featuredIds);
-      if (prErr) { subsMeta.textContent = 'Error loading predictions.'; throw prErr; }
-
-      const counts = new Map();
-      (preds||[]).forEach(p=>{
-        // count unique fixtures per user (avoid double-count if any)
-        const key = `${p.user_id}:${p.fixture_id}`;
-        if (!counts.has(key)) counts.set(key, true);
-      });
-      // reduce to user totals
-      const userTotals = new Map();
-      for (const k of counts.keys()){
-        const [uid] = k.split(':');
-        userTotals.set(uid, (userTotals.get(uid)||0)+1);
-      }
-
-      const userIds = [...userTotals.keys()];
-      if (userIds.length === 0){
-        subsMeta.textContent = `Featured fixtures: ${totalNeeded} • No submissions yet.`;
-        listPicked.innerHTML = '<li class="muted small">—</li>';
-        return;
-      }
-
-      const { data: profs, error: pe } = await supabase
-        .from('profiles').select('id,display_name').in('id', userIds);
-      if (pe) { subsMeta.textContent = 'Error loading players.'; throw pe; }
-
-      const byId = new Map((profs||[]).map(p=>[p.id, p.display_name || 'Anon']));
-      const items = userIds.map(id=>({ id, name: byId.get(id) || 'Anon', c: userTotals.get(id) || 0 }));
-      items.sort((a,b)=> (b.c===a.c ? a.name.localeCompare(b.name) : b.c-a.c));
-
-      listPicked.innerHTML = '';
-      items.forEach(it=>{
-        const li = document.createElement('li');
-        li.className = 'small';
-        const tick = it.c >= totalNeeded ? ' ✓' : '';
-        li.textContent = `${it.name} — ${it.c}/${totalNeeded}${tick}`;
-        listPicked.appendChild(li);
-      });
-
-      subsMeta.textContent = `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
-    }
-
-    // ---------- Init ----------
-    async function init(){
-      try{
-        setWeekWindow();
-        await secureSession();
-        saveBtn.onclick = saveFeatured;
-        lockBtn.onclick = lockWeek;
-        await loadFixtures();
-        await loadSubmissions();
-      } catch(e){
-        showError(e);
-      }
-    }
-    init();
+    // Boot
+    updateWeekLabel()
+    await loadWeek()
   </script>
 </body>
 </html>
