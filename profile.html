@@ -4,14 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>My Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=96" />
-
-  <!-- Early auth gate -->
-  <script type="module">
-    import { supabase } from './supabase-config.js'
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { window.location.replace('login.html'); throw new Error('Redirecting') }
-  </script>
+  <link rel="stylesheet" href="brand.css?v=97" />
 
   <style>
     :root{
@@ -56,6 +49,7 @@
     .lower{display:grid;grid-template-columns:1fr;gap:16px;margin-top:8px}
     @media (min-width:980px){ .lower{grid-template-columns:1fr 1fr} }
   </style>
+  <script type="module" src="supabase-config.js"></script>
 </head>
 <body class="bg-hero">
   <header class="top">
@@ -134,178 +128,178 @@
     </div>
   </main>
 
-  <!-- Logout -->
-  <script type="module">
-    import { supabase } from './supabase-config.js'
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const navLogout = document.getElementById('navLogout');
-      navLogout?.addEventListener('click', async (e)=>{
-        e.preventDefault(); try { await supabase.auth.signOut(); } catch {}
-        window.location.replace('login.html');
-      });
-    });
-  </script>
-
-  <!-- Logic -->
   <script type="module">
     import { supabase } from './supabase-config.js'
 
-    const avatar = document.getElementById('avatar')
-    const emailEl = document.getElementById('email')
-    const nameEl  = document.getElementById('display_name')
-    const teamEl  = document.getElementById('team')
-    const whoEl   = document.getElementById('who')
-    const status  = document.getElementById('status')
-    const saveBtn = document.getElementById('saveBtn')
+    (async () => {
+      const $ = s => document.querySelector(s)
+      const emailEl = $('#email')
+      const nameEl  = $('#display_name')
+      const teamEl  = $('#team')
+      const whoEl   = $('#who')
+      const status  = $('#status')
+      const avatar  = $('#avatar')
+      const badgePill = $('#badgePill')
+      const badgeLabel= $('#badgeLabel')
+      const barFill   = $('#barFill')
+      const nextMs    = $('#nextMilestone')
+      const nums      = $('#nums')
+      const statTotal = $('#stat_total')
+      const statAcc   = $('#stat_acc')
 
-    const badgePill = document.getElementById('badgePill')
-    const badgeLabel= document.getElementById('badgeLabel')
-    const barFill   = document.getElementById('barFill')
-    const nextMs    = document.getElementById('nextMilestone')
-    const nums      = document.getElementById('nums')
+      // --- robust auth gate (no top-level await)
+      async function getActiveSession(){
+        let { data:{ session } } = await supabase.auth.getSession()
+        if (session) return session
+        // fallback: wait briefly for recoveries (e.g. after redirect)
+        const t = Date.now() + 1500
+        while (!session && Date.now() < t) {
+          await new Promise(r=>setTimeout(r,150))
+          ;({ data:{ session } } = await supabase.auth.getSession())
+        }
+        return session
+      }
 
-    const statTotal = document.getElementById('stat_total')
-    const statAcc   = document.getElementById('stat_acc')
+      const session = await getActiveSession()
+      if (!session?.user) { window.location.replace('login.html'); return }
+      const user = session.user
 
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session.user
+      // logout
+      document.getElementById('navLogout')?.addEventListener('click', async (e)=>{
+        e.preventDefault(); try{ await supabase.auth.signOut() }catch{}; window.location.replace('login.html')
+      })
 
-    // Admin link
-    ;(async ()=>{
+      // admin link
       try{
-        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle()
         if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = ''
       }catch{}
-    })();
 
-    // Basics
-    emailEl.value = user.email || ''
-    whoEl.textContent = `Signed in as ${user.email || '—'}`
-    avatar.textContent = initialsFrom(user.email || 'User')
+      // basics
+      emailEl.value = user.email || ''
+      whoEl.textContent = `Signed in as ${user.email || '—'}`
+      avatar.textContent = (user.email || 'User').slice(0,1).toUpperCase()
 
-    function initialsFrom(s){ s=(s||'').trim(); if(!s) return 'U'; const p=s.split(/\s+/).slice(0,2); return p.map(x=>x[0]?.toUpperCase()||'').join('') }
-    function escapeHtml(s=''){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;') }
-    function toNum(v){ const n=Number(v); return Number.isFinite(n)?n:0 }
+      function escapeHtml(s=''){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;') }
+      function toNum(v){ const n=Number(v); return Number.isFinite(n)?n:0 }
 
-    async function populateTeams(){
-      let teams=[]
-      try{
-        const { data } = await supabase.from('teams').select('name').order('name',{ascending:true})
-        if (data?.length) teams = data.map(r=>r.name).filter(Boolean)
-      }catch{}
-      if (!teams.length){
-        teams = ['Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Chelsea','Crystal Palace','Everton','Fulham','Ipswich','Leicester','Liverpool','Man City','Man United','Newcastle','Nottingham Forest','Southampton','Spurs','West Ham','Wolves']
-      }
-      const current = teamEl.value
-      teamEl.innerHTML = '<option value="">— Select a team —</option>'+teams.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
-      if (current) teamEl.value = current
-    }
-
-    // Profile row (select * so column differences don't break it)
-    async function loadProfile(){
-      status.textContent = 'Loading your profile…'
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
-      if (error) { console.warn('profile load', error); status.innerHTML = '<span class="muted">No profile yet — save to create one.</span>'; return }
-      if (data){
-        if (data.display_name) nameEl.value = data.display_name
-        if (data.team)         teamEl.value = data.team
-        avatar.textContent = initialsFrom(nameEl.value || user.email || 'User')
-        status.textContent = ''
-      } else {
-        status.innerHTML = '<span class="muted">No profile yet — save to create one.</span>'
-      }
-    }
-
-    // ✅ Use your RPC: leaderboard_v2 (season)
-    async function loadNumbers(){
-      let points=0, rank='—', exacts=0, results=0, badge=''
-
-      try{
-        const { data: rows } = await supabase.rpc('leaderboard_v2')
-        if (Array.isArray(rows) && rows.length){
-          // Try to find this user (cover a few possible id fields)
-          const me = rows.find(r =>
-            r.user_id === user.id || r.id === user.id || r.uid === user.id ||
-            r.email === user.email || r.display_name === (document.getElementById('display_name').value || '').trim()
-          )
-          if (me){
-            points  = toNum(me.points)
-            exacts  = toNum(me.correct_scores ?? me.exacts ?? me.exact)
-            results = toNum(me.correct_results ?? me.results ?? me.correct_result)
-            rank    = me.rank ?? rows.sort((a,b)=>toNum(b.points)-toNum(a.points)).findIndex(r=>r===me)+1 || '—'
-            badge   = me.badge || ''
-          }
-        }
-      }catch(e){ console.warn('leaderboard_v2 error', e) }
-
-      // Fallback to season_progress RPC if needed (for points/rank)
-      if (!points){
+      // teams (optional table; fall back to list)
+      async function populateTeams(){
+        let teams=[]
         try{
-          const { data: rp } = await supabase.rpc('season_progress', { uid: user.id })
-          if (Array.isArray(rp) && rp.length){ points = toNum(rp[0].points); rank = rp[0].rank ?? rank }
-          else if (rp && typeof rp==='object'){ points = toNum(rp.points); rank = rp.rank ?? rank }
-        }catch(e){ console.warn('season_progress error', e) }
+          const { data } = await supabase.from('teams').select('name').order('name',{ascending:true})
+          if (data?.length) teams = data.map(r=>r.name).filter(Boolean)
+        }catch{}
+        if (!teams.length){
+          teams = ['Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Chelsea','Crystal Palace','Everton','Fulham','Ipswich','Leicester','Liverpool','Man City','Man United','Newcastle','Nottingham Forest','Southampton','Spurs','West Ham','Wolves']
+        }
+        teamEl.innerHTML = '<option value="">— Select a team —</option>' +
+          teams.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
       }
 
-      // Mini-stats
-      let totalPicks = 0
-      try{
-        const { count } = await supabase.from('predictions').select('fixture_id', { count:'exact', head:true }).eq('user_id', user.id)
-        totalPicks = toNum(count)
-      }catch{}
-
-      const totalCorrect = exacts + results
-      const accuracy = totalPicks ? Math.round((totalCorrect/totalPicks)*100) : 0
-
-      document.getElementById('stat_total').textContent = String(totalPicks)
-      document.getElementById('stat_acc').textContent = String(accuracy)
-      nums.innerHTML = `Exact scores: <strong>${exacts}</strong> • Correct results: <strong>${results}</strong> • Points: <strong>${points}</strong> • Season rank: <strong>#${escapeHtml(String(rank))}</strong>`
-
-      // Badges by exacts (or use badge string from RPC if present)
-      const tiers=[{name:'— none yet',emoji:'🎯',need:0},{name:'Rookie',emoji:'🥇',need:10},{name:'Amateur',emoji:'🥈',need:15},{name:'Pro',emoji:'🏆',need:20},{name:'GOAT',emoji:'🐐',need:30}]
-      let current=tiers[0], next=tiers[1]
-      if (badge){
-        const map={rookie:tiers[1],amateur:tiers[2],pro:tiers[3],goat:tiers[4]}
-        current = map[String(badge).toLowerCase()] || current
-      } else {
-        for (let i=tiers.length-1;i>=0;i--){ if (exacts>=tiers[i].need){ current=tiers[i]; next=tiers[i+1]||null; break } }
+      // profile (select * so schema differences don’t break)
+      async function loadProfile(){
+        status.textContent = 'Loading your profile…'
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+        if (error) {
+          status.innerHTML = '<span class="muted">No profile yet — save to create one.</span>'
+          return
+        }
+        if (data){
+          if (data.display_name) nameEl.value = data.display_name
+          if (data.team)         teamEl.value = data.team
+          avatar.textContent = (nameEl.value || user.email || 'U').slice(0,1).toUpperCase()
+          status.textContent = ''
+        } else {
+          status.innerHTML = '<span class="muted">No profile yet — save to create one.</span>'
+        }
       }
-      badgeLabel.textContent = `${current.name}${current.need?` • ${exacts}/${current.need}`:''}`
-      badgePill.querySelector('.emoji').textContent = current.emoji
 
-      // Progress toward next tier
-      let pct=100
-      if (!badge) {
-        if (next){ const base=current.need; const span=next.need-base; pct=Math.max(0,Math.min(100,Math.round(((exacts-base)/span)*100))); nextMs.textContent=`Next milestone: ${next.name.toUpperCase()} (${next.need}) — ${Math.max(0,next.need-exacts)} to go` } else { nextMs.textContent='Max tier reached: GOAT' }
-      } else {
-        // If RPC already labels you, still compute toward the *next* tier by exacts:
-        const idx = tiers.findIndex(t=>t===current)
-        const n = tiers[idx+1]
-        if (n){ const base=current.need; const span=n.need-base; pct=Math.max(0,Math.min(100,Math.round(((exacts-base)/span)*100))); nextMs.textContent=`Next milestone: ${n.name.toUpperCase()} (${n.need}) — ${Math.max(0,n.need-exacts)} to go` }
+      async function saveProfile(){
+        const display_name = nameEl.value.trim()
+        const team = teamEl.value.trim()
+        if (!display_name){ status.innerHTML = '<span class="err">Please enter a display name.</span>'; return }
+        const { error } = await supabase.from('profiles').upsert({ id:user.id, display_name, team }, { onConflict:'id' })
+        if (error){ status.innerHTML = '<span class="err">Could not save your profile.</span>'; return }
+        status.innerHTML = '<span class="ok">Profile saved.</span>'
+        avatar.textContent = (display_name || user.email || 'U').slice(0,1).toUpperCase()
+        // refresh numbers in case the name is used for matching
+        await loadNumbers()
+      }
+      document.getElementById('saveBtn').addEventListener('click', saveProfile)
+
+      // numbers via your RPC
+      async function loadNumbers(){
+        let points=0, rank='—', exacts=0, results=0, badge=''
+        try{
+          const { data: rows } = await supabase.rpc('leaderboard_v2')
+          if (Array.isArray(rows) && rows.length){
+            // Try multiple identifiers to find "me"
+            const display = (document.getElementById('display_name').value || '').trim()
+            const me = rows.find(r =>
+              r.user_id === user.id ||
+              r.id === user.id ||
+              (r.email && r.email === user.email) ||
+              (display && r.display_name && r.display_name === display)
+            )
+            if (me){
+              points  = toNum(me.points)
+              exacts  = toNum(me.correct_scores ?? me.exacts ?? me.exact)
+              results = toNum(me.correct_results ?? me.results ?? me.correct_result)
+              rank    = me.rank ?? (rows.sort((a,b)=>toNum(b.points)-toNum(a.points)).findIndex(r=>r===me)+1 || '—')
+              badge   = me.badge || ''
+            }
+          }
+        }catch{}
+
+        // fallback for points/rank
+        if (!points){
+          try{
+            const { data: rp } = await supabase.rpc('season_progress', { uid: user.id })
+            if (Array.isArray(rp) && rp.length){ points = toNum(rp[0].points); rank = rp[0].rank ?? rank }
+            else if (rp && typeof rp==='object'){ points = toNum(rp.points); rank = rp.rank ?? rank }
+          }catch{}
+        }
+
+        // totals for accuracy
+        let totalPicks = 0
+        try{
+          const { count } = await supabase
+            .from('predictions')
+            .select('fixture_id', { count:'exact', head:true })
+            .eq('user_id', user.id)
+          totalPicks = toNum(count)
+        }catch{}
+
+        const totalCorrect = exacts + results
+        const accuracy = totalPicks ? Math.round((totalCorrect/totalPicks)*100) : 0
+
+        $('#stat_total').textContent = String(totalPicks)
+        $('#stat_acc').textContent = String(accuracy)
+        nums.innerHTML = `Exact scores: <strong>${exacts}</strong> • Correct results: <strong>${results}</strong> • Points: <strong>${points}</strong> • Season rank: <strong>#${escapeHtml(String(rank))}</strong>`
+
+        // badge/progress
+        const tiers=[{name:'— none yet',emoji:'🎯',need:0},{name:'Rookie',emoji:'🥇',need:10},{name:'Amateur',emoji:'🥈',need:15},{name:'Pro',emoji:'🏆',need:20},{name:'GOAT',emoji:'🐐',need:30}]
+        let current=tiers[0], next=tiers[1]
+        if (badge){
+          const map={rookie:tiers[1],amateur:tiers[2],pro:tiers[3],goat:tiers[4]}
+          current = map[String(badge).toLowerCase()] || current
+        } else {
+          for (let i=tiers.length-1;i>=0;i--){ if (exacts>=tiers[i].need){ current=tiers[i]; next=tiers[i+1]||null; break } }
+        }
+        badgeLabel.textContent = `${current.name}${current.need?` • ${exacts}/${current.need}`:''}`
+        badgePill.querySelector('.emoji').textContent = current.emoji
+
+        let pct=100
+        if (next){ const base=current.need; const span=next.need-base; pct=Math.max(0,Math.min(100,Math.round(((exacts-base)/span)*100))); nextMs.textContent=`Next milestone: ${next.name.toUpperCase()} (${next.need}) — ${Math.max(0,next.need-exacts)} to go` }
         else { nextMs.textContent='Max tier reached: GOAT' }
+        requestAnimationFrame(()=>{ barFill.style.width = pct + '%' })
       }
-      requestAnimationFrame(()=>{ barFill.style.width = pct + '%' })
-    }
 
-    async function saveProfile(){
-      const display_name = nameEl.value.trim()
-      const team = teamEl.value.trim()
-      if (!display_name){ status.innerHTML = '<span class="err">Please enter a display name.</span>'; return }
-      saveBtn.disabled = true; status.textContent = 'Saving…'
-      const { error } = await supabase.from('profiles').upsert({ id:user.id, display_name, team }, { onConflict:'id' })
-      if (error){ console.error(error); status.innerHTML = '<span class="err">Could not save your profile.</span>'; saveBtn.disabled=false; return }
-      status.innerHTML = '<span class="ok">Profile saved.</span>'
-      avatar.textContent = initialsFrom(display_name || user.email || 'User')
-      saveBtn.disabled = false
-    }
-
-    // Wire & boot
-    document.getElementById('navLogout')?.addEventListener('click', async (e)=>{ e.preventDefault(); try{await supabase.auth.signOut()}catch{}; window.location.replace('login.html') })
-    saveBtn.addEventListener('click', saveProfile)
-
-    await populateTeams()
-    await loadProfile()
-    await loadNumbers()
+      await populateTeams()
+      await loadProfile()
+      await loadNumbers()
+    })();
   </script>
 </body>
 </html>
