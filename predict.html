@@ -5,13 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Make Predictions • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
+
+  <!-- ✅ Early auth gate (runs before paint). Redirects signed-out users. -->
+  <script type="module">
+    import { supabase } from './supabase-config.js'
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      window.location.replace('login.html')
+      throw new Error('Redirecting to login')
+    }
+  </script>
+
   <style>
     .wrap{max-width:960px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
-          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    .card{
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:16px;
+      box-shadow:0 8px 20px rgba(0,0,0,.08);
+      padding:16px;
+      margin-bottom:16px
+    }
     .card h2{margin:0 0 10px;color:#1f357a}
     table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
     th{background:#f8fafc;text-transform:uppercase;font-size:.85rem;letter-spacing:.03em}
     input[type="number"]{width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center}
     .meta{color:#475569;font-size:.9rem;margin:6px 0 0}
@@ -19,23 +36,20 @@
     .msg{margin-top:10px;font-weight:600}
     .ok{color:#16a34a}.err{color:#b91c1c}.muted{color:#64748b}
     .empty{padding:10px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
+
+    /* --- Team form badges --- */
+    .form-line{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center}
+    .badge{
+      width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
+      font-size:.75rem;font-weight:800;color:#0b1220;background:#e2e8f0;border:1px solid #cbd5e1
+    }
+    .badge.w{background:#bbf7d0;border-color:#86efac}  /* Green W */
+    .badge.l{background:#fecaca;border-color:#fca5a5}  /* Red L */
+    .badge.d{background:#fde68a;border-color:#fcd34d}  /* Yellow D */
+    .badge.p{background:#e2e8f0;border-color:#cbd5e1;color:#64748b} /* placeholder */
+    .form-label{font-size:.75rem;color:#64748b;margin-right:4px}
+    .form-wrap{display:flex;flex-direction:column;align-items:flex-start}
   </style>
-
-  <!-- Supabase client -->
-  <script type="module" src="supabase-config.js"></script>
-
-  <!-- Early logout wiring -->
-  <script type="module">
-    import { supabase } from './supabase-config.js';
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const navLogout = document.getElementById('navLogout');
-      navLogout?.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        try{ await supabase.auth.signOut(); }catch{}
-        window.location.replace('login.html');
-      });
-    });
-  </script>
 </head>
 <body class="bg-hero">
   <header class="top">
@@ -64,8 +78,8 @@
         <thead>
           <tr>
             <th>Fixture</th>
-            <th style="width:120px">Home</th>
-            <th style="width:120px">Away</th>
+            <th style="width:180px">Home</th>
+            <th style="width:180px">Away</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -84,6 +98,20 @@
     </section>
   </main>
 
+  <!-- Logout wiring -->
+  <script type="module">
+    import { supabase } from './supabase-config.js'
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
+
+  <!-- Page app logic -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -113,9 +141,8 @@
     const weekEnd = addDays(weekStart, 7); // next Monday
     weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
 
-    // --- Auth gate ---
+    // --- Auth (we already gated early; this is to use the user id safely) ---
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
     const user = session.user;
 
     // Show Admin link if applicable
@@ -131,6 +158,7 @@
     async function loadFixtures(){
       tbody.innerHTML = '';
       msg.textContent = '';
+      lockBtn.disabled = true; // disable until fixtures load
 
       const { data: fixtures, error } = await supabase
         .from('fixtures')
@@ -162,13 +190,24 @@
         const tr = document.createElement('tr');
         tr.dataset.fixtureId = String(fx.id);
         tr.innerHTML = `
-          <td><strong>${fx.home_team}</strong> vs <strong>${fx.away_team}</strong></td>
-          <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home"></td>
-          <td><input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="away"></td>
+          <td><strong>${escapeHtml(fx.home_team)}</strong> vs <strong>${escapeHtml(fx.away_team)}</strong></td>
+          <td>
+            <div class="form-wrap">
+              <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home">
+              <div class="form-line" data-form="home"><span class="form-label">Form:</span></div>
+            </div>
+          </td>
+          <td>
+            <div class="form-wrap">
+              <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="away">
+              <div class="form-line" data-form="away"><span class="form-label">Form:</span></div>
+            </div>
+          </td>
         `;
         tbody.appendChild(tr);
       });
 
+      lockBtn.disabled = false;
       return { fixtures, error: null };
     }
 
@@ -204,11 +243,11 @@
     }
 
     function disableInputs(){
-      [...tbody.querySelectorAll('input')].forEach(i=>i.disabled = true);
+      [...tbody.querySelectorAll('input[type="number"]')].forEach(i=>i.disabled = true);
       lockBtn.disabled = true;
     }
 
-    // --- NEW: Enforce lock state on UI if already locked this week ---
+    // --- Enforce lock state on UI if already locked this week ---
     async function enforceLockUI() {
       const { data: lockRow, error } = await supabase
         .from('pick_locks')
@@ -223,7 +262,6 @@
       }
 
       if (lockRow) {
-        // Disable all inputs + lock button, show message
         disableInputs();
         const ts = lockRow.locked_at ? new Date(lockRow.locked_at).toLocaleString() : '';
         msg.innerHTML = `<span class="muted">Locked on ${ts}. Changes are disabled.</span>`;
@@ -268,6 +306,104 @@
       }
     });
 
+    // --- Team form (last 5 games) ---
+    const formCache = new Map(); // team -> Promise<string[] of 'W'|'D'|'L'>
+
+    function escapeHtml(s='') {
+      return String(s)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#39;')
+    }
+
+    // Robust: avoid `.or()` so names with '&' or spaces don't break
+    async function fetchTeamResults(team){
+      const nowIso = new Date().toISOString()
+
+      // Home matches for this team
+      const homeQ = supabase
+        .from('fixtures')
+        .select('home_team, away_team, home_score, away_score, utc_date')
+        .eq('home_team', team)
+        .lt('utc_date', nowIso)
+        .not('home_score','is', null)
+        .not('away_score','is', null)
+        .order('utc_date', { ascending: false })
+        .limit(10)
+
+      // Away matches for this team
+      const awayQ = supabase
+        .from('fixtures')
+        .select('home_team, away_team, home_score, away_score, utc_date')
+        .eq('away_team', team)
+        .lt('utc_date', nowIso)
+        .not('home_score','is', null)
+        .not('away_score','is', null)
+        .order('utc_date', { ascending: false })
+        .limit(10)
+
+      const [{ data: home = [], error: e1 }, { data: away = [], error: e2 }] = await Promise.all([homeQ, awayQ])
+      if (e1) console.warn('home results error', e1)
+      if (e2) console.warn('away results error', e2)
+
+      // Merge and sort by date desc
+      const rows = [...home, ...away].sort((a,b)=> new Date(b.utc_date) - new Date(a.utc_date))
+
+      // Map to W/D/L from this team's perspective (take last 5)
+      const form = rows.slice(0,5).map(row=>{
+        const hs = Number(row.home_score ?? 0)
+        const as = Number(row.away_score ?? 0)
+        const isHome = row.home_team === team
+        const my = isHome ? hs : as
+        const opp = isHome ? as : hs
+        if (my > opp) return 'W'
+        if (my < opp) return 'L'
+        return 'D'
+      })
+
+      return form
+    }
+
+    async function getTeamForm(team){
+      if (formCache.has(team)) return formCache.get(team)
+      const p = fetchTeamResults(team).catch(()=>[])
+      formCache.set(team, p)
+      return p
+    }
+
+    function renderBadges(lineEl, arr){
+      // Clear previous badges/placeholders after the label
+      ;[...lineEl.querySelectorAll('.badge,.muted')].forEach(b=>b.remove())
+
+      // Always show 5 boxes for a clean look
+      const filled = Array.isArray(arr) ? arr : []
+      for (let i = 0; i < 5; i++){
+        const ch = filled[i]
+        const b = document.createElement('span')
+        if (ch === 'W' || ch === 'D' || ch === 'L'){
+          b.className = 'badge ' + (ch==='W'?'w':ch==='L'?'l':'d')
+          b.textContent = ch
+        } else {
+          b.className = 'badge p'
+          b.textContent = '•'
+        }
+        lineEl.appendChild(b)
+      }
+    }
+
+    async function renderFormsForFixtures(fixtures){
+      const rows = [...tbody.querySelectorAll('tr')]
+      const jobs = []
+      rows.forEach((tr, idx)=>{
+        const fx = fixtures[idx]
+        const homeLine = tr.querySelector('.form-line[data-form="home"]')
+        const awayLine = tr.querySelector('.form-line[data-form="away"]')
+        if (homeLine) jobs.push(getTeamForm(fx.home_team).then(arr => renderBadges(homeLine, arr)))
+        if (awayLine) jobs.push(getTeamForm(fx.away_team).then(arr => renderBadges(awayLine, arr)))
+      })
+      await Promise.allSettled(jobs)
+    }
+
     // --- Season progress via RPC (non-blocking) ---
     (async ()=>{
       try{
@@ -285,8 +421,11 @@
 
     // --- Boot ---
     const { fixtures } = await loadFixtures();
-    if (fixtures && fixtures.length) await prefillPicks();
-    await enforceLockUI();   // <- check & freeze if already locked
+    if (fixtures && fixtures.length) {
+      await prefillPicks();
+      await renderFormsForFixtures(fixtures); // <- add team form badges
+    }
+    await enforceLockUI();
   </script>
 </body>
 </html>
