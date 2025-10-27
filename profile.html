@@ -201,7 +201,7 @@
       if (current) teamEl.value = current
     }
 
-    // ✅ Robust: select * (no column mismatch), treat “no row” as empty profile
+    // Profile row (select * so column differences don't break it)
     async function loadProfile(){
       status.textContent = 'Loading your profile…'
       const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
@@ -216,29 +216,36 @@
       }
     }
 
-    // ✅ Normalise leaderboard field names
+    // ✅ Use your RPC: leaderboard_v2 (season)
     async function loadNumbers(){
-      let points=0, rank='—', exacts=0, results=0
+      let points=0, rank='—', exacts=0, results=0, badge=''
 
       try{
-        const { data: lb } = await supabase
-          .from('leaderboard')
-          .select('points, rank, exacts, results, correct_scores, correct_results, exact, correct_result')
-          .eq('user_id', user.id)
-          .maybeSingle()
-
-        if (lb){
-          points  = toNum(lb.points)
-          rank    = lb.rank ?? '—'
-          // accept multiple naming schemes
-          exacts  = toNum(lb.exacts ?? lb.correct_scores ?? lb.exact)
-          results = toNum(lb.results ?? lb.correct_results ?? lb.correct_result)
-        } else {
-          const { data: rp } = await supabase.rpc('season_progress', { uid: user.id })
-          if (Array.isArray(rp) && rp.length){ points = toNum(rp[0].points); rank = rp[0].rank ?? '—' }
-          else if (rp && typeof rp==='object'){ points = toNum(rp.points); rank = rp.rank ?? '—' }
+        const { data: rows } = await supabase.rpc('leaderboard_v2')
+        if (Array.isArray(rows) && rows.length){
+          // Try to find this user (cover a few possible id fields)
+          const me = rows.find(r =>
+            r.user_id === user.id || r.id === user.id || r.uid === user.id ||
+            r.email === user.email || r.display_name === (document.getElementById('display_name').value || '').trim()
+          )
+          if (me){
+            points  = toNum(me.points)
+            exacts  = toNum(me.correct_scores ?? me.exacts ?? me.exact)
+            results = toNum(me.correct_results ?? me.results ?? me.correct_result)
+            rank    = me.rank ?? rows.sort((a,b)=>toNum(b.points)-toNum(a.points)).findIndex(r=>r===me)+1 || '—'
+            badge   = me.badge || ''
+          }
         }
-      }catch(e){ console.warn(e) }
+      }catch(e){ console.warn('leaderboard_v2 error', e) }
+
+      // Fallback to season_progress RPC if needed (for points/rank)
+      if (!points){
+        try{
+          const { data: rp } = await supabase.rpc('season_progress', { uid: user.id })
+          if (Array.isArray(rp) && rp.length){ points = toNum(rp[0].points); rank = rp[0].rank ?? rank }
+          else if (rp && typeof rp==='object'){ points = toNum(rp.points); rank = rp.rank ?? rank }
+        }catch(e){ console.warn('season_progress error', e) }
+      }
 
       // Mini-stats
       let totalPicks = 0
@@ -254,14 +261,29 @@
       document.getElementById('stat_acc').textContent = String(accuracy)
       nums.innerHTML = `Exact scores: <strong>${exacts}</strong> • Correct results: <strong>${results}</strong> • Points: <strong>${points}</strong> • Season rank: <strong>#${escapeHtml(String(rank))}</strong>`
 
-      // Badges by exacts
+      // Badges by exacts (or use badge string from RPC if present)
       const tiers=[{name:'— none yet',emoji:'🎯',need:0},{name:'Rookie',emoji:'🥇',need:10},{name:'Amateur',emoji:'🥈',need:15},{name:'Pro',emoji:'🏆',need:20},{name:'GOAT',emoji:'🐐',need:30}]
       let current=tiers[0], next=tiers[1]
-      for (let i=tiers.length-1;i>=0;i--){ if (exacts>=tiers[i].need){ current=tiers[i]; next=tiers[i+1]||null; break } }
+      if (badge){
+        const map={rookie:tiers[1],amateur:tiers[2],pro:tiers[3],goat:tiers[4]}
+        current = map[String(badge).toLowerCase()] || current
+      } else {
+        for (let i=tiers.length-1;i>=0;i--){ if (exacts>=tiers[i].need){ current=tiers[i]; next=tiers[i+1]||null; break } }
+      }
       badgeLabel.textContent = `${current.name}${current.need?` • ${exacts}/${current.need}`:''}`
       badgePill.querySelector('.emoji').textContent = current.emoji
+
+      // Progress toward next tier
       let pct=100
-      if (next){ const base=current.need; const span=next.need-base; pct=Math.max(0,Math.min(100,Math.round(((exacts-base)/span)*100))); nextMs.textContent=`Next milestone: ${next.name.toUpperCase()} (${next.need}) — ${Math.max(0,next.need-exacts)} to go` } else { nextMs.textContent='Max tier reached: GOAT' }
+      if (!badge) {
+        if (next){ const base=current.need; const span=next.need-base; pct=Math.max(0,Math.min(100,Math.round(((exacts-base)/span)*100))); nextMs.textContent=`Next milestone: ${next.name.toUpperCase()} (${next.need}) — ${Math.max(0,next.need-exacts)} to go` } else { nextMs.textContent='Max tier reached: GOAT' }
+      } else {
+        // If RPC already labels you, still compute toward the *next* tier by exacts:
+        const idx = tiers.findIndex(t=>t===current)
+        const n = tiers[idx+1]
+        if (n){ const base=current.need; const span=n.need-base; pct=Math.max(0,Math.min(100,Math.round(((exacts-base)/span)*100))); nextMs.textContent=`Next milestone: ${n.name.toUpperCase()} (${n.need}) — ${Math.max(0,n.need-exacts)} to go` }
+        else { nextMs.textContent='Max tier reached: GOAT' }
+      }
       requestAnimationFrame(()=>{ barFill.style.width = pct + '%' })
     }
 
@@ -275,14 +297,6 @@
       status.innerHTML = '<span class="ok">Profile saved.</span>'
       avatar.textContent = initialsFrom(display_name || user.email || 'User')
       saveBtn.disabled = false
-    }
-
-    // Confetti (kept lightweight)
-    function fireConfetti(count=200){
-      const colors=['#5b7cff','#3049d1','#14b85a','#f59e0b','#ef4444']
-      for (let i=0;i<count;i++){
-        const s=document.createElement('span'); s.style.position='fixed'; s.style.left=Math.random()*100+'vw'; s.style.top='-10px'; s.style.width=s.style.height=(6+Math.random()*6)+'px'; s.style.background=colors[i%colors.length]; s.style.opacity=.9; s.style.borderRadius='2px'; s.style.zIndex=9999; s.style.pointerEvents='none'; document.body.appendChild(s); const dur=1200+Math.random()*1200; const dx=(Math.random()*2-1)*200; s.animate([{transform:'translate(0,0) rotate(0deg)',opacity:1},{transform:`translate(${dx}px,100vh) rotate(720deg)`,opacity:.9}],{duration:dur,easing:'cubic-bezier(.2,.8,.2,1)'}); setTimeout(()=>s.remove(),dur+50)
-      }
     }
 
     // Wire & boot
