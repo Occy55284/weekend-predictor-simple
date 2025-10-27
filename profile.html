@@ -1,151 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=91" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Profile • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=97" />
+
   <style>
-    /* Page-only light styles that sit on top of brand.css */
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
-    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
-
-    .card {
-      background: #fff; border: 1px solid #e5e7eb; border-radius: 20px;
-      box-shadow: 0 12px 30px rgba(0,0,0,.08); padding: 18px;
+    :root{
+      --ink:#0f1a37; --muted:#6b7aa6; --card:#fff; --ring:#cfd6f2;
+      --accent:#3049d1; --accent2:#5b7cff; --good:#14b85a; --bad:#ef4444;
+      --bg-grad: radial-gradient(1200px 700px at 90% -10%, rgba(48,73,209,.08), transparent 40%),
+                 radial-gradient(900px 600px at -10% 120%, rgba(91,124,255,.10), transparent 40%),
+                 linear-gradient(180deg,#0b1220,#0e1630);
     }
-    .h1 { font-size: 28px; line-height: 1.15; margin: 0 0 12px; }
-    .sub { color: #475569; margin-bottom: 16px; }
-
-    .label { font-weight: 700; margin: 12px 0 6px; }
-    .input, .select {
-      width: 100%; padding: 14px 16px; border: 1px solid #e5e7eb;
-      border-radius: 12px; background: #f8fafc;
-      font-size: 16px; outline: none;
-    }
-    .input:focus, .select:focus { border-color: #94a3b8; background:#fff; }
-
-    .btnrow { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
-    .btn { padding: 12px 16px; border-radius: 12px; border: 1px solid #2d3df7; cursor: pointer; font-weight: 700; }
-    .btn--primary { background: #2d3df7; color: #fff; }
-    .btn--ghost { background: transparent; color: #2d3df7; }
-    .small { font-size: 12px; letter-spacing: .06em; color: #475569; text-transform: uppercase; }
-
-    .ok-text { color: #0e9f6e; margin-top: 8px; }
-    .error-text { color: #e11d48; margin-top: 8px; }
-
-    .stats-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
-    .stats-pill {
-      border: 1px dashed #e5e7eb; border-radius: 14px; padding: 14px;
-      background: #f8fafc;
-    }
-    .stat-title { font-size: 12px; letter-spacing:.05em; color:#64748b; text-transform: uppercase; }
-    .stat-value { font-size: 22px; font-weight: 800; color:#0f172a; }
-
-    .badge-row { display: flex; align-items: center; gap: 10px; }
-    .badge { border-radius: 999px; padding: 8px 12px; background:#eef2ff; color:#1e3a8a; font-weight:700; }
-    .progress { height: 10px; border-radius: 999px; background:#e5e7eb; overflow:hidden; margin: 16px 0; }
-    .progress > span { display:block; height:100%; width: 10%; background:#4f46e5; }
-
-    .list { padding-left: 18px; }
-    .list li { margin: 8px 0; color:#475569; }
-
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
-
-    /* Favourite team card */
-    #fav-team-card { display:none; align-items:center; gap:12px; padding:14px; }
-    #fav-team-crest { border-radius:12px; width:54px; height:54px; object-fit:contain; background:#f8fafc; }
+    body.bg-hero{background:var(--bg-grad)}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media (min-width:980px){ .grid{grid-template-columns:1fr 1fr} }
+    .card{position:relative;background:var(--card);border:1px solid var(--ring);border-radius:20px;box-shadow:0 12px 30px rgba(0,0,0,.1);padding:18px;overflow:hidden}
+    .card::before{content:"";position:absolute;inset:0;background:
+      radial-gradient(500px 320px at -10% -20%, rgba(91,124,255,.10), transparent 40%),
+      radial-gradient(420px 280px at 110% 120%, rgba(20,184,90,.10), transparent 40%);pointer-events:none}
+    .card h2{margin:0 0 12px;color:var(--ink);font-size:1.5rem}
+    .profile-top{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+    .avatar{width:64px;height:64px;border-radius:16px;background:#0f152c;color:#eaf0ff;display:grid;place-items:center;font-weight:900;font-size:1.25rem;border:1px solid rgba(255,255,255,.12)}
+    .who{color:var(--muted);font-size:.95rem}
+    .row{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+    label{font-weight:800;color:var(--ink)}
+    input[type="text"],input[type="email"],select{padding:12px 14px;border:1px solid #d8def8;border-radius:12px;font-size:16px;background:#fff;outline:none;transition:.15s border-color,.15s box-shadow}
+    input[type="text"]:focus,select:focus{border-color:#a6b3f7;box-shadow:0 0 0 4px rgba(166,179,247,.25)}
+    input[readonly]{background:#f7f9ff;color:#7c87b2}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{padding:12px 16px;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:12px;font-weight:800;cursor:pointer}
+    .btn:hover{filter:brightness(1.05)} .btn.secondary{background:#fff;color:var(--accent)}
+    .btn.ghost{background:#fff;border-color:#d8def8;color:#0f1a37}
+    .status{margin-top:10px;font-weight:800}
+    .ok{color:var(--good)} .err{color:var(--bad)} .muted{color:var(--muted)}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .stat{border:1px dashed #d8def8;border-radius:12px;padding:10px 12px;background:linear-gradient(180deg,#fff,#fbfdff)}
+    .stat .k{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .stat .v{font-weight:900;color:var(--ink);font-size:1.15rem}
+    .badge-pill{display:inline-flex;align-items:center;gap:8px;background:#eef3ff;border:1px solid #dbe4ff;color:#22316b;padding:8px 12px;border-radius:999px;font-weight:800}
+    .badge-pill .emoji{font-size:1.1rem}
+    .bar{position:relative;height:10px;border-radius:999px;background:#edf1ff;border:1px solid #d8def8;overflow:hidden;margin:10px 0 6px}
+    .bar>.fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 4px 14px rgba(48,73,209,.35) inset;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+    .legend{font-size:.9rem;color:var(--muted)}
+    .lower{display:grid;grid-template-columns:1fr;gap:16px;margin-top:8px}
+    @media (min-width:980px){ .lower{grid-template-columns:1fr 1fr} }
   </style>
+  <script type="module" src="supabase-config.js"></script>
 </head>
-<body>
-  <header class="wrap" style="padding-bottom:0;">
-    <nav style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-      <a href="index.html" class="small" style="text-decoration:none;">← Home</a>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <a href="predict.html" class="small" style="text-decoration:none;">Predictions</a>
-        <a href="leaderboard.html" class="small" style="text-decoration:none;">Leaderboard</a>
-        <a href="profile.html" class="small" style="text-decoration:underline;">Profile</a>
-      </div>
-    </nav>
+<body class="bg-hero">
+  <header class="top">
+    <div class="inner">
+      <a class="logo" href="index.html">WP</a>
+      <nav class="topnav">
+        <a href="predict.html" data-nav="predict">Predict</a>
+        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
+        <a href="profile.html" data-nav="profile" class="active">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
+    </div>
   </header>
 
   <main class="wrap">
     <div class="grid">
-      <!-- LEFT: Profile form -->
       <section class="card">
-        <h1 class="h1">Your profile</h1>
-        <p class="sub">Signed in as <span id="signed-in-email" style="font-weight:700;"></span></p>
-
-        <label class="label" for="email">Email</label>
-        <input id="email" class="input" type="email" placeholder="your@email.com" disabled />
-
-        <label class="label" for="display-name">Display name</label>
-        <input id="display-name" class="input" type="text" placeholder="e.g. Mark" />
-
-        <label class="label" for="favorite-team">Favourite team</label>
-        <select id="favorite-team" class="select"></select>
-
-        <div class="btnrow">
-          <button id="save-profile-btn" class="btn btn--primary">Save changes</button>
-          <a class="btn btn--ghost" href="predict.html">Go to predictions</a>
-          <a class="btn btn--ghost" href="rivals.html">Open rivals</a>
+        <div class="profile-top">
+          <div class="avatar" id="avatar">U</div>
+          <div>
+            <h2>Your profile</h2>
+            <div class="who" id="who">—</div>
+          </div>
         </div>
 
-        <p id="profile-ok" class="ok-text"></p>
-        <p id="profile-error" class="error-text"></p>
+        <div class="row">
+          <label for="email">Email</label>
+          <input id="email" type="email" readonly />
+        </div>
 
-        <div class="stats-strip">
-          <div class="stats-pill">
-            <div class="stat-title">Total picks</div>
-            <div id="stat-picks" class="stat-value">—</div>
-          </div>
-          <div class="stats-pill">
-            <div class="stat-title">Accuracy</div>
-            <div id="stat-accuracy" class="stat-value">—</div>
-          </div>
+        <div class="row">
+          <label for="display_name">Display name</label>
+          <input id="display_name" type="text" placeholder="Your name as shown on the leaderboard" />
+        </div>
+
+        <div class="row">
+          <label for="team">Favourite team</label>
+          <select id="team"><option value="">— Select a team —</option></select>
+        </div>
+
+        <div class="actions">
+          <button id="saveBtn" class="btn" type="button">Save changes</button>
+          <a class="btn ghost" href="predict.html">Go to predictions</a>
+          <a class="btn secondary" href="leaderboard.html">Open rivals</a>
+        </div>
+        <div id="status" class="status muted">Loading your profile…</div>
+
+        <div class="stats">
+          <div class="stat"><div class="k">Total Picks</div><div class="v" id="stat_total">—</div></div>
+          <div class="stat"><div class="k">Accuracy</div><div class="v"><span id="stat_acc">—</span><span style="font-weight:700;color:var(--muted);font-size:.95rem">%</span></div></div>
         </div>
       </section>
 
-      <!-- RIGHT: Status & badges -->
       <section class="card">
-        <h2 class="h1" style="font-size:24px;">Status &amp; Badges</h2>
+        <h2>Status & Badges</h2>
+        <div id="badgePill" class="badge-pill" style="margin-bottom:8px"><span class="emoji">🎯</span><span id="badgeLabel">— none yet</span></div>
+        <div class="bar"><div class="fill" id="barFill"></div></div>
+        <div class="legend" id="nextMilestone">Next milestone: —</div>
 
-        <div class="badge-row">
-          <div class="badge">— none yet</div>
-        </div>
-
-        <div class="progress" aria-label="Progress to next badge">
-          <span style="width: 10%;"></span>
-        </div>
-        <p class="small">Next milestone: ROOKIE (10) — <span id="to-go">9</span> to go</p>
-
-        <div class="row" style="margin-top:8px;">
+        <div class="lower">
           <div>
-            <h3 class="h1" style="font-size:22px;">Your Numbers</h3>
-            <p style="color:#475569;">
-              Exact scores: <span id="num-exact">—</span> •
-              Correct results: <span id="num-correct">—</span> •
-              Points: <span id="num-points">—</span> •
-              Season rank: <span id="num-rank">—</span>
-            </p>
-
-            <!-- Favourite Team preview block -->
-            <div id="fav-team-wrap" style="margin-top:20px;">
-              <div id="fav-team-card" class="card">
-                <img id="fav-team-crest" alt="Team crest">
-                <div>
-                  <div style="font-weight:700;">Your favourite team</div>
-                  <div id="fav-team-name" style="opacity:.8;"></div>
-                </div>
-              </div>
-            </div>
+            <h3 style="margin:12px 0 6px;color:var(--ink)">Your Numbers</h3>
+            <div class="legend" id="nums">—</div>
           </div>
-
           <div>
-            <h3 class="h1" style="font-size:22px;">How badges work</h3>
-            <ul class="list">
+            <h3 style="margin:12px 0 6px;color:var(--ink)">How badges work</h3>
+            <ul class="legend" style="margin:0 0 0 18px">
               <li>Badge tiers by <strong>Exact Scores</strong>: Rookie (10), Amateur (15), Pro (20), GOAT (30)</li>
               <li>Badges appear next to your name on the Leaderboard</li>
               <li>Scoring: 5 pts exact score • 3 pts correct result</li>
@@ -156,149 +128,178 @@
     </div>
   </main>
 
-  <!-- Supabase + page logic -->
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-    import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-config.js'
+    import { supabase } from './supabase-config.js'
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    (async () => {
+      const $ = s => document.querySelector(s)
+      const emailEl = $('#email')
+      const nameEl  = $('#display_name')
+      const teamEl  = $('#team')
+      const whoEl   = $('#who')
+      const status  = $('#status')
+      const avatar  = $('#avatar')
+      const badgePill = $('#badgePill')
+      const badgeLabel= $('#badgeLabel')
+      const barFill   = $('#barFill')
+      const nextMs    = $('#nextMilestone')
+      const nums      = $('#nums')
+      const statTotal = $('#stat_total')
+      const statAcc   = $('#stat_acc')
 
-    // ====== Team list (add crests in assets/crests/<slug>.png) ======
-    const TEAMS = [
-      { slug: 'arsenal', label: 'Arsenal' },
-      { slug: 'aston-villa', label: 'Aston Villa' },
-      { slug: 'bournemouth', label: 'Bournemouth' },
-      { slug: 'brentford', label: 'Brentford' },
-      { slug: 'brighton', label: 'Brighton' },
-      { slug: 'chelsea', label: 'Chelsea' },
-      { slug: 'crystal-palace', label: 'Crystal Palace' },
-      { slug: 'everton', label: 'Everton' },
-      { slug: 'fulham', label: 'Fulham' },
-      { slug: 'ipswich', label: 'Ipswich Town' },
-      { slug: 'leicester', label: 'Leicester City' },
-      { slug: 'liverpool', label: 'Liverpool' },
-      { slug: 'man-city', label: 'Manchester City' },
-      { slug: 'man-united', label: 'Manchester United' },
-      { slug: 'newcastle', label: 'Newcastle United' },
-      { slug: 'nottingham-forest', label: 'Nottingham Forest' },
-      { slug: 'southampton', label: 'Southampton' },
-      { slug: 'spurs', label: 'Tottenham Hotspur' },
-      { slug: 'west-ham', label: 'West Ham United' },
-      { slug: 'wolves', label: 'Wolves' },
-      // Requested:
-      { slug: 'watford', label: 'Watford' },
-    ]
+      // --- robust auth gate (no top-level await)
+      async function getActiveSession(){
+        let { data:{ session } } = await supabase.auth.getSession()
+        if (session) return session
+        // fallback: wait briefly for recoveries (e.g. after redirect)
+        const t = Date.now() + 1500
+        while (!session && Date.now() < t) {
+          await new Promise(r=>setTimeout(r,150))
+          ;({ data:{ session } } = await supabase.auth.getSession())
+        }
+        return session
+      }
 
-    // ====== Helpers ======
-    const $ = (id) => document.getElementById(id)
-    const emailEl = $('email')
-    const signedInEmail = $('signed-in-email')
-    const displayNameEl = $('display-name')
-    const teamSelect = $('favorite-team')
-    const crestImg = $('fav-team-crest')
-    const crestName = $('fav-team-name')
-    const crestCard = $('fav-team-card')
+      const session = await getActiveSession()
+      if (!session?.user) { window.location.replace('login.html'); return }
+      const user = session.user
 
-    function renderTeamOptions () {
-      teamSelect.innerHTML = '<option value=\"\">— Choose your team —</option>'
-      TEAMS.forEach(t => {
-        const opt = document.createElement('option')
-        opt.value = t.slug
-        opt.textContent = t.label
-        teamSelect.appendChild(opt)
+      // logout
+      document.getElementById('navLogout')?.addEventListener('click', async (e)=>{
+        e.preventDefault(); try{ await supabase.auth.signOut() }catch{}; window.location.replace('login.html')
       })
-    }
 
-    function crestUrlFor (slug) {
-      return slug ? `assets/crests/${slug}.png` : ''
-    }
+      // admin link
+      try{
+        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle()
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = ''
+      }catch{}
 
-    function showCrest (slug) {
-      if (!slug) { crestCard.style.display = 'none'; return }
-      const t = TEAMS.find(x => x.slug === slug)
-      crestImg.src = crestUrlFor(slug)
-      crestImg.onerror = () => { crestImg.src = 'assets/crests/_placeholder.png' } // optional fallback
-      crestName.textContent = t ? t.label : slug
-      crestCard.style.display = 'flex'
-    }
+      // basics
+      emailEl.value = user.email || ''
+      whoEl.textContent = `Signed in as ${user.email || '—'}`
+      avatar.textContent = (user.email || 'User').slice(0,1).toUpperCase()
 
-    // ====== Load profile ======
-    async function loadProfile () {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        window.location.href = 'login.html'
-        return
+      function escapeHtml(s=''){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;') }
+      function toNum(v){ const n=Number(v); return Number.isFinite(n)?n:0 }
+
+      // teams (optional table; fall back to list)
+      async function populateTeams(){
+        let teams=[]
+        try{
+          const { data } = await supabase.from('teams').select('name').order('name',{ascending:true})
+          if (data?.length) teams = data.map(r=>r.name).filter(Boolean)
+        }catch{}
+        if (!teams.length){
+          teams = ['Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Chelsea','Crystal Palace','Everton','Fulham','Ipswich','Leicester','Liverpool','Man City','Man United','Newcastle','Nottingham Forest','Southampton','Spurs','West Ham','Wolves']
+        }
+        teamEl.innerHTML = '<option value="">— Select a team —</option>' +
+          teams.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
       }
 
-      signedInEmail.textContent = user.email || ''
-      if (emailEl) emailEl.value = user.email || ''
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('email, display_name, favorite_team, total_picks, accuracy, exact_scores, correct_results, points, season_rank')
-        .eq('id', user.id)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Load profile error:', error)
+      // profile (select * so schema differences don’t break)
+      async function loadProfile(){
+        status.textContent = 'Loading your profile…'
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+        if (error) {
+          status.innerHTML = '<span class="muted">No profile yet — save to create one.</span>'
+          return
+        }
+        if (data){
+          if (data.display_name) nameEl.value = data.display_name
+          if (data.team)         teamEl.value = data.team
+          avatar.textContent = (nameEl.value || user.email || 'U').slice(0,1).toUpperCase()
+          status.textContent = ''
+        } else {
+          status.innerHTML = '<span class="muted">No profile yet — save to create one.</span>'
+        }
       }
 
-      if (data?.display_name) displayNameEl.value = data.display_name
-      if (data?.favorite_team) {
-        teamSelect.value = data.favorite_team
-        showCrest(data.favorite_team)
-      } else {
-        showCrest('')
+      async function saveProfile(){
+        const display_name = nameEl.value.trim()
+        const team = teamEl.value.trim()
+        if (!display_name){ status.innerHTML = '<span class="err">Please enter a display name.</span>'; return }
+        const { error } = await supabase.from('profiles').upsert({ id:user.id, display_name, team }, { onConflict:'id' })
+        if (error){ status.innerHTML = '<span class="err">Could not save your profile.</span>'; return }
+        status.innerHTML = '<span class="ok">Profile saved.</span>'
+        avatar.textContent = (display_name || user.email || 'U').slice(0,1).toUpperCase()
+        // refresh numbers in case the name is used for matching
+        await loadNumbers()
+      }
+      document.getElementById('saveBtn').addEventListener('click', saveProfile)
+
+      // numbers via your RPC
+      async function loadNumbers(){
+        let points=0, rank='—', exacts=0, results=0, badge=''
+        try{
+          const { data: rows } = await supabase.rpc('leaderboard_v2')
+          if (Array.isArray(rows) && rows.length){
+            // Try multiple identifiers to find "me"
+            const display = (document.getElementById('display_name').value || '').trim()
+            const me = rows.find(r =>
+              r.user_id === user.id ||
+              r.id === user.id ||
+              (r.email && r.email === user.email) ||
+              (display && r.display_name && r.display_name === display)
+            )
+            if (me){
+              points  = toNum(me.points)
+              exacts  = toNum(me.correct_scores ?? me.exacts ?? me.exact)
+              results = toNum(me.correct_results ?? me.results ?? me.correct_result)
+              rank    = me.rank ?? (rows.sort((a,b)=>toNum(b.points)-toNum(a.points)).findIndex(r=>r===me)+1 || '—')
+              badge   = me.badge || ''
+            }
+          }
+        }catch{}
+
+        // fallback for points/rank
+        if (!points){
+          try{
+            const { data: rp } = await supabase.rpc('season_progress', { uid: user.id })
+            if (Array.isArray(rp) && rp.length){ points = toNum(rp[0].points); rank = rp[0].rank ?? rank }
+            else if (rp && typeof rp==='object'){ points = toNum(rp.points); rank = rp.rank ?? rank }
+          }catch{}
+        }
+
+        // totals for accuracy
+        let totalPicks = 0
+        try{
+          const { count } = await supabase
+            .from('predictions')
+            .select('fixture_id', { count:'exact', head:true })
+            .eq('user_id', user.id)
+          totalPicks = toNum(count)
+        }catch{}
+
+        const totalCorrect = exacts + results
+        const accuracy = totalPicks ? Math.round((totalCorrect/totalPicks)*100) : 0
+
+        $('#stat_total').textContent = String(totalPicks)
+        $('#stat_acc').textContent = String(accuracy)
+        nums.innerHTML = `Exact scores: <strong>${exacts}</strong> • Correct results: <strong>${results}</strong> • Points: <strong>${points}</strong> • Season rank: <strong>#${escapeHtml(String(rank))}</strong>`
+
+        // badge/progress
+        const tiers=[{name:'— none yet',emoji:'🎯',need:0},{name:'Rookie',emoji:'🥇',need:10},{name:'Amateur',emoji:'🥈',need:15},{name:'Pro',emoji:'🏆',need:20},{name:'GOAT',emoji:'🐐',need:30}]
+        let current=tiers[0], next=tiers[1]
+        if (badge){
+          const map={rookie:tiers[1],amateur:tiers[2],pro:tiers[3],goat:tiers[4]}
+          current = map[String(badge).toLowerCase()] || current
+        } else {
+          for (let i=tiers.length-1;i>=0;i--){ if (exacts>=tiers[i].need){ current=tiers[i]; next=tiers[i+1]||null; break } }
+        }
+        badgeLabel.textContent = `${current.name}${current.need?` • ${exacts}/${current.need}`:''}`
+        badgePill.querySelector('.emoji').textContent = current.emoji
+
+        let pct=100
+        if (next){ const base=current.need; const span=next.need-base; pct=Math.max(0,Math.min(100,Math.round(((exacts-base)/span)*100))); nextMs.textContent=`Next milestone: ${next.name.toUpperCase()} (${next.need}) — ${Math.max(0,next.need-exacts)} to go` }
+        else { nextMs.textContent='Max tier reached: GOAT' }
+        requestAnimationFrame(()=>{ barFill.style.width = pct + '%' })
       }
 
-      // Optional numbers (only if your table has these columns):
-      if (data?.total_picks != null) $('stat-picks').textContent = data.total_picks
-      if (data?.accuracy != null) $('stat-accuracy').textContent = `${data.accuracy}%`
-      if (data?.exact_scores != null) $('num-exact').textContent = data.exact_scores
-      if (data?.correct_results != null) $('num-correct').textContent = data.correct_results
-      if (data?.points != null) $('num-points').textContent = data.points
-      if (data?.season_rank != null) $('num-rank').textContent = `#${data.season_rank}`
-    }
-
-    // ====== Save profile ======
-    async function saveProfile () {
-      const okEl = $('profile-ok')
-      const errEl = $('profile-error')
-      okEl.textContent = ''; errEl.textContent = ''
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = 'login.html'; return }
-
-      const displayName = (displayNameEl.value || '').trim()
-      const favoriteTeam = teamSelect.value || null
-
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email,
-          display_name: displayName || null,
-          favorite_team: favoriteTeam,     // IMPORTANT: consistent field name
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' })
-
-      if (error) {
-        console.error(error)
-        errEl.textContent = 'Could not save your profile.'
-        return
-      }
-
-      okEl.textContent = 'Profile saved.'
-      showCrest(favoriteTeam)
-    }
-
-    // ====== Wire up ======
-    renderTeamOptions()
-    teamSelect.addEventListener('change', () => showCrest(teamSelect.value))
-    $('save-profile-btn').addEventListener('click', (e) => { e.preventDefault(); saveProfile() })
-
-    // Kick off
-    loadProfile()
+      await populateTeams()
+      await loadProfile()
+      await loadNumbers()
+    })();
   </script>
 </body>
 </html>
