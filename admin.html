@@ -192,7 +192,6 @@
     }
 
     function startOfWeekUTC(d=new Date()){
-      // Monday 00:00 UTC .. next Monday 00:00 UTC
       const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       const dow = dt.getUTCDay(); // 0..6, 1=Mon
       const offset = dow === 0 ? -6 : 1 - dow;
@@ -265,7 +264,7 @@
 
       fixturesBody.innerHTML = '';
       for (const f of fixtures){
-        const dt = new Date(f.utc_date); // timestamptz
+        const dt = new Date(f.utc_date);
         const datestr = dt.toISOString().replace('T',' ').slice(0,16) + ' UTC';
         const res = (f.home_score ?? '') !== '' && (f.away_score ?? '') !== ''
           ? `${f.home_score}–${f.away_score}`
@@ -353,14 +352,13 @@
         return;
       }
 
-      // Predictions on featured fixtures
       const { data: preds, error: prErr } = await supabase
         .from('predictions')
         .select('user_id, fixture_id')
         .in('fixture_id', featuredIds);
       if (prErr) { showError(prErr); throw prErr; }
 
-      const userTotals = new Map(); // user_id -> count
+      const userTotals = new Map();
       for (const p of preds || []){
         const prev = userTotals.get(p.user_id) || 0;
         userTotals.set(p.user_id, prev + 1);
@@ -372,16 +370,16 @@
         return;
       }
 
-      // Get display names / emails
+      // 🔹 only id + display_name (no email column)
       const { data: profs, error: profErr } = await supabase
         .from('profiles')
-        .select('id, display_name, email')
+        .select('id, display_name')
         .in('id', userIds);
       if (profErr) { showError(profErr); throw profErr; }
 
       const items = (profs || []).map(p => ({
         id: p.id,
-        name: p.display_name || p.email || 'Player',
+        name: p.display_name || 'Player',
         c: userTotals.get(p.id) || 0
       }));
       items.sort((a,b)=> (b.c===a.c ? a.name.localeCompare(b.name) : b.c-a.c));
@@ -399,7 +397,6 @@
         `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
     }
 
-    // ---------- Init ----------
     async function init(){
       try{
         setWeekWindow();
