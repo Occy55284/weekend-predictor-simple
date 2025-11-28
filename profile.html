@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your Profile • Weekend Predictor</title>
+  <title>Make Predictions • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
 
   <!-- Redirect if not logged in -->
@@ -12,18 +12,68 @@
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       window.location.replace('login.html');
-      throw new Error('Redirecting…');
+      throw new Error('Redirecting to login');
     }
   </script>
 
   <style>
-    .msg {
-      margin-top: 10px;
-      min-height: 1.1em;
-      font-size: 0.9rem;
-    }
+    .page-header-title { margin-bottom: 4px; }
+    .msg { margin-top: 10px; font-weight: 600; min-height: 1.1em; font-size: 0.9rem; }
     .ok { color: #22c55e; }
     .err { color: #ef4444; }
+    .empty {
+      margin-top: 10px;
+      border-radius: 12px;
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      padding: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      color: #9ca3af;
+      font-size: 0.9rem;
+    }
+    .form-wrap {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      align-items:flex-start;
+    }
+    .form-line {
+      display:flex;
+      align-items:center;
+      gap:4px;
+      font-size:0.8rem;
+      color:#9ca3af;
+      flex-wrap:wrap;
+    }
+    .form-label {
+      font-size:0.75rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:#cbd5f5;
+    }
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:18px;
+      height:18px;
+      border-radius:999px;
+      font-size:0.7rem;
+      font-weight:600;
+      border:1px solid rgba(148,163,184,.6);
+      background:rgba(15,23,42,.96);
+    }
+    .badge.w {
+      border-color:#4ade80;
+      color:#22c55e;
+    }
+    .badge.d {
+      border-color:#fde68a;
+      color:#facc15;
+    }
+    .badge.l {
+      border-color:#fecaca;
+      color:#f97373;
+    }
   </style>
 </head>
 <body class="bg-hero">
@@ -31,164 +81,410 @@
     <header class="top-nav">
       <div class="top-nav-left">
         <div class="nav-logo">
-          <img src="assets/brand-logo.png" alt="Logo" />
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
         </div>
         <div class="nav-text-group">
           <div class="nav-title">Weekend Predictor</div>
-          <div class="nav-subtitle">Your account & profile</div>
+          <div class="nav-subtitle">Premier League prediction challenge</div>
         </div>
       </div>
-
       <nav class="top-nav-links">
         <a href="index.html">Home</a>
-        <a href="predict.html">Predict</a>
+        <a href="predict.html" class="active">Predict</a>
         <a href="leaderboard.html">Leaderboard</a>
         <a href="my-picks.html">My Picks</a>
-        <a href="profile.html" class="active">Profile</a>
+        <a href="profile.html">Profile</a>
         <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a href="#" id="logoutBtn">Logout</a>
+        <a href="#" id="navLogout">Logout</a>
       </nav>
     </header>
 
     <main class="main-layout">
       <section class="panel panel-main">
         <div class="panel-inner">
-          <h1>Your Profile</h1>
-          <p class="muted">
-            Update how you appear across the game. This name shows on leaderboards and picks.
-          </p>
+          <h1 class="page-header-title">This week’s predictions</h1>
+          <p id="weekLabel" class="muted">—</p>
 
-          <div class="user-banner">
-            Signed in as: <span id="userEmail"></span>
+          <div id="empty" class="empty" style="display:none">
+            <div class="muted">
+              No featured fixtures found for this week yet. Once an admin selects the games, they’ll appear here.
+            </div>
           </div>
 
-          <form id="profileForm" class="form">
-            <label class="form-label" for="displayName">Display name</label>
-            <input
-              id="displayName"
-              class="input"
-              type="text"
-              placeholder="Your leaderboard name"
-            />
-            <button class="btn-primary" type="submit">Save changes</button>
-            <div id="msg" class="msg"></div>
-          </form>
+          <div class="table-wrapper" id="tableWrapper" style="margin-top: 10px;">
+            <table id="table" class="table" style="display:none">
+              <thead>
+                <tr>
+                  <th>Fixture</th>
+                  <th style="width:180px">Home</th>
+                  <th style="width:180px">Away</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
 
-          <button id="logoutBtn2" class="btn-ghost" style="margin-top:16px;">
-            Log out
-          </button>
+          <div class="actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-primary" id="lockBtn" type="button">Lock my picks</button>
+          </div>
+
+          <div id="msg" class="msg"></div>
+
+          <p class="muted" style="margin-top:10px; font-size:.85rem;">
+            Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.
+          </p>
         </div>
       </section>
 
       <aside class="panel panel-side">
         <div class="panel-inner">
-          <h2>Why update your profile?</h2>
-          <ul class="bullet-list">
-            <li>Appear on the leaderboard with a proper name.</li>
-            <li>Helps others recognise you in the game.</li>
-          </ul>
+          <h2>Season progress</h2>
+          <p id="progress" class="muted">Track your points as results roll in.</p>
         </div>
       </aside>
     </main>
   </div>
 
+  <!-- Logout wiring -->
   <script type="module">
     import { supabase } from './supabase-config.js';
-
-    const userEmailEl   = document.getElementById('userEmail');
-    const displayNameEl = document.getElementById('displayName');
-    const msg           = document.getElementById('msg');
-    const navAdmin      = document.getElementById('navAdmin');
-    const logoutBtn     = document.getElementById('logoutBtn');
-    const logoutBtn2    = document.getElementById('logoutBtn2');
-
-    [logoutBtn, logoutBtn2].forEach(btn => {
-      btn?.addEventListener('click', async (e) => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e) => {
         e.preventDefault();
         try { await supabase.auth.signOut(); } catch {}
         window.location.replace('login.html');
       });
     });
+  </script>
 
-    async function loadProfile() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
-        window.location.replace('login.html');
+  <!-- Main prediction logic -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const $ = (sel) => document.querySelector(sel);
+    const tbody = $('#tbody');
+    const table = $('#table');
+    const emptyBox = $('#empty');
+    const msg = $('#msg');
+    const lockBtn = $('#lockBtn');
+    const weekLabel = $('#weekLabel');
+    const progressEl = $('#progress');
+
+    function pad(n){return String(n).padStart(2,'0')}
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+
+    function startOfWeek(d=new Date()){
+      const x = new Date(d);
+      const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
+      x.setHours(0,0,0,0);
+      x.setDate(x.getDate() - (day - 1));
+      return x;
+    }
+    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+
+    const weekStart = startOfWeek(); // Monday (local time)
+    const weekEnd = addDays(weekStart, 7); // next Monday
+    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
+
+    // --- Auth for current user ---
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session.user;
+
+    // Show Admin link if applicable
+    (async ()=>{
+      try{
+        const { data, error } = await supabase
+          .from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
+      }catch{}
+    })();
+
+    // --- Load fixtures (featured) for this week using utc_date bounds ---
+    async function loadFixtures(){
+      tbody.innerHTML = '';
+      msg.textContent = '';
+      lockBtn.disabled = true;
+
+      const { data: fixtures, error } = await supabase
+        .from('fixtures')
+        .select('id, utc_date, home_team, away_team')
+        .eq('featured', true)
+        .gte('utc_date', new Date(weekStart).toISOString())
+        .lt('utc_date', new Date(weekEnd).toISOString())
+        .order('utc_date', { ascending: true });
+
+      if (error) {
+        emptyBox.style.display = 'block';
+        table.style.display = 'none';
+        emptyBox.innerHTML = `<div class="err">Could not load fixtures.</div>`;
+        console.error(error);
+        return { fixtures: [], error };
+      }
+
+      if (!fixtures || fixtures.length === 0) {
+        emptyBox.style.display = 'block';
+        table.style.display = 'none';
+        emptyBox.innerHTML = `<div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>`;
+        return { fixtures: [], error: null };
+      }
+
+      emptyBox.style.display = 'none';
+      table.style.display = '';
+
+      fixtures.forEach(fx=>{
+        const tr = document.createElement('tr');
+        tr.dataset.fixtureId = String(fx.id);
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(fx.home_team)}</strong> vs <strong>${escapeHtml(fx.away_team)}</strong></td>
+          <td>
+            <div class="form-wrap">
+              <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home">
+              <div class="form-line" data-form="home"><span class="form-label">Form</span></div>
+            </div>
+          </td>
+          <td>
+            <div class="form-wrap">
+              <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="away">
+              <div class="form-line" data-form="away"><span class="form-label">Form</span></div>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      lockBtn.disabled = false;
+      return { fixtures, error: null };
+    }
+
+    // --- Prefill user picks from `picks` for this week ---
+    async function prefillPicks(){
+      const { data: picks, error } = await supabase
+        .from('picks')
+        .select('fixture_id, home, away')
+        .eq('user_id', user.id)
+        .eq('week_start', isoDate(weekStart));
+
+      if (error) { console.error(error); return; }
+
+      const map = new Map((picks||[]).map(p=>[String(p.fixture_id), p]));
+      [...tbody.querySelectorAll('tr')].forEach(tr=>{
+        const fid = tr.dataset.fixtureId;
+        const p = map.get(String(fid));
+        if (p){
+          tr.querySelector('input[data-k="home"]').value = p.home ?? '';
+          tr.querySelector('input[data-k="away"]').value = p.away ?? '';
+        }
+      });
+    }
+
+    function readPayload(){
+      const rows = [...tbody.querySelectorAll('tr')];
+      return rows.map(tr=>{
+        const fid = String(tr.dataset.fixtureId);
+        const home = Number(tr.querySelector('input[data-k="home"]').value || 0);
+        const away = Number(tr.querySelector('input[data-k="away"]').value || 0);
+        return { fixture_id: fid, home_goals: home, away_goals: away };
+      });
+    }
+
+    function disableInputs(){
+      [...tbody.querySelectorAll('input[type="number"]')].forEach(i=>i.disabled = true);
+      lockBtn.disabled = true;
+    }
+
+    // --- Enforce lock state if already locked this week ---
+    async function enforceLockUI() {
+      const { data: lockRow, error } = await supabase
+        .from('pick_locks')
+        .select('locked_at, week_start')
+        .eq('user_id', user.id)
+        .eq('week_start', isoDate(weekStart))
+        .maybeSingle();
+
+      if (error) {
+        console.error('lock check error', error);
         return;
       }
 
-      userEmailEl.textContent = user.email || '';
+      if (lockRow) {
+        disableInputs();
+        const ts = lockRow.locked_at ? new Date(lockRow.locked_at).toLocaleString() : '';
+        msg.innerHTML = `<span class="muted">Locked on ${ts}. Changes are disabled.</span>`;
+      }
+    }
 
-      try {
-        const { data: profileAdmin } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (profileAdmin?.is_admin) navAdmin.style.display = '';
-      } catch {}
+    // --- Lock flow: save predictions, then lock the week ---
+    lockBtn.addEventListener('click', async ()=>{
+      lockBtn.disabled = true; 
+      msg.textContent = 'Locking…';
+      msg.className = 'msg';
 
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', user.id)
-          .maybeSingle();
+      try{
+        const payload = readPayload().map(p => ({
+          user_id: user.id,
+          fixture_id: p.fixture_id,
+          home: p.home_goals,
+          away: p.away_goals,
+          week_start: isoDate(weekStart),
+        }));
 
-        if (error) {
-          console.error('load profile error', error);
-          msg.innerHTML = '<span class="err">Could not load profile.</span>';
+        if (!payload.length){
+          msg.innerHTML = '<span class="err">No fixtures to lock.</span>';
+          lockBtn.disabled = false;
           return;
         }
 
-        if (profile) {
-          displayNameEl.value = profile.display_name || '';
+        // 1) Save into picks (no explicit onConflict – let DB use its PK/unique keys)
+        const { error: upErr } = await supabase
+          .from('picks')
+          .upsert(payload);
+        if (upErr) throw upErr;
+
+        // 2) Lock the week for this user
+        const { error: lockErr } = await supabase
+          .from('pick_locks')
+          .upsert({
+            user_id: user.id,
+            week_start: isoDate(weekStart)
+          });
+        if (lockErr) throw lockErr;
+
+        msg.innerHTML = '<span class="ok">Your picks are locked in for this week!</span>';
+        disableInputs();
+      }catch(err){
+        console.error(err);
+        const detail = err?.message || err?.hint || '';
+        msg.innerHTML = `<span class="err">Could not lock your picks. ${detail}</span>`;
+        lockBtn.disabled = false;
+      }
+    });
+
+    // --- Escape helper for team names ---
+    function escapeHtml(str=''){
+      return str.replace(/[&<>"']/g, ch=>{
+        switch(ch){
+          case '&': return '&amp;';
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '"': return '&quot;';
+          case "'": return '&#39;';
+          default: return ch;
         }
-      } catch (e) {
-        console.error(e);
-        msg.innerHTML = '<span class="err">Could not load profile.</span>';
+      });
+    }
+
+    // --- FORM (last 5 games) built from `fixtures` table ---
+    const teamFormCache = new Map();
+
+    async function getTeamForm(teamName, beforeIso) {
+      const key = `${teamName}|${beforeIso.slice(0,10)}`;
+      if (teamFormCache.has(key)) return teamFormCache.get(key);
+
+      const { data, error } = await supabase
+        .from('fixtures')
+        .select('home_team, away_team, home_score, away_score, utc_date, status')
+        .lt('utc_date', beforeIso)
+        .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
+        .eq('status', 'FINISHED')
+        .order('utc_date', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('form fetch error', error);
+        teamFormCache.set(key, '');
+        return '';
+      }
+
+      const seq = (data || [])
+        .map(row => {
+          const hs = row.home_score;
+          const as = row.away_score;
+          if (hs == null || as == null) return null;
+
+          const isHome = row.home_team === teamName;
+          const forTeam = isHome ? hs : as;
+          const against = isHome ? as : hs;
+
+          if (forTeam > against) return 'W';
+          if (forTeam < against) return 'L';
+          return 'D';
+        })
+        .filter(Boolean)
+        .slice(0,5);
+
+      const str = seq.join('');
+      teamFormCache.set(key, str);
+      return str;
+    }
+
+    function renderFormLine(lineEl, form) {
+      if (!lineEl) return;
+      for (const ch of form) {
+        const b = document.createElement('span');
+        b.className = 'badge';
+        if (ch === 'W') b.classList.add('w');
+        else if (ch === 'D') b.classList.add('d');
+        else if (ch === 'L') b.classList.add('l');
+        b.textContent = ch;
+        lineEl.appendChild(b);
       }
     }
 
-    async function saveProfile(e) {
-      e.preventDefault();
-      msg.textContent = 'Saving…';
-      msg.className = 'msg';
+    async function renderFormsForFixtures(fixtures) {
+      const rows = [...tbody.querySelectorAll('tr')];
+      const jobs = [];
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
-        window.location.replace('login.html');
-        return;
-      }
+      fixtures.forEach((fx, idx) => {
+        const tr = rows[idx];
+        if (!tr) return;
+        const homeLine = tr.querySelector('.form-line[data-form="home"]');
+        const awayLine = tr.querySelector('.form-line[data-form="away"]');
+        const beforeIso = fx.utc_date;
 
-      const nameVal = displayNameEl.value.trim() || null;
-
-      try {
-        const { error } = await supabase
-          .from('profiles')
-          .upsert(
-            {
-              id: user.id,
-              display_name: nameVal,
-            },
-            { onConflict: 'id' }
+        if (homeLine) {
+          jobs.push(
+            (async () => {
+              const f = await getTeamForm(fx.home_team, beforeIso);
+              renderFormLine(homeLine, f);
+            })()
           );
+        }
+        if (awayLine) {
+          jobs.push(
+            (async () => {
+              const f = await getTeamForm(fx.away_team, beforeIso);
+              renderFormLine(awayLine, f);
+            })()
+          );
+        }
+      });
 
-        if (error) throw error;
-        msg.innerHTML = '<span class="ok">Profile updated successfully.</span>';
-      } catch (e) {
-        console.error('save profile error', e);
-        msg.innerHTML =
-          '<span class="err">Could not save profile. ' +
-          (e?.message ? e.message : '') +
-          '</span>';
-      }
+      await Promise.all(jobs);
     }
 
-    document.getElementById('profileForm').addEventListener('submit', saveProfile);
-    loadProfile();
+    // --- Season progress summary (non-blocking) ---
+    (async ()=>{
+      try{
+        const { data: totals } = await supabase.rpc('season_progress', { uid: user.id });
+        if (totals?.points != null){
+          const s = Array.isArray(totals) ? totals[0] : totals;
+          progressEl.textContent = `Points: ${s.points ?? 0} • Rank: ${s.rank ?? '—'}`;
+        } else {
+          progressEl.textContent = `Track your points as results roll in.`;
+        }
+      }catch{
+        progressEl.textContent = `Track your points as results roll in.`;
+      }
+    })();
+
+    // --- Boot ---
+    const { fixtures } = await loadFixtures();
+    if (fixtures && fixtures.length) {
+      await prefillPicks();
+      await renderFormsForFixtures(fixtures);
+    }
+    await enforceLockUI();
   </script>
 </body>
 </html>
