@@ -84,14 +84,6 @@
               placeholder="E.g. The Predictors FC"
             />
 
-            <label class="form-label" for="favClub">Favourite club</label>
-            <input
-              id="favClub"
-              class="input"
-              type="text"
-              placeholder="Who do you support?"
-            />
-
             <button class="btn-primary" type="submit">Save changes</button>
             <div id="msg" class="msg"></div>
           </form>
@@ -109,7 +101,6 @@
           <ul class="bullet-list">
             <li>Appear on the leaderboard with a proper name.</li>
             <li>Add a team name for fun rivalry.</li>
-            <li>Your favourite club may be used in future features.</li>
           </ul>
         </div>
       </aside>
@@ -124,7 +115,6 @@
     const userEmailEl  = document.getElementById('userEmail');
     const displayName  = document.getElementById('displayName');
     const teamName     = document.getElementById('teamName');
-    const favClub      = document.getElementById('favClub');
     const msg          = document.getElementById('msg');
     const navAdmin     = document.getElementById('navAdmin');
 
@@ -150,7 +140,7 @@
 
       userEmailEl.textContent = user.email || '';
 
-      // Check admin flag (optional)
+      // Check admin flag
       try {
         const { data: profileAdmin } = await supabase
           .from('profiles')
@@ -169,7 +159,7 @@
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('display_name, team_name, favourite_club')
+          .select('display_name, team_name')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -182,7 +172,6 @@
         if (profile) {
           displayName.value = profile.display_name || '';
           teamName.value    = profile.team_name || '';
-          favClub.value     = profile.favourite_club || '';
         }
       } catch (e) {
         console.error(e);
@@ -203,18 +192,17 @@
       }
 
       try {
-        // 🔑 Use UPDATE instead of UPSERT to avoid constraint issues
-        const { error, data } = await supabase
+        // Try UPDATE first
+        const { data, error } = await supabase
           .from('profiles')
           .update({
             display_name: displayName.value.trim() || null,
             team_name:    teamName.value.trim() || null,
-            favourite_club: favClub.value.trim() || null,
           })
           .eq('id', user.id)
           .select();
 
-        // If no row updated, fall back to insert with id + email
+        // If no row updated, INSERT a new one
         if (!error && (!data || data.length === 0)) {
           const { error: insErr } = await supabase
             .from('profiles')
@@ -223,8 +211,8 @@
               email: user.email,
               display_name: displayName.value.trim() || null,
               team_name:    teamName.value.trim() || null,
-              favourite_club: favClub.value.trim() || null,
             });
+
           if (insErr) throw insErr;
         } else if (error) {
           throw error;
