@@ -6,13 +6,13 @@
   <title>Make Predictions • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
 
-  <!-- ✅ Early auth gate (runs before paint). Redirects signed-out users. -->
+  <!-- Redirect if not logged in -->
   <script type="module">
-    import { supabase } from './supabase-config.js'
-    const { data: { session } } = await supabase.auth.getSession()
+    import { supabase } from './supabase-config.js';
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      window.location.replace('login.html')
-      throw new Error('Redirecting to login')
+      window.location.replace('login.html');
+      throw new Error('Redirecting to login');
     }
   </script>
 
@@ -29,6 +29,50 @@
       background: rgba(15, 23, 42, 0.9);
       color: #9ca3af;
       font-size: 0.9rem;
+    }
+    .form-wrap {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      align-items:flex-start;
+    }
+    .form-line {
+      display:flex;
+      align-items:center;
+      gap:4px;
+      font-size:0.8rem;
+      color:#9ca3af;
+      flex-wrap:wrap;
+    }
+    .form-label {
+      font-size:0.75rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:#cbd5f5;
+    }
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:18px;
+      height:18px;
+      border-radius:999px;
+      font-size:0.7rem;
+      font-weight:600;
+      border:1px solid rgba(148,163,184,.6);
+      background:rgba(15,23,42,.96);
+    }
+    .badge.w {
+      border-color:#4ade80;
+      color:#22c55e;
+    }
+    .badge.d {
+      border-color:#fde68a;
+      color:#facc15;
+    }
+    .badge.l {
+      border-color:#fecaca;
+      color:#f97373;
     }
   </style>
 </head>
@@ -101,12 +145,12 @@
     </main>
   </div>
 
-  <!-- Logout wiring (unchanged logic) -->
+  <!-- Logout wiring -->
   <script type="module">
-    import { supabase } from './supabase-config.js'
-    document.addEventListener('DOMContentLoaded', ()=>{
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', () => {
       const navLogout = document.getElementById('navLogout');
-      navLogout?.addEventListener('click', async (e)=>{
+      navLogout?.addEventListener('click', async (e) => {
         e.preventDefault();
         try { await supabase.auth.signOut(); } catch {}
         window.location.replace('login.html');
@@ -114,12 +158,11 @@
     });
   </script>
 
-  <!-- Main prediction logic (unchanged, just using new layout) -->
+  <!-- Main prediction logic -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // --- Elements & helpers ---
-    const $ = (sel)=>document.querySelector(sel);
+    const $ = (sel) => document.querySelector(sel);
     const tbody = $('#tbody');
     const table = $('#table');
     const emptyBox = $('#empty');
@@ -144,7 +187,7 @@
     const weekEnd = addDays(weekStart, 7); // next Monday
     weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
 
-    // --- Auth (we already gated early; this is to use the user id safely) ---
+    // --- Auth for current user ---
     const { data: { session } } = await supabase.auth.getSession();
     const user = session.user;
 
@@ -161,7 +204,7 @@
     async function loadFixtures(){
       tbody.innerHTML = '';
       msg.textContent = '';
-      lockBtn.disabled = true; // disable until fixtures load
+      lockBtn.disabled = true;
 
       const { data: fixtures, error } = await supabase
         .from('fixtures')
@@ -197,13 +240,13 @@
           <td>
             <div class="form-wrap">
               <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home">
-              <div class="form-line" data-form="home"><span class="form-label">Form:</span></div>
+              <div class="form-line" data-form="home"><span class="form-label">Form</span></div>
             </div>
           </td>
           <td>
             <div class="form-wrap">
               <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="away">
-              <div class="form-line" data-form="away"><span class="form-label">Form:</span></div>
+              <div class="form-line" data-form="away"><span class="form-label">Form</span></div>
             </div>
           </td>
         `;
@@ -214,7 +257,7 @@
       return { fixtures, error: null };
     }
 
-    // --- Prefill user picks for this week from table public.picks ---
+    // --- Prefill user picks from `picks` for this week ---
     async function prefillPicks(){
       const { data: picks, error } = await supabase
         .from('picks')
@@ -250,7 +293,7 @@
       lockBtn.disabled = true;
     }
 
-    // --- Enforce lock state on UI if already locked this week ---
+    // --- Enforce lock state if already locked this week ---
     async function enforceLockUI() {
       const { data: lockRow, error } = await supabase
         .from('pick_locks')
@@ -278,8 +321,9 @@
         const payload = readPayload().map(p => ({
           user_id: user.id,
           fixture_id: p.fixture_id,
-          home_goals: p.home_goals,
-          away_goals: p.away_goals
+          home: p.home_goals,
+          away: p.away_goals,
+          week_start: isoDate(weekStart),
         }));
 
         if (!payload.length){
@@ -288,13 +332,13 @@
           return;
         }
 
-        // 1) Save into base table: predictions
+        // Save into picks
         const { error: upErr } = await supabase
-          .from('predictions')
-          .upsert(payload, { onConflict: 'user_id,fixture_id' });
+          .from('picks')
+          .upsert(payload, { onConflict: 'user_id,fixture_id,week_start' });
         if (upErr) throw upErr;
 
-        // 2) Lock the week
+        // Lock the week for this user
         const { error: lockErr } = await supabase
           .from('pick_locks')
           .upsert({ user_id: user.id, week_start: isoDate(weekStart) }, { onConflict: 'user_id,week_start' });
@@ -323,64 +367,95 @@
       });
     }
 
-    // --- Optional: fetch simple form badges for teams (non-blocking) ---
-    (async ()=>{
-      try{
-        const { data } = await supabase
-          .from('team_form_recent')
-          .select('team, recent')
-          .order('team');
+    // --- FORM (last 5 games) built from `fixtures` table ---
+    const teamFormCache = new Map();
 
-        if (!data || !data.length) return;
-        const map = new Map(data.map(r => [r.team, r.recent || '']));
+    async function getTeamForm(teamName, beforeIso) {
+      const key = `${teamName}|${beforeIso.slice(0,10)}`;
+      if (teamFormCache.has(key)) return teamFormCache.get(key);
 
-        function renderFormLine(lineEl, teamName){
-          const recent = map.get(teamName) || '';
-          const span = document.createElement('span');
-          span.className = 'form-values';
-          span.textContent = recent;
-          lineEl.appendChild(span);
+      const { data, error } = await supabase
+        .from('fixtures')
+        .select('home_team, away_team, home_score, away_score, utc_date, status')
+        .lt('utc_date', beforeIso)
+        .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
+        .eq('status', 'FINISHED')
+        .order('utc_date', { ascending: false })
+        .limit(5);
 
-          // badges
-          for (const ch of recent){
-            const b = document.createElement('span');
-            b.className = 'badge';
-            if (ch === 'W') {
-              b.className = 'badge w';
-              b.textContent = 'W';
-            } else if (ch === 'D') {
-              b.className = 'badge d';
-              b.textContent = 'D';
-            } else if (ch === 'L') {
-              b.className = 'badge l';
-              b.textContent = 'L';
-            } else {
-              b.className = 'badge p';
-              b.textContent = '•';
-            }
-            lineEl.appendChild(b);
-          }
-        }
-
-        async function renderFormsForFixtures(fixtures){
-          const rows = [...tbody.querySelectorAll('tr')]
-          const jobs = []
-          rows.forEach((tr, idx)=>{
-            const fx = fixtures[idx]
-            const homeLine = tr.querySelector('.form-line[data-form="home"]')
-            const awayLine = tr.querySelector('.form-line[data-form="away"]')
-            if (homeLine) jobs.push(renderFormLine(homeLine, fx.home_team))
-            if (awayLine) jobs.push(renderFormLine(awayLine, fx.away_team))
-          })
-          await Promise.all(jobs)
-        }
-
-        // store so we can call later in boot
-        window._renderFormsForFixtures = renderFormsForFixtures;
-      }catch(err){
-        console.error('form badges error', err);
+      if (error) {
+        console.error('form fetch error', error);
+        teamFormCache.set(key, '');
+        return '';
       }
-    })();
+
+      const seq = (data || [])
+        .map(row => {
+          const hs = row.home_score;
+          const as = row.away_score;
+          if (hs == null || as == null) return null;
+
+          const isHome = row.home_team === teamName;
+          const forTeam = isHome ? hs : as;
+          const against = isHome ? as : hs;
+
+          if (forTeam > against) return 'W';
+          if (forTeam < against) return 'L';
+          return 'D';
+        })
+        .filter(Boolean)
+        .slice(0,5);
+
+      const str = seq.join('');
+      teamFormCache.set(key, str);
+      return str;
+    }
+
+    function renderFormLine(lineEl, form) {
+      if (!lineEl) return;
+      // keep label, just append badges
+      for (const ch of form) {
+        const b = document.createElement('span');
+        b.className = 'badge';
+        if (ch === 'W') b.classList.add('w');
+        else if (ch === 'D') b.classList.add('d');
+        else if (ch === 'L') b.classList.add('l');
+        b.textContent = ch;
+        lineEl.appendChild(b);
+      }
+    }
+
+    async function renderFormsForFixtures(fixtures) {
+      const rows = [...tbody.querySelectorAll('tr')];
+      const jobs = [];
+
+      fixtures.forEach((fx, idx) => {
+        const tr = rows[idx];
+        if (!tr) return;
+        const homeLine = tr.querySelector('.form-line[data-form="home"]');
+        const awayLine = tr.querySelector('.form-line[data-form="away"]');
+        const beforeIso = fx.utc_date; // use fixture kickoff time
+
+        if (homeLine) {
+          jobs.push(
+            (async () => {
+              const f = await getTeamForm(fx.home_team, beforeIso);
+              renderFormLine(homeLine, f);
+            })()
+          );
+        }
+        if (awayLine) {
+          jobs.push(
+            (async () => {
+              const f = await getTeamForm(fx.away_team, beforeIso);
+              renderFormLine(awayLine, f);
+            })()
+          );
+        }
+      });
+
+      await Promise.all(jobs);
+    }
 
     // --- Season progress summary (non-blocking) ---
     (async ()=>{
@@ -401,9 +476,7 @@
     const { fixtures } = await loadFixtures();
     if (fixtures && fixtures.length) {
       await prefillPicks();
-      if (window._renderFormsForFixtures) {
-        await window._renderFormsForFixtures(fixtures); // <- add team form badges
-      }
+      await renderFormsForFixtures(fixtures);
     }
     await enforceLockUI();
   </script>
