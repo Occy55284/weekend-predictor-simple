@@ -25,60 +25,582 @@
       background: radial-gradient(1200px 800px at 80% -10%, rgba(138,179,255,.12), transparent 40%),
                   linear-gradient(180deg, var(--bg-start), var(--bg-end));
       -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh;
-      animation: fadeInBody 1s ease forwards;
-      opacity: 0;
-      text-align:center;
+     
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:24px;
     }
-    @keyframes fadeInBody { to { opacity: 1; } }
-
-    .logo{
-      width:110px; height:110px; border-radius:999px; background:#0c1a34; display:grid; place-items:center;
-      border:1px solid var(--border); box-shadow:0 0 25px rgba(122,164,255,.25), inset 0 0 20px rgba(122,164,255,.1);
-      animation: fadeInUp 1.5s ease forwards, glowPulse 4s ease-in-out infinite;
-      opacity:0; margin-bottom:24px;
+    .wrap{
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);
+      gap:24px;
+      align-items:stretch;
     }
-    .logo img{width:70px; height:70px; object-fit:contain; border-radius:50%;}
-    .name{font-weight:800; font-size:36px; letter-spacing:.4px; animation: fadeInUp 1.8s ease forwards, redGlowPulse 4s ease-in-out infinite;
-      opacity:0; margin-bottom:40px; color:var(--text); text-shadow:0 0 10px var(--red-glow);}
+    .card{
+      background:radial-gradient(circle at top left, rgba(255,255,255,.04), transparent 45%),
+                 rgba(11,18,32,0.9);
+      border:1px solid var(--border);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:24px;
+      position:relative;
+      overflow:hidden;
+    }
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background:radial-gradient(circle at 10% -10%, rgba(122,164,255,.12), transparent 60%);
+      opacity:.8;
+      pointer-events:none;
+    }
+    .card-inner{position:relative; z-index:1;}
+    h1{
+      font-size:2.4rem;
+      letter-spacing:.03em;
+      margin:0;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    h1 span.logo{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      background:radial-gradient(circle at 30% 20%, #ffffff, #dbeafe);
+      box-shadow:0 0 0 1px rgba(255,255,255,.4), 0 0 25px rgba(122,164,255,.6);
+    }
+    h1 span.logo img{
+      width:28px;
+      height:28px;
+      display:block;
+    }
 
-    @keyframes glowPulse {0%,100%{box-shadow:0 0 20px rgba(122,164,255,.25),inset 0 0 20px rgba(122,164,255,.1);}50%{box-shadow:0 0 40px rgba(122,164,255,.45),inset 0 0 30px rgba(122,164,255,.2);}}
-    @keyframes redGlowPulse {0%,100%{text-shadow:0 0 10px rgba(255,77,77,.5),0 0 20px rgba(255,77,77,.3);}50%{text-shadow:0 0 20px rgba(255,77,77,.8),0 0 40px rgba(255,77,77,.6);}}
-    @keyframes fadeInUp {0%{opacity:0;transform:translateY(20px);}100%{opacity:1;transform:translateY(0);}}
+    h2{
+      font-size:1.3rem;
+      margin:0 0 4px;
+      color:#e5edff;
+    }
+    p{margin:0; color:var(--muted); line-height:1.5;}
+    .muted{color:var(--muted); font-size:.92rem;}
 
-    .hero{display:flex;flex-direction:column;align-items:center;max-width:720px;text-align:center;animation:fadeInUp 2s ease forwards;opacity:0;}
-    .kicker{color:var(--muted);font-weight:700;letter-spacing:.12em;font-size:12px;text-transform:uppercase;margin-bottom:18px;}
-    .title{font-size:clamp(40px,7vw,80px);line-height:1.1;font-weight:850;letter-spacing:-.02em;margin:0 0 18px;}
-    .subtitle{color:var(--muted);font-size:clamp(16px,2.2vw,20px);max-width:46ch;margin:0 0 40px;}
+    .pill-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin:16px 0 18px;
+    }
+    .pill{
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      padding:6px 12px;
+      font-size:.78rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:var(--muted);
+      background:rgba(15,23,42,.7);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .pill-dot{
+      width:7px;height:7px;border-radius:999px;
+      background:radial-gradient(circle, var(--accent), #3b82f6);
+      box-shadow:0 0 10px rgba(59,130,246,.9);
+    }
+    .pill-pill{
+      background:rgba(239,68,68,.1);
+      border-color:rgba(248,113,113,.5);
+      color:#fecaca;
+    }
+    .pill-pill .pill-dot{
+      background:radial-gradient(circle, #f97373,#ef4444);
+      box-shadow:0 0 10px rgba(248,113,113,.9);
+    }
 
-    .primary-cta{display:inline-block;font-weight:800;text-decoration:none;background:transparent;color:var(--text);border:1px solid var(--border);padding:16px 100px;border-radius:12px;transition:border-color .2s ease,box-shadow .2s ease;animation:glowPulse 4s ease-in-out infinite;box-shadow:0 0 20px rgba(122,164,255,.15),inset 0 0 10px rgba(122,164,255,.1);}
-    .primary-cta:hover{border-color:#2a3a5a;box-shadow:0 0 30px rgba(122,164,255,.45),inset 0 0 20px rgba(122,164,255,.2);}
+    .hero-main{
+      display:flex;
+      flex-direction:column;
+      gap:20px;
+      margin-top:20px;
+    }
 
-    nav{margin-top:40px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
-    nav a{color:var(--accent);text-decoration:none;font-weight:600;transition:color .2s ease;}
-    nav a:hover{color:#fff;}
+    .btn-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+    }
+    .btn-primary, .btn-ghost{
+      border-radius:999px;
+      padding:9px 18px;
+      font-size:.95rem;
+      border:1px solid transparent;
+      cursor:pointer;
+      font-weight:500;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      text-decoration:none;
+      color:var(--text);
+      background:none;
+    }
+    .btn-primary{
+      background:radial-gradient(circle at 10% 0, #dbeafe, #93c5fd);
+      color:#0f172a;
+      border-color:rgba(191,219,254,.8);
+      box-shadow:0 0 0 1px rgba(255,255,255,.4), 0 12px 25px rgba(15,23,42,.9);
+      position:relative;
+      overflow:hidden;
+    }
+    .btn-primary span.icon{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:22px;height:22px;
+      border-radius:999px;
+      background:rgba(15,23,42,.08);
+    }
+    .btn-primary span.icon-dot{
+      width:7px;height:7px;border-radius:999px;
+      background:#22c55e;
+      box-shadow:0 0 12px rgba(34,197,94,.9);
+    }
+    .btn-primary:focus,.btn-primary:hover{
+      transform:translateY(-1px);
+      box-shadow:0 14px 30px rgba(15,23,42,1);
+    }
 
-    .foot{margin-top:48px;color:var(--muted);font-size:14px;}
-    .link{color:var(--accent);text-decoration:none;}
-    .link:hover{filter:brightness(1.15);}
+    .btn-ghost{
+      border-color:rgba(148,163,184,.6);
+      background:rgba(15,23,42,.7);
+      color:var(--muted);
+    }
+    .btn-ghost span.dot{
+      width:7px;height:7px;border-radius:999px;
+      background:#eab308;
+      box-shadow:0 0 12px rgba(250,204,21,.9);
+    }
+
+    .meta-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:16px;
+      font-size:.9rem;
+      margin-top:10px;
+    }
+    .meta-row span{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color:var(--muted);
+    }
+    .meta-row span strong{color:#e5edff;}
+
+    .hero-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size:.8rem;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,.6);
+      background:rgba(15,23,42,.85);
+      margin-top:16px;
+      color:var(--muted);
+    }
+    .hero-badge span.light{
+      width:32px;height:16px;border-radius:999px;
+      background:radial-gradient(circle at 10% 50%, #4ade80, transparent 60%), rgba(15,23,42,.9);
+      box-shadow:inset 0 0 0 1px rgba(148,163,184,.6), 0 0 20px rgba(74,222,128,.6);
+    }
+
+    .card-side{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      justify-content:space-between;
+    }
+    .fixture-card{
+      border-radius:20px;
+      border:1px solid rgba(148,163,184,.35);
+      background:radial-gradient(circle at top left, rgba(59,130,246,.12), transparent 55%),
+                 rgba(15,23,42,.9);
+      padding:16px 18px;
+      box-shadow:0 16px 35px rgba(15,23,42,.9);
+    }
+    .fixture-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:.85rem;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+    .fixture-header span.highlight{
+      color:#bfdbfe;
+      font-weight:500;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .fixture-header span.badge{
+      border-radius:999px;
+      border:1px solid rgba(251,191,36,.7);
+      color:#facc15;
+      padding:3px 9px;
+      background:rgba(161,98,7,.25);
+      font-size:.72rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+
+    .fixture-main{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:4px 0 10px;
+    }
+    .team-col{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:.95rem;
+    }
+    .team-name{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-weight:500;
+    }
+    .team-badge{
+      width:26px;height:26px;border-radius:999px;
+      background:radial-gradient(circle at 30% 20%, #eef2ff, #93c5fd);
+      box-shadow:0 0 0 1px rgba(248,250,252,.7), 0 0 18px rgba(129,140,248,.9);
+    }
+    .team-meta{
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    .score-col{
+      width:70px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+    }
+    .score-bubble{
+      border-radius:999px;
+      padding:6px 10px;
+      background:rgba(15,23,42,.9);
+      border:1px solid rgba(148,163,184,.7);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-weight:600;
+      font-size:.95rem;
+    }
+    .score-bubble span.label{
+      font-size:.7rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:var(--muted);
+    }
+    .prob{
+      font-size:.75rem;
+      color:var(--muted);
+    }
+
+    .quick-stats{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .mini-pill{
+      border-radius:10px;
+      border:1px solid rgba(148,163,184,.4);
+      padding:8px 9px;
+      font-size:.74rem;
+      color:var(--muted);
+      background:rgba(15,23,42,.95);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .mini-pill span.label{
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:.68rem;
+    }
+    .mini-pill span.value{
+      color:#e5edff;
+      font-weight:500;
+    }
+
+    .mini-footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:.75rem;
+      margin-top:10px;
+      color:var(--muted);
+    }
+    .mini-footer span.light-dot{
+      width:6px;height:6px;border-radius:999px;
+      background:#22c55e;
+      box-shadow:0 0 10px rgba(34,197,94,.9);
+      margin-right:4px;
+      display:inline-block;
+    }
+
+    .nav-bar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:18px;
+      gap:12px;
+    }
+    .nav-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:.9rem;
+      color:var(--muted);
+    }
+    .nav-logo{
+      width:28px;height:28px;border-radius:999px;
+      background:radial-gradient(circle at 30% 20%, #ffffff, #dbeafe);
+      box-shadow:0 0 0 1px rgba(255,255,255,.4), 0 0 18px rgba(122,164,255,.8);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .nav-logo img{
+      width:20px;height:20px;display:block;
+    }
+    .nav-title{font-weight:600; color:#e5edff;}
+    nav{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    nav a{
+      font-size:.85rem;
+      text-decoration:none;
+      color:var(--muted);
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid transparent;
+      background:rgba(15,23,42,.7);
+    }
+    nav a:hover{
+      border-color:rgba(148,163,184,.8);
+      color:#e5edff;
+    }
+    nav a.primary{
+      border-color:rgba(191,219,254,.85);
+      color:#e0f2fe;
+      background:radial-gradient(circle at 10% 0, rgba(191,219,254,.3), rgba(37,99,235,.6));
+      box-shadow:0 0 0 1px rgba(191,219,254,.7), 0 10px 20px rgba(15,23,42,.9);
+    }
+
+    .small-print{
+      font-size:.75rem;
+      color:var(--muted);
+      margin-top:14px;
+    }
+
+    .sparkline{
+      display:flex;
+      gap:3px;
+      align-items:flex-end;
+      height:26px;
+      margin-top:4px;
+    }
+    .sparkline span{
+      flex:1;
+      border-radius:999px;
+      background:linear-gradient(to top, rgba(56,189,248,.9), rgba(96,165,250,.1));
+    }
+
+    @media (max-width:840px){
+      body{padding:16px;}
+      .wrap{
+        grid-template-columns:minmax(0,1fr);
+      }
+    }
+    @media (max-width:640px){
+      h1{font-size:1.9rem;}
+      .nav-bar{flex-direction:column; align-items:flex-start;}
+    }
   </style>
 </head>
 <body>
-  <div class="logo"><img src="assets/brand-logo.png" alt="Weekend Predictor Logo" /></div>
-  <div class="name">Weekend Predictor</div>
+  <div class="wrap">
+    <section class="card">
+      <div class="card-inner">
+        <div class="nav-bar">
+          <div class="nav-left">
+            <div class="nav-logo">
+              <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+            </div>
+            <div>
+              <div class="nav-title">Weekend Predictor</div>
+              <div class="muted" style="font-size:.78rem;">Premier League prediction challenge</div>
+            </div>
+          </div>
+          <nav>
+            <a href="leaderboard.html">Leaderboard</a>
+            <a href="my-picks.html">My Picks</a>
+            <a href="profile.html">Profile</a>
+            <a href="admin.html">Admin</a>
+          </nav>
+        </div>
 
-  <section class="hero">
-    <div class="kicker">Pick • Lock • Climb</div>
-    <h1 class="title">Predict 5 fixtures.<br/>Top the leaderboard.</h1>
-    <p class="subtitle">Make your weekend picks in minutes. Lock them before kick-off and chase bragging rights all season.</p>
-    <a class="primary-cta" href="login.html">Get started</a>
-    <nav>
-      <a href="leaderboard.html">Leaderboard</a>
-      <a href="my-picks.html">My Picks</a>
-      <a href="profile.html">Profile</a>
-      <a href="admin.html">Admin</a>
-    </nav>
-    <div class="foot">Already have an account? <a class="link" href="login.html">Sign in</a>.</div>
-  </section>
+        <h1>
+          <span class="logo">
+            <img src="assets/brand-logo.png" alt="WP" />
+          </span>
+          Weekend Predictor
+        </h1>
+        <p class="muted" style="margin-top:10px; max-width:480px;">
+          Make your Premier League score predictions, challenge your colleagues,
+          and see who really knows their football.
+        </p>
+
+        <div class="pill-row">
+          <div class="pill">
+            <span class="pill-dot"></span>
+            Live season leaderboard
+          </div>
+          <div class="pill">
+            <span class="pill-dot"></span>
+            Exact scores &amp; result accuracy
+          </div>
+          <div class="pill pill-pill">
+            <span class="pill-dot"></span>
+            New picks each gameweek
+          </div>
+        </div>
+
+        <div class="hero-main">
+          <div>
+            <button class="btn-primary" onclick="window.location.href='predict.html'">
+              Get started
+              <span class="icon">
+                <span class="icon-dot"></span>
+              </span>
+            </button>
+
+            <button class="btn-ghost" onclick="window.location.href='login.html'">
+              Log in
+              <span class="dot"></span>
+            </button>
+
+            <div class="meta-row">
+              <span>
+                <strong>1</strong> season
+              </span>
+              <span>
+                <strong>38</strong> gameweeks
+              </span>
+              <span>
+                <strong>Unlimited</strong> banter
+              </span>
+            </div>
+
+            <div class="hero-badge">
+              <span class="light"></span>
+              Your predictions auto-save &amp; update on the live table when results are confirmed.
+            </div>
+          </div>
+        </div>
+
+        <p class="small-print">
+          Built just for fun. No cash prizes, only ultimate bragging rights.
+        </p>
+      </div>
+    </section>
+
+    <aside class="card card-side">
+      <div class="card-inner">
+        <div class="fixture-card">
+          <div class="fixture-header">
+            <span class="highlight">
+              Next featured fixture
+            </span>
+            <span class="badge">Gameweek</span>
+          </div>
+
+          <div class="fixture-main">
+            <div class="team-col">
+              <div class="team-name">
+                <span class="team-badge"></span>
+                <span>Home side</span>
+              </div>
+              <div class="team-meta">Last 5: W D W L W</div>
+            </div>
+
+            <div class="score-col">
+              <div class="score-bubble">
+                <span class="label">Pred</span>
+                <span>2 - 1</span>
+              </div>
+              <div class="prob">Home win: 54%</div>
+            </div>
+
+            <div class="team-col" style="text-align:right;">
+              <div class="team-name" style="justify-content:flex-end;">
+                <span>Away side</span>
+                <span class="team-badge"></span>
+              </div>
+              <div class="team-meta">Last 5: L D W D L</div>
+            </div>
+          </div>
+
+          <div class="quick-stats">
+            <div class="mini-pill">
+              <span class="label">Form index</span>
+              <span class="value">7.4 / 10</span>
+              <div class="sparkline">
+                <span style="height:25%;"></span>
+                <span style="height:45%;"></span>
+                <span style="height:80%;"></span>
+                <span style="height:55%;"></span>
+                <span style="height:90%;"></span>
+              </div>
+            </div>
+            <div class="mini-pill">
+              <span class="label">Clean sheets</span>
+              <span class="value">Home 42%</span>
+              <span class="value" style="color:#94a3b8; font-size:.7rem;">Away 18%</span>
+            </div>
+            <div class="mini-pill">
+              <span class="label">Goals / game</span>
+              <span class="value">3.1 avg</span>
+              <span style="font-size:.7rem;">Over 2.5 in 71%</span>
+            </div>
+          </div>
+
+          <div class="mini-footer">
+            <span>
+              <span class="light-dot"></span>
+              Live updates each gameweek
+            </span>
+            <span>Tap “Get started” to make your picks</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
 </body>
 </html>
