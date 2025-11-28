@@ -60,7 +60,7 @@
         <div class="panel-inner">
           <h1>Your Profile</h1>
           <p class="muted">
-            Update how you appear across the game. These details show on leaderboards and picks.
+            Update how you appear across the game. This name shows on leaderboards and picks.
           </p>
 
           <div class="user-banner">
@@ -74,14 +74,6 @@
               class="input"
               type="text"
               placeholder="Your leaderboard name"
-            />
-
-            <label class="form-label" for="teamName">Team name (optional)</label>
-            <input
-              id="teamName"
-              class="input"
-              type="text"
-              placeholder="E.g. The Predictors FC"
             />
 
             <button class="btn-primary" type="submit">Save changes</button>
@@ -100,7 +92,7 @@
           <h2>Why update your profile?</h2>
           <ul class="bullet-list">
             <li>Appear on the leaderboard with a proper name.</li>
-            <li>Add a team name for fun rivalry.</li>
+            <li>Helps others recognise you in the game.</li>
           </ul>
         </div>
       </aside>
@@ -112,14 +104,13 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const userEmailEl  = document.getElementById('userEmail');
-    const displayName  = document.getElementById('displayName');
-    const teamName     = document.getElementById('teamName');
-    const msg          = document.getElementById('msg');
-    const navAdmin     = document.getElementById('navAdmin');
+    const userEmailEl = document.getElementById('userEmail');
+    const displayNameEl = document.getElementById('displayName');
+    const msg = document.getElementById('msg');
+    const navAdmin = document.getElementById('navAdmin');
 
-    const logoutBtn    = document.getElementById('logoutBtn');
-    const logoutBtn2   = document.getElementById('logoutBtn2');
+    const logoutBtn  = document.getElementById('logoutBtn');
+    const logoutBtn2 = document.getElementById('logoutBtn2');
 
     // Logout (both buttons)
     [logoutBtn, logoutBtn2].forEach(btn => {
@@ -147,7 +138,6 @@
           .select('is_admin')
           .eq('id', user.id)
           .maybeSingle();
-
         if (profileAdmin?.is_admin) {
           navAdmin.style.display = '';
         }
@@ -155,11 +145,11 @@
         // ignore
       }
 
-      // Load profile values
+      // Load display_name
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('display_name, team_name')
+          .select('display_name')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -170,8 +160,7 @@
         }
 
         if (profile) {
-          displayName.value = profile.display_name || '';
-          teamName.value    = profile.team_name || '';
+          displayNameEl.value = profile.display_name || '';
         }
       } catch (e) {
         console.error(e);
@@ -191,26 +180,26 @@
         return;
       }
 
+      const nameVal = displayNameEl.value.trim() || null;
+
       try {
         // Try UPDATE first
         const { data, error } = await supabase
           .from('profiles')
           .update({
-            display_name: displayName.value.trim() || null,
-            team_name:    teamName.value.trim() || null,
+            display_name: nameVal,
           })
           .eq('id', user.id)
           .select();
 
-        // If no row updated, INSERT a new one
+        // If no row updated, INSERT minimal new row
         if (!error && (!data || data.length === 0)) {
           const { error: insErr } = await supabase
             .from('profiles')
             .insert({
               id: user.id,
               email: user.email,
-              display_name: displayName.value.trim() || null,
-              team_name:    teamName.value.trim() || null,
+              display_name: nameVal,
             });
 
           if (insErr) throw insErr;
