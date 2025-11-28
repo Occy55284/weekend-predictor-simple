@@ -6,20 +6,65 @@
   <title>Leaderboard • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
   <style>
-    .summary {
-      margin-top: 6px;
-      font-size: 0.9rem;
-    }
-    .msg {
-      margin-top: 8px;
-      font-size: 0.9rem;
-      min-height: 1.1em;
-    }
+    .summary { margin-top: 6px; font-size: 0.9rem; }
+    .msg { margin-top: 4px; font-size: 0.85rem; min-height: 1.1em; }
     .err { color: #ef4444; }
+    .controls {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tab {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      background: rgba(15, 23, 42, 0.96);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #e5e7eb;
+    }
+    .tab.active {
+      border-color: rgba(191, 219, 254, 0.95);
+      background: rgba(30, 64, 175, 0.95);
+      color: #f9fafb;
+    }
+    .date-input {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      background: rgba(15, 23, 42, 0.96);
+      color: #e5e7eb;
+      font-size: 0.8rem;
+      outline: none;
+    }
+    .date-input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 1px rgba(96,165,250,0.5);
+    }
     .muted-center {
       text-align: center;
       color: #9ca3af;
       font-size: 0.9rem;
+    }
+    .rank {
+      width: 40px;
+    }
+    .badge-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      border: 1px solid rgba(191, 219, 254, 0.9);
+      background: rgba(30, 64, 175, 0.95);
+      color: #e5f2ff;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
   </style>
 </head>
@@ -51,29 +96,42 @@
         <div class="panel-inner">
           <h1>Leaderboard</h1>
           <p class="muted">
-            Live standings for everyone in the game.
+            Switch between this week and full-season points.
           </p>
 
-          <p id="summary" class="summary muted">Loading standings…</p>
-          <div id="msg" class="msg"></div>
+          <div class="controls">
+            <div class="tabs">
+              <button id="tabWeek" class="tab active">This week</button>
+              <button id="tabSeason" class="tab">Season</button>
+            </div>
+
+            <input id="weekPicker" type="date" class="date-input" />
+            <button id="refreshBtn" class="btn-ghost" type="button">
+              Refresh
+            </button>
+          </div>
+
+          <p id="summary" class="summary muted"></p>
+          <p id="status" class="msg muted"></p>
 
           <div class="table-wrapper" style="margin-top: 10px;">
             <table class="table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th class="rank">#</th>
                   <th>Player</th>
-                  <th>Total points</th>
                   <th>Exact scores</th>
                   <th>Correct results</th>
-                  <th>Games played</th>
+                  <th>Total points</th>
                 </tr>
               </thead>
-              <tbody id="leaderboardBody">
-                <tr><td colspan="6" class="muted-center">Loading…</td></tr>
+              <tbody id="tbody">
+                <tr><td colspan="5" class="muted-center">Loading…</td></tr>
               </tbody>
             </table>
           </div>
+
+          <p id="lastUpdated" class="muted" style="margin-top:8px;font-size:0.8rem;"></p>
         </div>
       </section>
     </main>
@@ -82,87 +140,157 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const bodyEl   = document.getElementById('leaderboardBody');
-    const summary  = document.getElementById('summary');
-    const msg      = document.getElementById('msg');
-    const navAdmin = document.getElementById('navAdmin');
-    const navLogout = document.getElementById('navLogout');
+    const tbody        = document.getElementById('tbody');
+    const statusEl     = document.getElementById('status');
+    const summaryEl    = document.getElementById('summary');
+    const lastUpdated  = document.getElementById('lastUpdated');
+    const navAdmin     = document.getElementById('navAdmin');
+    const navLogout    = document.getElementById('navLogout');
+    const tabWeek      = document.getElementById('tabWeek');
+    const tabSeason    = document.getElementById('tabSeason');
+    const weekPicker   = document.getElementById('weekPicker');
+    const refreshBtn   = document.getElementById('refreshBtn');
 
-    // Optional: logout link works whether or not there’s a session
+    // Logout
     navLogout?.addEventListener('click', async (e) => {
       e.preventDefault();
       try { await supabase.auth.signOut(); } catch {}
       window.location.replace('login.html');
     });
 
-    // If logged in, check if user is admin (to show Admin link)
-    (async () => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const isoDate = (d) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const startOfWeek = (d = new Date()) => {
+      const x = new Date(d);
+      const day = x.getDay(); // 0 Sun, 1 Mon...
+      x.setHours(0, 0, 0, 0);
+      const diff = day === 0 ? -6 : 1 - day; // Monday
+      x.setDate(x.getDate() + diff);
+      return x;
+    };
+
+    function setTab(which) {
+      if (which === 'week') {
+        tabWeek.classList.add('active');
+        tabSeason.classList.remove('active');
+      } else {
+        tabSeason.classList.add('active');
+        tabWeek.classList.remove('active');
+      }
+    }
+
+    function renderRows(rows) {
+      tbody.innerHTML = '';
+      if (!rows?.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="5" class="muted-center">No data to show.</td></tr>';
+        summaryEl.textContent = 'No leaderboard data yet.';
+        return;
+      }
+
+      rows.forEach((r, i) => {
+        const badge = r.badge && String(r.badge).toLowerCase();
+        const nameSafe = r.display_name || 'Player';
+        const badgeHtml = badge
+          ? `<span class="badge-chip">${badge.toUpperCase()}</span>`
+          : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="rank">${i + 1}</td>
+          <td>${nameSafe}${badgeHtml}</td>
+          <td>${r.correct_scores ?? 0}</td>
+          <td>${r.correct_results ?? 0}</td>
+          <td>${r.points ?? 0}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const top = rows[0];
+      summaryEl.textContent = `Current leader: ${
+        top.display_name || 'Player'
+      } with ${top.points ?? 0} points.`;
+    }
+
+    async function ensureSessionAndAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
-
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', session.user.id)
           .maybeSingle();
-
         if (!error && data?.is_admin) {
           navAdmin.style.display = '';
         }
       } catch {
         // ignore
       }
-    })();
-
-    async function loadLeaderboard() {
-      msg.textContent = '';
-      summary.textContent = 'Loading standings…';
-      bodyEl.innerHTML = '<tr><td colspan="6" class="muted-center">Loading…</td></tr>';
-
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .order('total_points', { ascending: false });
-
-      if (error) {
-        console.error(error);
-        bodyEl.innerHTML = '<tr><td colspan="6" class="muted-center">Could not load leaderboard.</td></tr>';
-        msg.innerHTML = '<span class="err">Error loading leaderboard data.</span>';
-        summary.textContent = '';
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        bodyEl.innerHTML = '<tr><td colspan="6" class="muted-center">No leaderboard data yet.</td></tr>';
-        summary.textContent = 'No results to show yet.';
-        return;
-      }
-
-      bodyEl.innerHTML = '';
-      let rank = 1;
-
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${rank}</td>
-          <td>${row.display_name || row.email || 'Player'}</td>
-          <td>${row.total_points ?? 0}</td>
-          <td>${row.exact_scores ?? 0}</td>
-          <td>${row.correct_results ?? 0}</td>
-          <td>${row.games_played ?? 0}</td>
-        `;
-        bodyEl.appendChild(tr);
-        rank++;
-      });
-
-      const top = data[0];
-      summary.textContent = `Current leader: ${
-        top.display_name || top.email || 'Player'
-      } with ${top.total_points ?? 0} points.`;
     }
 
-    loadLeaderboard();
+    async function fetchSeason() {
+      const { data, error } = await supabase.rpc('leaderboard_v2');
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function fetchWeek(weekStart) {
+      const { data, error } = await supabase.rpc('leaderboard_week_v2', {
+        week_start: isoDate(weekStart),
+      });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function load(which) {
+      setTab(which);
+      statusEl.textContent = 'Loading…';
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="muted-center">Loading…</td></tr>';
+
+      const base = weekPicker.value
+        ? new Date(weekPicker.value)
+        : new Date();
+      const ws = startOfWeek(base);
+
+      try {
+        const rows =
+          which === 'week' ? await fetchWeek(ws) : await fetchSeason();
+        renderRows(rows);
+        statusEl.textContent = '';
+        lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      } catch (e) {
+        console.error(e);
+        statusEl.innerHTML =
+          '<span class="err">Could not load leaderboard.</span>';
+        tbody.innerHTML =
+          '<tr><td colspan="5" class="muted-center">Error loading data.</td></tr>';
+      }
+    }
+
+    (async () => {
+      await ensureSessionAndAdmin();
+
+      // default date = this Monday
+      const ws = startOfWeek(new Date());
+      weekPicker.value = isoDate(ws);
+
+      refreshBtn.addEventListener('click', () => load(currentTab));
+      tabWeek.addEventListener('click', () => {
+        currentTab = 'week';
+        load('week');
+      });
+      tabSeason.addEventListener('click', () => {
+        currentTab = 'season';
+        load('season');
+      });
+
+      window.currentTab = 'week';
+      await load('week');
+    })();
   </script>
 </body>
 </html>
