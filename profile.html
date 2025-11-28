@@ -104,10 +104,10 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const userEmailEl = document.getElementById('userEmail');
+    const userEmailEl   = document.getElementById('userEmail');
     const displayNameEl = document.getElementById('displayName');
-    const msg = document.getElementById('msg');
-    const navAdmin = document.getElementById('navAdmin');
+    const msg           = document.getElementById('msg');
+    const navAdmin      = document.getElementById('navAdmin');
 
     const logoutBtn  = document.getElementById('logoutBtn');
     const logoutBtn2 = document.getElementById('logoutBtn2');
@@ -145,7 +145,7 @@
         // ignore
       }
 
-      // Load display_name
+      // Load display_name (if any)
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -183,29 +183,19 @@
       const nameVal = displayNameEl.value.trim() || null;
 
       try {
-        // Try UPDATE first
-        const { data, error } = await supabase
+        // Single UPSERT on id – works for new + existing rows
+        const { error } = await supabase
           .from('profiles')
-          .update({
-            display_name: nameVal,
-          })
-          .eq('id', user.id)
-          .select();
-
-        // If no row updated, INSERT minimal new row
-        if (!error && (!data || data.length === 0)) {
-          const { error: insErr } = await supabase
-            .from('profiles')
-            .insert({
+          .upsert(
+            {
               id: user.id,
               email: user.email,
               display_name: nameVal,
-            });
+            },
+            { onConflict: 'id' }
+          );
 
-          if (insErr) throw insErr;
-        } else if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         msg.innerHTML = '<span class="ok">Profile updated successfully.</span>';
       } catch (e) {
