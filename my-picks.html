@@ -5,44 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
-
-  <!-- ✅ Early auth gate -->
-  <script type="module">
-    import { supabase } from './supabase-config.js';
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.replace('login.html');
-      throw new Error('Redirecting to login');
-    }
-  </script>
-
   <style>
-    .small-note {
-      margin-top: 8px;
-      font-size: 0.85rem;
-    }
-    .muted-center {
-      text-align: center;
-      color: #9ca3af;
-      font-size: 0.9rem;
-    }
-    .tag {
-      display: inline-flex;
-      align-items: center;
+    .small-note { margin-top: 8px; font-size: 0.85rem; }
+    .muted-center { text-align: center; color: #9ca3af; font-size: 0.9rem; }
+    .pill {
+      font-size: .75rem;
+      padding: 3px 8px;
       border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      padding: 2px 8px;
-      font-size: 0.75rem;
-      color: #e5e7eb;
-      background: rgba(15, 23, 42, 0.95);
-      gap: 4px;
+      display: inline-block;
+      border: 1px solid rgba(148,163,184,0.8);
     }
-    .tag-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 8px rgba(34,197,94,.9);
+    .pill.locked {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+    .pill.open {
+      background: #fefce8;
+      color: #854d0e;
+      border-color: #facc15;
     }
   </style>
 </head>
@@ -74,25 +55,41 @@
         <div class="panel-inner">
           <h1>My picks</h1>
           <p class="muted">
-            A history of your predictions, results and points.
+            Your predictions for this week’s featured fixtures.
           </p>
 
           <div class="user-banner">
             Signed in as: <span id="userEmail"></span>
           </div>
 
-          <div class="tag">
-            <span class="tag-dot"></span>
-            Latest fixtures listed first
-          </div>
-
           <p class="muted small-note">
-            Use the Predict page to update future scores before kick-off. Once results are entered, points will appear here.
+            Picks are shown for the current gameweek (Mon–Sun). Once games kick off,
+            fixtures will gradually move from “Open” to “Locked”.
           </p>
 
-          <div id="picksList" class="fixtures-list" style="margin-top: 14px;">
-            <div class="muted-center">Loading your picks…</div>
+          <div id="empty" class="muted-center" style="margin-top:14px; display:none;">
+            No picks yet for this week. Go to the Predict page to make your selections.
           </div>
+
+          <div id="tableWrap" class="table-wrapper" style="margin-top: 14px; display:none;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Fixture</th>
+                  <th>Your pick</th>
+                  <th>Result</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody">
+                <tr>
+                  <td colspan="4" class="muted-center">Loading your picks…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p id="lastUpdated" class="muted" style="margin-top:8px;font-size:0.8rem;"></p>
         </div>
       </section>
 
@@ -100,148 +97,226 @@
         <div class="panel-inner">
           <h2>Quick tips</h2>
           <ul class="bullet-list muted">
-            <li>Check this page after each gameweek to see how you did.</li>
-            <li>Look for patterns in your predictions (too many home wins, big scores, etc.).</li>
-            <li>Use that insight to tweak next week’s picks.</li>
+            <li>Use this page to double-check your scores before kick-off.</li>
+            <li>“Locked” fixtures are in progress or finished – no changes allowed.</li>
+            <li>Compare your picks with the actual results to spot patterns.</li>
           </ul>
         </div>
       </aside>
     </main>
   </div>
 
+  <!-- Logout -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
+
+  <!-- Page logic: picks (picks) + fixture details (fixtures) -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const picksList  = document.getElementById('picksList');
-    const navAdmin   = document.getElementById('navAdmin');
-    const navLogout  = document.getElementById('navLogout');
-    const userEmailEl = document.getElementById('userEmail');
+    const $ = (id) => document.getElementById(id);
+    const tbody = $('tbody');
+    const empty = $('empty');
+    const wrap = $('tableWrap');
+    const lastUpdated = $('lastUpdated');
+    const navAdmin = $('navAdmin');
+    const userEmailEl = $('userEmail');
 
-    // Logout
-    navLogout?.addEventListener('click', async (e) => {
-      e.preventDefault();
-      try { await supabase.auth.signOut(); } catch {}
-      window.location.replace('login.html');
-    });
+    const pad = (n) => String(n).padStart(2, '0');
+    const startOfWeek = (d = new Date()) => {
+      const x = new Date(d);
+      const day = x.getDay(); // 0 Sun, 1 Mon...
+      x.setHours(0, 0, 0, 0);
+      const diff = day === 0 ? -6 : 1 - day; // Monday start
+      x.setDate(x.getDate() + diff);
+      return x;
+    };
+    const isoDate = (d) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-    async function boot() {
+    const bool = (v) =>
+      v === true || v === 'true' || v === 1;
+
+    const pickScore = (p) => {
+      const hg =
+        p.home ??
+        p.home_goals ??
+        p.home_score ??
+        p.h ??
+        p.pred_home ??
+        null;
+      const ag =
+        p.away ??
+        p.away_goals ??
+        p.away_score ??
+        p.a ??
+        p.pred_away ??
+        null;
+      if (hg == null && ag == null) return '—';
+      return `${hg ?? '–'} : ${ag ?? '–'}`;
+    };
+
+    const resultFromFixture = (f) => {
+      const hs = f.home_score ?? f.hs ?? null;
+      const as = f.away_score ?? f.as ?? null;
+      if (hs == null && as == null) return '—';
+      return `${hs ?? '–'} : ${as ?? '–'}`;
+    };
+
+    const lockedFromFixture = (f) => {
+      const k =
+        f.utc_date ??
+        f.kickoff ??
+        f.kickoff_at ??
+        f.start_time ??
+        f.datetime ??
+        null;
+      const t =
+        typeof k === 'string' || k instanceof String
+          ? Date.parse(k)
+          : k instanceof Date
+          ? k.getTime()
+          : null;
+      if (Number.isFinite(t)) return Date.now() >= t;
+      return false;
+    };
+
+    function render(rows) {
+      tbody.innerHTML = '';
+      if (!rows?.length) {
+        wrap.style.display = 'none';
+        empty.style.display = '';
+        lastUpdated.textContent = '';
+        return;
+      }
+      wrap.style.display = '';
+      empty.style.display = 'none';
+
+      rows.forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            ${r.fixtureHtml}
+            ${
+              r.subHtml
+                ? `<div class="muted" style="font-size:.85rem">${r.subHtml}</div>`
+                : ''
+            }
+          </td>
+          <td class="center"><strong>${r.pick}</strong></td>
+          <td class="center">${r.result}</td>
+          <td class="right">
+            <span class="pill ${r.locked ? 'locked' : 'open'}">
+              ${r.locked ? 'Locked' : 'Open'}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lastUpdated.textContent = `Loaded ${rows.length} pick${
+        rows.length === 1 ? '' : 's'
+      }.`;
+    }
+
+    (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
+      if (!session?.user) {
         window.location.replace('login.html');
         return;
       }
+      const uid = session.user.id;
+      userEmailEl.textContent = session.user.email || '';
 
-      userEmailEl.textContent = user.email || '';
-
-      // Show Admin link if profile has is_admin
+      // Admin link
       try {
-        const { data: profile, error: profErr } = await supabase
+        const { data } = await supabase
           .from('profiles')
           .select('is_admin')
-          .eq('id', user.id)
+          .eq('id', uid)
           .maybeSingle();
-        if (!profErr && profile?.is_admin) {
-          navAdmin.style.display = '';
-        }
-      } catch {
-        // ignore
-      }
+        if (data?.is_admin) navAdmin.style.display = '';
+      } catch {}
 
-      await loadMyPicks(user.id);
-    }
+      const weekStart = isoDate(startOfWeek(new Date()));
 
-    async function loadMyPicks(userId) {
-      picksList.innerHTML = '<div class="muted-center">Loading your picks…</div>';
+      // 1) Picks for this week
+      const { data: picks, error: pkErr } = await supabase
+        .from('picks')
+        .select('fixture_id, week_start, home, away, user_id')
+        .eq('user_id', uid)
+        .eq('week_start', weekStart)
+        .order('fixture_id', { ascending: true });
 
-      // View that joins fixtures + your predictions + results
-      const { data, error } = await supabase
-        .from('user_picks_with_fixtures')
-        .select('*')
-        .eq('user_id', userId)
-        .order('kickoff', { ascending: false });
-
-      if (error) {
-        console.error(error);
-        picksList.innerHTML = '<div class="muted-center">Error loading picks.</div>';
+      if (pkErr || !picks?.length) {
+        render([]);
         return;
       }
 
-      if (!data || data.length === 0) {
-        picksList.innerHTML = '<div class="muted-center">No picks yet. Go to the Predict page to get started.</div>';
-        return;
-      }
+      // 2) Fixture details
+      const ids = [...new Set(picks.map((p) => p.fixture_id))];
+      const { data: fixtures } = await supabase
+        .from('fixtures')
+        .select(
+          'id, utc_date, status, competition, matchday, home_team, away_team, home_score, away_score'
+        )
+        .in('id', ids);
 
-      picksList.innerHTML = '';
-      data.forEach(row => {
-        const card = document.createElement('div');
-        card.className = 'fixture-row';
+      const byId = new Map((fixtures || []).map((f) => [String(f.id), f]));
 
-        const kickoffStr = row.kickoff
-          ? new Date(row.kickoff).toLocaleString()
-          : '';
+      // 3) Compose rows
+      const rows = picks.map((p) => {
+        const fx = byId.get(String(p.fixture_id));
+        const homeName = fx?.home_team ?? `Fixture #${p.fixture_id}`;
+        const awayName = fx?.away_team ?? '';
+        const fixtureHtml = awayName
+          ? `<strong>${homeName}</strong> vs <strong>${awayName}</strong>`
+          : homeName;
 
-        const yourScore =
-          row.pred_home_goals != null && row.pred_away_goals != null
-            ? `${row.pred_home_goals} - ${row.pred_away_goals}`
-            : 'Not set';
-
-        const resultScore =
-          row.actual_home_goals != null && row.actual_away_goals != null
-            ? `${row.actual_home_goals} - ${row.actual_away_goals}`
-            : 'TBC';
-
-        const pts = row.points != null ? row.points : '—';
-
-        card.innerHTML = `
-          <div class="fixture-main-info">
-            <div class="fixture-teams">
-              <div class="fixture-team">
-                <span class="fixture-team-name">${escapeHtml(row.home_team || '')}</span>
-              </div>
-              <span class="fixture-vs">vs</span>
-              <div class="fixture-team">
-                <span class="fixture-team-name">${escapeHtml(row.away_team || '')}</span>
-              </div>
-            </div>
-            <div class="fixture-meta">
-              <span>${kickoffStr}</span>
-              <span class="fixture-venue">${escapeHtml(row.venue || '')}</span>
-            </div>
-          </div>
-          <div class="fixture-inputs" style="flex-direction:column; align-items:flex-end; gap:4px;">
-            <div class="picks-line">
-              <span class="label">Your pick</span>
-              <span class="value">${yourScore}</span>
-            </div>
-            <div class="picks-line">
-              <span class="label">Result</span>
-              <span class="value">${resultScore}</span>
-            </div>
-            <div class="picks-line">
-              <span class="label">Points</span>
-              <span class="value">${pts}</span>
-            </div>
-          </div>
-        `;
-        picksList.appendChild(card);
-      });
-    }
-
-    function escapeHtml(str = '') {
-      return String(str).replace(/[&<>"']/g, ch => {
-        switch (ch) {
-          case '&': return '&amp;';
-          case '<': return '&lt;';
-          case '>': return '&gt;';
-          case '"': return '&quot;';
-          case "'": return '&#39;';
-          default: return ch;
+        const subBits = [];
+        if (fx?.utc_date) {
+          const dt = new Date(fx.utc_date);
+          if (!isNaN(dt)) {
+            subBits.push(
+              `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}`
+            );
+          }
         }
-      });
-    }
+        if (fx?.status) {
+          const s = String(fx.status).toUpperCase();
+          subBits.push(
+            s === 'IN_PLAY'
+              ? 'Live'
+              : s === 'FINISHED'
+              ? 'FT'
+              : s === 'SCHEDULED'
+              ? 'Scheduled'
+              : s
+          );
+        }
 
-    boot();
+        return {
+          fixtureHtml,
+          subHtml: subBits.join(' • '),
+          pick: pickScore(p),
+          result: fx ? resultFromFixture(fx) : '—',
+          locked: fx ? lockedFromFixture(fx) : false,
+        };
+      });
+
+      render(rows);
+    })();
   </script>
 </body>
 </html>
