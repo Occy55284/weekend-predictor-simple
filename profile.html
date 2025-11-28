@@ -68,18 +68,29 @@
           </div>
 
           <form id="profileForm" class="form">
-
             <label class="form-label" for="displayName">Display name</label>
-            <input id="displayName" class="input" type="text"
-              placeholder="Your leaderboard name" />
+            <input
+              id="displayName"
+              class="input"
+              type="text"
+              placeholder="Your leaderboard name"
+            />
 
             <label class="form-label" for="teamName">Team name (optional)</label>
-            <input id="teamName" class="input" type="text"
-              placeholder="E.g. The Predictors FC" />
+            <input
+              id="teamName"
+              class="input"
+              type="text"
+              placeholder="E.g. The Predictors FC"
+            />
 
             <label class="form-label" for="favClub">Favourite club</label>
-            <input id="favClub" class="input" type="text"
-              placeholder="Who do you support?" />
+            <input
+              id="favClub"
+              class="input"
+              type="text"
+              placeholder="Who do you support?"
+            />
 
             <button class="btn-primary" type="submit">Save changes</button>
             <div id="msg" class="msg"></div>
@@ -110,16 +121,17 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const userEmail = document.getElementById('userEmail');
-    const displayName = document.getElementById('displayName');
-    const teamName = document.getElementById('teamName');
-    const favClub = document.getElementById('favClub');
-    const msg = document.getElementById('msg');
-    const navAdmin = document.getElementById('navAdmin');
+    const userEmailEl  = document.getElementById('userEmail');
+    const displayName  = document.getElementById('displayName');
+    const teamName     = document.getElementById('teamName');
+    const favClub      = document.getElementById('favClub');
+    const msg          = document.getElementById('msg');
+    const navAdmin     = document.getElementById('navAdmin');
 
-    // Logout buttons
-    const logoutBtn = document.getElementById('logoutBtn');
-    const logoutBtn2 = document.getElementById('logoutBtn2');
+    const logoutBtn    = document.getElementById('logoutBtn');
+    const logoutBtn2   = document.getElementById('logoutBtn2');
+
+    // Logout (both buttons)
     [logoutBtn, logoutBtn2].forEach(btn => {
       btn?.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -131,55 +143,101 @@
     async function loadProfile() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
-      if (!user) return window.location.replace('login.html');
+      if (!user) {
+        window.location.replace('login.html');
+        return;
+      }
 
-      userEmail.textContent = user.email || '';
+      userEmailEl.textContent = user.email || '';
 
-      // Check admin flag
+      // Check admin flag (optional)
       try {
-        const { data } = await supabase
+        const { data: profileAdmin } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
           .maybeSingle();
-        if (data?.is_admin) navAdmin.style.display = '';
-      } catch {}
 
-      // Load profile fields
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name, team_name, favourite_club')
-        .eq('id', user.id)
-        .maybeSingle();
+        if (profileAdmin?.is_admin) {
+          navAdmin.style.display = '';
+        }
+      } catch {
+        // ignore
+      }
 
-      if (profile) {
-        displayName.value = profile.display_name || '';
-        teamName.value = profile.team_name || '';
-        favClub.value = profile.favourite_club || '';
+      // Load profile values
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('display_name, team_name, favourite_club')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('load profile error', error);
+          msg.innerHTML = '<span class="err">Could not load profile.</span>';
+          return;
+        }
+
+        if (profile) {
+          displayName.value = profile.display_name || '';
+          teamName.value    = profile.team_name || '';
+          favClub.value     = profile.favourite_club || '';
+        }
+      } catch (e) {
+        console.error(e);
+        msg.innerHTML = '<span class="err">Could not load profile.</span>';
       }
     }
 
     async function saveProfile(e) {
       e.preventDefault();
       msg.textContent = 'Saving…';
+      msg.className = 'msg';
 
       const { data: { session } } = await supabase.auth.getSession();
-      const user = session.user;
-
-      const updates = {
-        id: user.id,
-        display_name: displayName.value.trim(),
-        team_name: teamName.value.trim(),
-        favourite_club: favClub.value.trim(),
-      };
-
-      const { error } = await supabase.from('profiles').upsert(updates);
-      if (error) {
-        msg.innerHTML = '<span class="err">Could not save profile.</span>';
+      const user = session?.user;
+      if (!user) {
+        window.location.replace('login.html');
         return;
       }
 
-      msg.innerHTML = '<span class="ok">Profile updated successfully.</span>';
+      try {
+        // 🔑 Use UPDATE instead of UPSERT to avoid constraint issues
+        const { error, data } = await supabase
+          .from('profiles')
+          .update({
+            display_name: displayName.value.trim() || null,
+            team_name:    teamName.value.trim() || null,
+            favourite_club: favClub.value.trim() || null,
+          })
+          .eq('id', user.id)
+          .select();
+
+        // If no row updated, fall back to insert with id + email
+        if (!error && (!data || data.length === 0)) {
+          const { error: insErr } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email,
+              display_name: displayName.value.trim() || null,
+              team_name:    teamName.value.trim() || null,
+              favourite_club: favClub.value.trim() || null,
+            });
+          if (insErr) throw insErr;
+        } else if (error) {
+          throw error;
+        }
+
+        msg.innerHTML = '<span class="ok">Profile updated successfully.</span>';
+      } catch (e) {
+        console.error('save profile error', e);
+        msg.innerHTML =
+          '<span class="err">Could not save profile. ' +
+          (e?.message ? e.message : '') +
+          '</span>';
+      }
     }
 
     document.getElementById('profileForm').addEventListener('submit', saveProfile);
