@@ -2,231 +2,46 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Occy Weekend Football — Weekend Pot</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
-      background:linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
-    header { text-align:center; margin:40px 0 24px; }
-    header h1 { margin-top:12px; color:#facc15; }
-    header p { color:#ddd; }
-    .card { background:rgba(255,255,255,.95); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:1000px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
-    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    .muted { color:#555; }
-    input[type="number"], input[type="text"] { padding:8px; border:1px solid #ccc; border-radius:8px; }
-    button { padding:10px 14px; border-radius:12px; background:#facc15; color:#111; font-weight:700; border:none; cursor:pointer; }
-    table { border-collapse:collapse; width:100%; margin-top:14px; }
-    th,td { border:1px solid #ddd; padding:8px; text-align:center; }
-    th { background:#facc15; color:#111; }
-    .admin-only { display:none; }
-    .winner { background:#ecfdf5; }
-  </style>
+  <title>The Pot • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css" />
+  <script defer src="supabase-config.js"></script>
 </head>
 <body>
-  <header>
-    <h1>⚽ Occy Weekend Football · Weekend Pot</h1>
-    <p class="muted">Everyone chips in offline · App tracks who paid and who won</p>
-  </header>
-
-  <div class="card">
-    <div class="row">
-      <div><b>Weekend:</b> <span id="rangeLabel">—</span></div>
-      <div style="margin-left:auto">
-        <b>Entry (£):</b> <input id="entryFee" type="number" min="0" step="0.5" value="2" />
-        <button id="refresh">Recalculate</button>
+  <div class="page-shell">
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-logo">
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+        </div>
+        <div class="nav-text-group">
+          <div class="nav-title">Weekend Predictor</div>
+          <div class="nav-subtitle">Premier League prediction challenge</div>
+        </div>
       </div>
-    </div>
+      <nav class="top-nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="my-picks.html">My Picks</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </header>
 
-    <p id="note" class="muted">No payments are taken by the app. Settle offline.</p>
-
-    <table id="tbl" style="display:none">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Points</th>
-          <th>Exact</th>
-          <th>Paid?</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" style="text-align:right"><b>Players marked paid:</b></td>
-          <td id="paidCount">0</td>
-        </tr>
-        <tr>
-          <td colspan="4" style="text-align:right"><b>Pot total (£):</b></td>
-          <td id="potTotal">£0.00</td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <p id="winnerMsg" style="display:none; font-weight:700; margin-top:10px;"></p>
-    <p class="muted" style="margin-top:10px"><a href="leaderboard.html">← Leaderboard</a> · <a href="index.html">Home</a></p>
+    <main class="main-layout">
+      <section class="panel panel-main">
+        <div class="panel-inner">
+          <h1>The Pot</h1>
+          <p class="muted">
+            This page can be used for tracking any informal prize pot or bragging-rights tally.
+          </p>
+          <p class="muted">
+            Implementation can be added later (e.g. totals, contributions per player, etc.).
+          </p>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-    // Weekend window (Europe/London): Fri 00:00 → Mon 03:00
-    function currentWeekendRange(){
-      // Compute in local time then use ISO; this is approximate but fine for a friendly pool.
-      const now = new Date();
-      const day = now.getDay(); // 0 Sun..6 Sat
-      // find the Friday of this week
-      const diffToFri = (5 - day + 7) % 7; // days until Fri
-      const lastFri = new Date(now); lastFri.setDate(now.getDate() - ((7 - diffToFri) % 7));
-      lastFri.setHours(0,0,0,0);
-      const fri = (day >= 5) ? new Date(lastFri) : new Date(lastFri.setDate(lastFri.getDate())); // already set
-      if (day < 5) { // If Mon-Thu, move to upcoming Fri
-        fri.setDate(fri.getDate() + diffToFri);
-      }
-      const start = fri;
-      const end = new Date(start); end.setDate(start.getDate()+3); end.setHours(3,0,0,0); // Mon 03:00
-
-      // label
-      const fmt = (d)=> d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'2-digit' });
-      document.getElementById('rangeLabel').textContent = `${fmt(start)} → ${fmt(end)}`;
-      return { startISO: start.toISOString(), endISO: end.toISOString(), startDate: start };
-    }
-
-    function pointsFor(pred, actual){
-      if(!actual) return { pts:0, exact:0, played:0 };
-      const ph=+pred.home_goals, pa=+pred.away_goals, ah=+actual.home, aa=+actual.away;
-      const pRes = ph===pa?'D':ph>pa?'H':'A'; const aRes = ah===aa?'D':ah>aa?'H':'A';
-      const correctRes = pRes===aRes?1:0; const correctGD = (ph-pa)===(ah-aa)?1:0; const exact=(ph===ah&&pa===aa)?1:0;
-      let pts = (correctRes?3:0)+(correctGD?1:0)+(exact?1:0); if(pts>5) pts=5;
-      return { pts, exact, played:1 };
-    }
-
-    async function isAdmin(){
-      // You can hardcode your email check here on the client if you like (non-secure, convenience only).
-      const { data } = await client.auth.getUser();
-      const email = data?.user?.email || '';
-      return email.toLowerCase() === 'you@your-email.com';
-    }
-
-    async function loadPot(){
-      const { startISO, endISO, startDate } = currentWeekendRange();
-      const entryFee = parseFloat(document.getElementById('entryFee').value || '2');
-
-      // FINISHED fixtures within the window
-      const { data: fixes, error:e2 } = await client.from('fixtures')
-        .select('id, home_score, away_score, status, utc_date')
-        .eq('status','FINISHED')
-        .gte('utc_date', startISO)
-        .lte('utc_date', endISO);
-      if(e2){ alert('Error loading fixtures: ' + e2.message); return; }
-      const results = {}; (fixes||[]).forEach(f => results[f.id] = { home:f.home_score, away:f.away_score });
-
-      // All predictions for those fixtures
-      const { data: preds, error:e1 } = await client.from('predictions')
-        .select('user_id, fixture_id, home_goals, away_goals');
-      if(e1){ alert('Error loading predictions: ' + e1.message); return; }
-
-      // Build totals
-      const totals = {}, userIds = new Set();
-      (preds||[]).forEach(p => {
-        if(!results[p.fixture_id]) return; // ignore outside range
-        const s = pointsFor(p, results[p.fixture_id]);
-        const who = p.user_id; if (who) userIds.add(who);
-        if (!totals[who]) totals[who] = { user_id: who, pts:0, exact:0, played:0 };
-        totals[who].pts += s.pts; totals[who].exact += s.exact; totals[who].played += s.played;
-      });
-
-      // Names
-      let namesById={};
-      if(userIds.size){
-        const { data: profiles } = await client.from('profiles').select('id, display_name').in('id', Array.from(userIds));
-        (profiles||[]).forEach(p=> namesById[p.id] = p.display_name || '(no name set)');
-      }
-
-      // Paid list (pot_entries)
-      const weekStartISO = startDate.toISOString().slice(0,10); // YYYY-MM-DD
-      const { data: entries } = await client.from('pot_entries')
-        .select('user_id, paid, pot_week_start')
-        .eq('pot_week_start', weekStartISO);
-
-      const paidMap = {}; (entries||[]).forEach(e => paidMap[e.user_id] = !!e.paid);
-
-      // Rows sorted by points, exact, then name
-      const rows = Object.values(totals)
-        .map(r => ({ ...r, name: namesById[r.user_id] || '(anon)', paid: !!paidMap[r.user_id] }))
-        .sort((a,b) => b.pts - a.pts || b.exact - a.exact || a.name.localeCompare(b.name));
-
-      render(rows, entryFee, weekStartISO);
-    }
-
-    async function togglePaid(weekStartISO, user_id, checked){
-      // requires the admin RLS policy
-      const payload = { pot_week_start: weekStartISO, user_id, paid: checked };
-      // upsert by unique (pot_week_start, user_id)
-      const { error } = await client.from('pot_entries').upsert(payload, { onConflict: 'pot_week_start,user_id' });
-      if (error) alert('Save error: ' + error.message);
-    }
-
-    async function render(rows, entryFee, weekStartISO){
-      const tbl = document.getElementById('tbl');
-      const tbody = tbl.querySelector('tbody');
-      const paidCountEl = document.getElementById('paidCount');
-      const potTotalEl = document.getElementById('potTotal');
-      const winnerMsg = document.getElementById('winnerMsg');
-
-      const admin = await isAdmin();
-
-      tbody.innerHTML = '';
-      let paidCount = 0;
-
-      rows.forEach((r, i) => {
-        if (r.paid) paidCount++;
-        const tr = document.createElement('tr');
-        if (i === 0 && rows.length) tr.className = 'winner';
-        tr.innerHTML = `
-          <td>${i+1}</td>
-          <td>${r.name}</td>
-          <td><b>${r.pts}</b></td>
-          <td>${r.exact}</td>
-          <td>
-            ${admin ? `<input type="checkbox" data-uid="${r.user_id}" ${r.paid?'checked':''}>` : (r.paid ? 'Yes' : 'No')}
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      // Handle admin ticking paid boxes
-      if (admin) {
-        tbody.querySelectorAll('input[type=checkbox][data-uid]').forEach(cb => {
-          cb.addEventListener('change', (e) => {
-            const uid = e.target.getAttribute('data-uid');
-            togglePaid(weekStartISO, uid, e.target.checked);
-            loadPot(); // refresh pot totals
-          });
-        });
-      }
-
-      const pot = (paidCount * entryFee);
-      paidCountEl.textContent = paidCount.toString();
-      potTotalEl.textContent = `£${pot.toFixed(2)}`;
-      tbl.style.display = rows.length ? '' : 'none';
-
-      if (rows.length) {
-        const champ = rows[0];
-        winnerMsg.style.display = '';
-        winnerMsg.textContent = `🏆 Current weekend leader: ${champ.name} — ${champ.pts} pts (${champ.exact} exact). Pot if closed now: £${pot.toFixed(2)}.`;
-      } else {
-        winnerMsg.style.display = 'none';
-      }
-    }
-
-    document.getElementById('refresh').addEventListener('click', loadPot);
-    loadPot();
-    setInterval(loadPot, 20000); // refresh every 20s
-  </script>
 </body>
 </html>
