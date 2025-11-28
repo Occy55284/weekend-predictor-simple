@@ -1,62 +1,29 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css" />
-  <script defer src="supabase-config.js"></script>
-  <script>
-    async function loadLeaderboard() {
-      const tbody = document.getElementById('leaderboard-body');
-      const summary = document.getElementById('summary');
-      tbody.innerHTML = '<tr><td colspan="6" class="muted">Loading leaderboard...</td></tr>';
-
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .order('total_points', { ascending: false });
-
-      if (error) {
-        console.error(error);
-        tbody.innerHTML = '<tr><td colspan="6" class="muted">Error loading leaderboard.</td></tr>';
-        summary.textContent = '';
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="muted">No leaderboard data yet.</td></tr>';
-        summary.textContent = '';
-        return;
-      }
-
-      tbody.innerHTML = '';
-      let rank = 1;
-
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${rank}</td>
-          <td>${row.display_name || row.email || 'Player'}</td>
-          <td>${row.total_points ?? 0}</td>
-          <td>${row.exact_scores ?? 0}</td>
-          <td>${row.correct_results ?? 0}</td>
-          <td>${row.games_played ?? 0}</td>
-        `;
-        tbody.appendChild(tr);
-        rank++;
-      });
-
-      const top = data[0];
-      summary.textContent = `Current leader: ${
-        top.display_name || top.email || 'Player'
-      } with ${top.total_points ?? 0} points.`;
+  <link rel="stylesheet" href="brand.css?v=96" />
+  <style>
+    .summary {
+      margin-top: 6px;
+      font-size: 0.9rem;
     }
-
-    document.addEventListener('DOMContentLoaded', loadLeaderboard);
-  </script>
+    .msg {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      min-height: 1.1em;
+    }
+    .err { color: #ef4444; }
+    .muted-center {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-hero">
   <div class="page-shell">
     <header class="top-nav">
       <div class="top-nav-left">
@@ -71,9 +38,11 @@
       <nav class="top-nav-links">
         <a href="index.html">Home</a>
         <a href="predict.html">Predict</a>
+        <a href="leaderboard.html" class="active">Leaderboard</a>
         <a href="my-picks.html">My Picks</a>
         <a href="profile.html">Profile</a>
-        <a href="admin.html">Admin</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a href="#" id="navLogout">Logout</a>
       </nav>
     </header>
 
@@ -82,12 +51,13 @@
         <div class="panel-inner">
           <h1>Leaderboard</h1>
           <p class="muted">
-            See how everyone is performing across the season.
+            Live standings for everyone in the game.
           </p>
 
-          <p id="summary" class="muted" style="margin-top:8px;"></p>
+          <p id="summary" class="summary muted">Loading standings…</p>
+          <div id="msg" class="msg"></div>
 
-          <div class="table-wrapper">
+          <div class="table-wrapper" style="margin-top: 10px;">
             <table class="table">
               <thead>
                 <tr>
@@ -99,12 +69,100 @@
                   <th>Games played</th>
                 </tr>
               </thead>
-              <tbody id="leaderboard-body"></tbody>
+              <tbody id="leaderboardBody">
+                <tr><td colspan="6" class="muted-center">Loading…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
       </section>
     </main>
   </div>
+
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const bodyEl   = document.getElementById('leaderboardBody');
+    const summary  = document.getElementById('summary');
+    const msg      = document.getElementById('msg');
+    const navAdmin = document.getElementById('navAdmin');
+    const navLogout = document.getElementById('navLogout');
+
+    // Optional: logout link works whether or not there’s a session
+    navLogout?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await supabase.auth.signOut(); } catch {}
+      window.location.replace('login.html');
+    });
+
+    // If logged in, check if user is admin (to show Admin link)
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (!error && data?.is_admin) {
+          navAdmin.style.display = '';
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    async function loadLeaderboard() {
+      msg.textContent = '';
+      summary.textContent = 'Loading standings…';
+      bodyEl.innerHTML = '<tr><td colspan="6" class="muted-center">Loading…</td></tr>';
+
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .order('total_points', { ascending: false });
+
+      if (error) {
+        console.error(error);
+        bodyEl.innerHTML = '<tr><td colspan="6" class="muted-center">Could not load leaderboard.</td></tr>';
+        msg.innerHTML = '<span class="err">Error loading leaderboard data.</span>';
+        summary.textContent = '';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        bodyEl.innerHTML = '<tr><td colspan="6" class="muted-center">No leaderboard data yet.</td></tr>';
+        summary.textContent = 'No results to show yet.';
+        return;
+      }
+
+      bodyEl.innerHTML = '';
+      let rank = 1;
+
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${rank}</td>
+          <td>${row.display_name || row.email || 'Player'}</td>
+          <td>${row.total_points ?? 0}</td>
+          <td>${row.exact_scores ?? 0}</td>
+          <td>${row.correct_results ?? 0}</td>
+          <td>${row.games_played ?? 0}</td>
+        `;
+        bodyEl.appendChild(tr);
+        rank++;
+      });
+
+      const top = data[0];
+      summary.textContent = `Current leader: ${
+        top.display_name || top.email || 'Player'
+      } with ${top.total_points ?? 0} points.`;
+    }
+
+    loadLeaderboard();
+  </script>
 </body>
 </html>
