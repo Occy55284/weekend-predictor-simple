@@ -28,8 +28,6 @@
 </head>
 <body class="bg-hero">
   <div class="page-shell">
-
-    <!-- NAV -->
     <header class="top-nav">
       <div class="top-nav-left">
         <div class="nav-logo">
@@ -52,10 +50,7 @@
       </nav>
     </header>
 
-    <!-- MAIN LAYOUT -->
     <main class="main-layout">
-
-      <!-- LEFT PANEL -->
       <section class="panel panel-main">
         <div class="panel-inner">
           <h1>Your Profile</h1>
@@ -75,7 +70,6 @@
               type="text"
               placeholder="Your leaderboard name"
             />
-
             <button class="btn-primary" type="submit">Save changes</button>
             <div id="msg" class="msg"></div>
           </form>
@@ -86,7 +80,6 @@
         </div>
       </section>
 
-      <!-- RIGHT PANEL -->
       <aside class="panel panel-side">
         <div class="panel-inner">
           <h2>Why update your profile?</h2>
@@ -96,11 +89,9 @@
           </ul>
         </div>
       </aside>
-
     </main>
   </div>
 
-  <!-- PROFILE LOGIC -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -108,11 +99,9 @@
     const displayNameEl = document.getElementById('displayName');
     const msg           = document.getElementById('msg');
     const navAdmin      = document.getElementById('navAdmin');
+    const logoutBtn     = document.getElementById('logoutBtn');
+    const logoutBtn2    = document.getElementById('logoutBtn2');
 
-    const logoutBtn  = document.getElementById('logoutBtn');
-    const logoutBtn2 = document.getElementById('logoutBtn2');
-
-    // Logout (both buttons)
     [logoutBtn, logoutBtn2].forEach(btn => {
       btn?.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -131,21 +120,15 @@
 
       userEmailEl.textContent = user.email || '';
 
-      // Check admin flag
       try {
         const { data: profileAdmin } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
           .maybeSingle();
-        if (profileAdmin?.is_admin) {
-          navAdmin.style.display = '';
-        }
-      } catch {
-        // ignore
-      }
+        if (profileAdmin?.is_admin) navAdmin.style.display = '';
+      } catch {}
 
-      // Load display_name (if any)
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -183,20 +166,17 @@
       const nameVal = displayNameEl.value.trim() || null;
 
       try {
-        // Single UPSERT on id – works for new + existing rows
         const { error } = await supabase
           .from('profiles')
           .upsert(
             {
               id: user.id,
-              email: user.email,
               display_name: nameVal,
             },
             { onConflict: 'id' }
           );
 
         if (error) throw error;
-
         msg.innerHTML = '<span class="ok">Profile updated successfully.</span>';
       } catch (e) {
         console.error('save profile error', e);
