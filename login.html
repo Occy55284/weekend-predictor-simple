@@ -60,40 +60,42 @@
   </main>
 
   <script type="module">
-    import { supabase } from './supabase-config.js';
+  import { supabase } from './supabase-config.js';
 
-    const form = document.getElementById('form');
-    const msg = document.getElementById('msg');
+  const form = document.getElementById('form');
+  const msg = document.getElementById('msg');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      msg.textContent = 'Sending magic link…';
-      msg.className = 'msg';
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = 'Sending magic link…';
+    msg.className = 'msg';
 
-      const email = document.getElementById('email').value.trim();
-      if (!email) {
-        msg.innerHTML = '<span class="err">Please enter your email.</span>';
-        return;
-      }
+    const email = document.getElementById('email').value.trim();
+    if (!email) {
+      msg.innerHTML = '<span class="err">Please enter your email.</span>';
+      return;
+    }
 
-      try {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/predict.html`,
-          },
-        });
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          // 🔹 redirect straight to profile after clicking the email link
+          emailRedirectTo: `${window.location.origin}/profile.html`,
+        },
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        msg.innerHTML =
-          '<span class="ok">Check your inbox for the sign-in link.</span>';
-      } catch (err) {
-        console.error(err);
-        msg.innerHTML =
-          `<span class="err">${err.message || 'Could not send link.'}</span>`;
-      }
-    });
-  </script>
+      msg.innerHTML =
+        '<span class="ok">Check your inbox for the sign-in link.</span>';
+    } catch (err) {
+      console.error(err);
+      msg.innerHTML =
+        `<span class="err">${err.message || 'Could not send link.'}</span>`;
+    }
+  });
+</script>
+
 </body>
 </html>
