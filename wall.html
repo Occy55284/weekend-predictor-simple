@@ -2,143 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Occy Weekend Football — Predictions Wall</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
-      background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
-    header { text-align:center; margin:40px 0 24px; }
-    header h1 { margin-top:12px; color:#facc15; }
-    header p { color:#ddd; }
-    .card { background:rgba(255,255,255,0.95); color:#111; border-radius:16px; padding:20px; margin:16px auto; max-width:900px;
-      box-shadow:0 4px 12px rgba(0,0,0,0.3); }
-    table { border-collapse:collapse; width:100%; margin-top:12px; }
-    th,td { border:1px solid #ddd; padding:8px; text-align:center; }
-    th { background:#facc15; color:#111; }
-    .muted { color:#555; }
-    .team { display:flex; align-items:center; gap:6px; justify-content:center; }
-    .crest { width:18px; height:18px; object-fit:contain; }
-    a { color:#0f172a; }
-  </style>
+  <title>Wall • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css" />
+  <script defer src="supabase-config.js"></script>
 </head>
 <body>
-  <header>
-    <h1>⚽ Occy Weekend Football · Predictions Wall</h1>
-    <p class="muted">Only upcoming fixtures are shown</p>
-  </header>
+  <div class="page-shell">
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-logo">
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+        </div>
+        <div class="nav-text-group">
+          <div class="nav-title">Weekend Predictor</div>
+          <div class="nav-subtitle">Premier League prediction challenge</div>
+        </div>
+      </div>
+      <nav class="top-nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="my-picks.html">My Picks</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </header>
 
-  <div class="card">
-    <p id="msg" class="muted">Loading…</p>
-    <table id="predTable" style="display:none">
-      <thead>
-        <tr><th>Name</th><th>Fixture</th><th>Home</th><th>Away</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p class="muted" style="margin-top:8px"><a href="index.html">← Back to home</a></p>
+    <main class="main-layout">
+      <section class="panel panel-main">
+        <div class="panel-inner">
+          <h1>Wall</h1>
+          <p class="muted">
+            Space for comments, shout-outs or season highlights. You can wire this up to a Supabase table later.
+          </p>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script>
-    // (We keep crests for teams here; NOT player-team badges)
-    const CRESTS = {
-      'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
-      'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
-      'AFC Bournemouth':'https://resources.premierleague.com/premierleague/badges/70/t91.png',
-      'Brentford':'https://resources.premierleague.com/premierleague/badges/70/t94.png',
-      'Brighton & Hove Albion':'https://resources.premierleague.com/premierleague/badges/70/t36.png',
-      'Chelsea':'https://resources.premierleague.com/premierleague/badges/70/t8.png',
-      'Crystal Palace':'https://resources.premierleague.com/premierleague/badges/70/t31.png',
-      'Everton':'https://resources.premierleague.com/premierleague/badges/70/t11.png',
-      'Fulham':'https://resources.premierleague.com/premierleague/badges/70/t54.png',
-      'Ipswich Town':'https://resources.premierleague.com/premierleague/badges/70/t40.png',
-      'Leicester City':'https://resources.premierleague.com/premierleague/badges/70/t13.png',
-      'Liverpool':'https://resources.premierleague.com/premierleague/badges/70/t14.png',
-      'Manchester City':'https://resources.premierleague.com/premierleague/badges/70/t43.png',
-      'Manchester United':'https://resources.premierleague.com/premierleague/badges/70/t1.png',
-      'Newcastle United':'https://resources.premierleague.com/premierleague/badges/70/t4.png',
-      'Nottingham Forest':'https://resources.premierleague.com/premierleague/badges/70/t17.png',
-      'Southampton':'https://resources.premierleague.com/premierleague/badges/70/t20.png',
-      'Tottenham Hotspur':'https://resources.premierleague.com/premierleague/badges/70/t6.png',
-      'West Ham United':'https://resources.premierleague.com/premierleague/badges/70/t21.png',
-      'Wolverhampton Wanderers':'https://resources.premierleague.com/premierleague/badges/70/t39.png',
-    };
-    function crestFor(name){
-      if (CRESTS[name]) return CRESTS[name];
-      const clean=name?.replace(/ Football Club| FC| AFC/gi,'').trim();
-      for(const k of Object.keys(CRESTS)){
-        if(k.replace(/ Football Club| FC| AFC/gi,'').trim()===clean) return CRESTS[k];
-      }
-      return '';
-    }
-
-    async function loadPredictions(){
-      const msg=document.getElementById('msg'); const table=document.getElementById('predTable'); const tbody=table.querySelector('tbody');
-      const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-      // 1) Pull UPCOMING fixtures only
-      const nowIso = new Date().toISOString();
-      const { data: fixes, error: fErr } = await client
-        .from('fixtures')
-        .select('id, home_team, away_team')
-        .in('status', ['SCHEDULED','TIMED'])
-        .gte('utc_date', nowIso);
-      if (fErr) { msg.textContent = 'Error loading fixtures: ' + fErr.message; return; }
-      if (!fixes?.length) { msg.textContent = 'No upcoming fixtures.'; table.style.display='none'; return; }
-      const upcomingIds = new Set(fixes.map(f => f.id));
-      const fixturesById = Object.fromEntries(fixes.map(f => [f.id, f]));
-
-      // 2) Pull predictions ONLY for those upcoming fixture IDs
-      const { data: preds, error: pErr } = await client
-        .from('predictions')
-        .select('user_id, name, fixture_id, home_goals, away_goals')
-        .in('fixture_id', Array.from(upcomingIds))
-        .limit(1000);
-      if (pErr) { msg.textContent = 'Error loading predictions: ' + pErr.message; return; }
-      if (!preds?.length) { msg.textContent = 'No picks for upcoming fixtures yet.'; table.style.display='none'; return; }
-
-      // 3) Pull profile display names for user_ids (optional)
-      const ids=[...new Set(preds.map(r=>r.user_id).filter(Boolean))];
-      let namesById={};
-      if(ids.length){
-        const { data: profiles } = await client.from('profiles').select('id,display_name').in('id', ids);
-        (profiles||[]).forEach(p=>{ namesById[p.id]=p.display_name||''; });
-      }
-
-      // 4) Render
-      tbody.innerHTML='';
-      preds.forEach(r=>{
-        const label = r.user_id ? (namesById[r.user_id] || '(no name set)') : (r.name || '(anon)');
-        const fx = fixturesById[r.fixture_id];
-        const home = fx?.home_team || r.fixture_id;
-        const away = fx?.away_team || '';
-        const hC = crestFor(home), aC = crestFor(away);
-        const tr=document.createElement('tr');
-        tr.innerHTML=`
-          <td>${label}</td>
-          <td>
-            <div class="team">
-              ${hC?`<img class="crest" src="${hC}" alt="${home} crest">`:''}<span>${home}</span>
-              <span class="muted">vs</span>
-              ${aC?`<img class="crest" src="${aC}" alt="${away} crest">`:''}<span>${away}</span>
-            </div>
-          </td>
-          <td>${r.home_goals}</td>
-          <td>${r.away_goals}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      msg.textContent=`Loaded ${preds.length} pick(s) for upcoming fixtures.`; table.style.display='';
-    }
-    loadPredictions(); setInterval(loadPredictions, 10000);
-  </script>
 </body>
 </html>
-
-
-
