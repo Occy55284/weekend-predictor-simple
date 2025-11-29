@@ -443,11 +443,15 @@
 
         msg.innerHTML = '<span class="ok">Your picks are saved and locked for this week.</span>';
         disableInputs();
-      } catch(e){
-        console.error(e);
-        msg.innerHTML = '<span class="err">Could not lock picks.</span>';
-        lockBtn.disabled = false;
-      }
+        } catch(e){
+    console.error(e);
+    msg.innerHTML =
+      '<span class="err">Could not lock picks. ' +
+      (e?.message || e?.hint || '') +
+      '</span>';
+    lockBtn.disabled = false;
+  }
+
     });
 
     // --- Team form (last 5 games) ---
