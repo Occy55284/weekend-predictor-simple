@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Player Stats • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=96" />
+
+  <style>
+    .page-header-title { margin-bottom: 4px; }
+    .subtext {
+      font-size:0.8rem;
+      color:#9ca3af;
+      margin-top:6px;
+    }
+    .info-line {
+      font-size:0.8rem;
+      color:#9ca3af;
+      margin-top:8px;
+    }
+    .table-wrapper {
+      margin-top:12px;
+      max-width:100%;
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,0.5);
+      background:rgba(15,23,42,0.96);
+    }
+    .stats-table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:0.85rem;
+      min-width:620px;
+    }
+    .stats-table th,
+    .stats-table td {
+      padding:6px 8px;
+      border-bottom:1px solid rgba(51,65,85,0.8);
+      text-align:right;
+      white-space:nowrap;
+    }
+    .stats-table thead th {
+      position:sticky;
+      top:0;
+      background:rgba(15,23,42,0.98);
+      z-index:1;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:0.75rem;
+      color:#9ca3af;
+    }
+    .stats-table th:first-child,
+    .stats-table td:first-child {
+      text-align:left;
+    }
+    .stats-table tbody tr:nth-child(even) {
+      background:rgba(15,23,42,0.7);
+    }
+    .stats-table tbody tr:nth-child(odd) {
+      background:rgba(15,23,42,0.5);
+    }
+    .player-name {
+      font-weight:600;
+      color:#e5e7eb;
+    }
+    .rank-badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:1px 7px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.7);
+      font-size:0.7rem;
+      color:#e5e7eb;
+      background:rgba(15,23,42,0.96);
+      margin-right:6px;
+    }
+    .rank-1 { border-color:#facc15; color:#facc15; }
+    .rank-2 { border-color:#e5e7eb; color:#e5e7eb; }
+    .rank-3 { border-color:#f97316; color:#f97316; }
+    .muted { color:#9ca3af; }
+  </style>
+</head>
+<body class="bg-hero">
+  <div class="page-shell">
+
+    <!-- NAV -->
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-logo">
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+        </div>
+        <div class="nav-text-group">
+          <div class="nav-title">Weekend Predictor</div>
+          <div class="nav-subtitle">Season stats – compare every player</div>
+        </div>
+      </div>
+      <nav class="top-nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="my-picks.html">My Picks</a>
+        <a href="all-picks.html">All Picks</a>
+        <a href="stats.html" class="active">Stats</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a href="login.html" id="navLogout">Logout</a>
+      </nav>
+    </header>
+
+    <main class="main-layout">
+      <!-- MAIN PANEL -->
+      <section class="panel panel-main wide">
+        <div class="panel-inner">
+          <h1 class="page-header-title">Player stats</h1>
+          <p class="subtext">
+            Season view: points, exact scores, correct results, games played and accuracy for every player.
+          </p>
+
+          <div id="info" class="info-line">Loading…</div>
+
+          <div class="table-wrapper" id="tableWrapper" style="display:none;">
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Total points</th>
+                  <th>Exact scores<br>(5 pts)</th>
+                  <th>Correct results<br>(3 pts)</th>
+                  <th>Games played</th>
+                  <th>Accuracy %</th>
+                </tr>
+              </thead>
+              <tbody id="statsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SIDE PANEL -->
+      <aside class="panel panel-side">
+        <div class="panel-inner">
+          <h2>How it’s calculated</h2>
+          <ul class="bullet-list">
+            <li>Only matches where the fixture is marked as <strong>FINISHED</strong> with a score.</li>
+            <li>+5 points for an exact score.</li>
+            <li>+3 points for correct result (home / draw / away).</li>
+            <li>0 otherwise.</li>
+            <li>Accuracy = correct results ÷ total predictions.</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Logic -->
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const navAdmin   = document.getElementById('navAdmin');
+    const navLogout  = document.getElementById('navLogout');
+    const infoEl     = document.getElementById('info');
+    const wrapper    = document.getElementById('tableWrapper');
+    const bodyEl     = document.getElementById('statsBody');
+
+    // --- auth + nav wiring ---
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        window.location.replace('login.html');
+        return;
+      }
+
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (prof?.is_admin) navAdmin.style.display = '';
+      } catch {}
+
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
+
+      await loadStats();
+    })();
+
+    function outcome(h,a){
+      if (h>a) return 'H';
+      if (h<a) return 'A';
+      return 'D';
+    }
+
+    async function loadStats() {
+      infoEl.textContent = 'Loading finished fixtures…';
+      wrapper.style.display = 'none';
+      bodyEl.innerHTML = '';
+
+      // 1) Finished fixtures with scores
+      const { data: fixtures, error: fxErr } = await supabase
+        .from('fixtures')
+        .select('id, home_score, away_score, status')
+        .eq('status', 'FINISHED')
+        .not('home_score', 'is', null)
+        .not('away_score', 'is', null);
+
+      if (fxErr) {
+        console.error(fxErr);
+        infoEl.textContent = 'Could not load fixtures.';
+        return;
+      }
+
+      if (!fixtures || fixtures.length === 0) {
+        infoEl.textContent = 'No finished fixtures found yet – stats will appear once results are in.';
+        return;
+      }
+
+      const fxMap = new Map(fixtures.map(f => [f.id, f]));
+      const fixtureIds = fixtures.map(f => f.id);
+
+      infoEl.textContent = 'Loading predictions…';
+
+      // 2) All predictions for those fixtures
+      const { data: preds, error: prErr } = await supabase
+        .from('predictions')
+        .select('user_id, fixture_id, home_goals, away_goals')
+        .in('fixture_id', fixtureIds);
+
+      if (prErr) {
+        console.error(prErr);
+        infoEl.textContent = 'Could not load predictions.';
+        return;
+      }
+
+      if (!preds || preds.length === 0) {
+        infoEl.textContent = 'No predictions found yet for finished fixtures.';
+        return;
+      }
+
+      // Build stats per user
+      const statsByUser = new Map();
+      let totalPreds = 0;
+
+      for (const p of preds) {
+        const fx = fxMap.get(p.fixture_id);
+        if (!fx) continue;
+
+        const actualHome = fx.home_score;
+        const actualAway = fx.away_score;
+
+        const predHome = p.home_goals;
+        const predAway = p.away_goals;
+
+        if (predHome == null || predAway == null) continue;
+
+        let stat = statsByUser.get(p.user_id);
+        if (!stat) {
+          stat = {
+            user_id: p.user_id,
+            points: 0,
+            exact: 0,
+            correctResult: 0,
+            total: 0
+          };
+          statsByUser.set(p.user_id, stat);
+        }
+
+        stat.total++;
+        totalPreds++;
+
+        if (predHome === actualHome && predAway === actualAway) {
+          stat.points += 5;
+          stat.exact += 1;
+          stat.correctResult += 1; // exact is also correct result
+        } else if (outcome(predHome, predAway) === outcome(actualHome, actualAway)) {
+          stat.points += 3;
+          stat.correctResult += 1;
+        }
+      }
+
+      if (statsByUser.size === 0) {
+        infoEl.textContent = 'No valid predictions yet for finished fixtures.';
+        return;
+      }
+
+      const userIds = [...statsByUser.keys()];
+
+      infoEl.textContent = 'Loading player names…';
+
+      // 3) Profiles for names
+      const { data: profiles, error: pfErr } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+
+      if (pfErr) {
+        console.error(pfErr);
+        infoEl.textContent = 'Could not load player names.';
+        return;
+      }
+
+      const nameMap = new Map((profiles || []).map(p => [p.id, p.display_name || 'Player']));
+
+      // Build array for table
+      let players = [...statsByUser.values()].map(stat => {
+        const name = nameMap.get(stat.user_id) || 'Player';
+        const accuracy = stat.total ? (stat.correctResult / stat.total) * 100 : 0;
+        return {
+          user_id: stat.user_id,
+          name,
+          points: stat.points,
+          exact: stat.exact,
+          correctResult: stat.correctResult,
+          total: stat.total,
+          accuracy: accuracy
+        };
+      });
+
+      // Sort by points desc, then name asc
+      players.sort((a,b)=>{
+        if (b.points !== a.points) return b.points - a.points;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Render table
+      bodyEl.innerHTML = '';
+      players.forEach((p, idx) => {
+        const tr = document.createElement('tr');
+
+        const rank = idx + 1;
+        const rankClass =
+          rank === 1 ? 'rank-badge rank-1' :
+          rank === 2 ? 'rank-badge rank-2' :
+          rank === 3 ? 'rank-badge rank-3' :
+          'rank-badge';
+
+        const tdName = document.createElement('td');
+        tdName.innerHTML =
+          `<span class="${rankClass}">#${rank}</span>` +
+          `<span class="player-name">${escapeHtml(p.name)}</span>`;
+        tr.appendChild(tdName);
+
+        const tdPoints = document.createElement('td');
+        tdPoints.textContent = p.points;
+        tr.appendChild(tdPoints);
+
+        const tdExact = document.createElement('td');
+        tdExact.textContent = p.exact;
+        tr.appendChild(tdExact);
+
+        const tdCorrect = document.createElement('td');
+        tdCorrect.textContent = p.correctResult;
+        tr.appendChild(tdCorrect);
+
+        const tdTotal = document.createElement('td');
+        tdTotal.textContent = p.total;
+        tr.appendChild(tdTotal);
+
+        const tdAcc = document.createElement('td');
+        tdAcc.textContent = p.total ? `${p.accuracy.toFixed(1)}%` : '—';
+        tr.appendChild(tdAcc);
+
+        bodyEl.appendChild(tr);
+      });
+
+      wrapper.style.display = 'block';
+
+      infoEl.textContent =
+        `Players: ${players.length} • Finished fixtures counted: ${fixtures.length} • Predictions processed: ${totalPreds}`;
+    }
+
+    function escapeHtml(str='') {
+      return String(str).replace(/[&<>"']/g, ch=>{
+        switch(ch){
+          case '&': return '&amp;';
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '"': return '&quot;';
+          case "'": return '&#39;';
+          default: return ch;
+        }
+      });
+    }
+  </script>
+</body>
+</html>
