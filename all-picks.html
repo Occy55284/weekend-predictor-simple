@@ -36,6 +36,9 @@
       margin-top:12px;
       max-width:100%;
       overflow:auto;
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,0.5);
+      background:rgba(15,23,42,0.96);
     }
     .matrix {
       width:100%;
@@ -114,6 +117,14 @@
       border-color:#22c55e;
       color:#22c55e;
     }
+    .info-line {
+      font-size:0.8rem;
+      color:#9ca3af;
+      margin-top:8px;
+    }
+    .center {
+      text-align:center;
+    }
   </style>
 </head>
 <body class="bg-hero">
@@ -163,125 +174,261 @@
             Fixtures down the left • each player in a column • cells show their predicted score.
           </p>
 
-          <!-- MATRIX MOCKUP -->
-          <div class="matrix-wrapper">
-            <table class="matrix">
-              <thead>
-                <tr>
-                  <th class="fixture-col">Fixture</th>
-                  <th><span class="player-header">Occy</span></th>
-                  <th><span class="player-header">Mark</span></th>
-                  <th><span class="player-header">Serdi</span></th>
-                  <th><span class="player-header">Jono</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th class="fixture-col">
-                    <span class="fixture-main">Arsenal vs Spurs</span>
-                    <span class="fixture-tag">Sat 15:00</span>
-                  </th>
-                  <td class="pick-cell">2–1 <span class="badge-pill badge-locked">L</span></td>
-                  <td class="pick-cell">2–0 <span class="badge-pill badge-locked">L</span></td>
-                  <td class="pick-cell">1–1</td>
-                  <td class="pick-cell pick-missing">—</td>
-                </tr>
-                <tr>
-                  <th class="fixture-col">
-                    <span class="fixture-main">Liverpool vs Chelsea</span>
-                    <span class="fixture-tag">Sat 17:30</span>
-                  </th>
-                  <td class="pick-cell">3–2 <span class="badge-pill badge-locked">L</span></td>
-                  <td class="pick-cell">2–1</td>
-                  <td class="pick-cell">2–0</td>
-                  <td class="pick-cell pick-missing">—</td>
-                </tr>
-                <tr>
-                  <th class="fixture-col">
-                    <span class="fixture-main">Man City vs Newcastle</span>
-                    <span class="fixture-tag">Sun 16:30</span>
-                  </th>
-                  <td class="pick-cell">2–0</td>
-                  <td class="pick-cell">3–1</td>
-                  <td class="pick-cell">2–1</td>
-                  <td class="pick-cell">1–1</td>
-                </tr>
-                <tr>
-                  <th class="fixture-col">
-                    <span class="fixture-main">Brighton vs West Ham</span>
-                    <span class="fixture-tag">Sun 14:00</span>
-                  </th>
-                  <td class="pick-cell pick-missing">—</td>
-                  <td class="pick-cell">1–0</td>
-                  <td class="pick-cell">1–1</td>
-                  <td class="pick-cell">0–2</td>
-                </tr>
-              </tbody>
+          <div id="statusLine" class="info-line">Loading…</div>
+
+          <!-- MATRIX -->
+          <div class="matrix-wrapper" id="matrixWrapper" style="display:none;">
+            <table class="matrix" id="matrixTable">
+              <thead id="matrixHead"></thead>
+              <tbody id="matrixBody"></tbody>
             </table>
           </div>
-
-          <p class="subtext" style="margin-top:10px;">
-            Later we’ll swap the mock data for live data from Supabase (fixtures × players for the current week).
-          </p>
         </div>
       </section>
 
       <!-- SIDE PANEL -->
       <aside class="panel panel-side">
         <div class="panel-inner">
-          <h2>Planned behaviour</h2>
+          <h2>How this page works</h2>
           <ul class="bullet-list">
-            <li>Rows = featured fixtures for the current week.</li>
-            <li>Columns = every player who has picks that week.</li>
-            <li>Cell = predicted score (home–away).</li>
-            <li>Small “L” badge if the player has locked their week.</li>
+            <li>Rows = featured fixtures for this week.</li>
+            <li>Columns = every player who has made a prediction.</li>
+            <li>Cell = predicted score <em>(home–away)</em>.</li>
+            <li>“L” badge = that player has locked their picks for the week.</li>
           </ul>
         </div>
       </aside>
     </main>
   </div>
 
-  <!-- Small script: set week label + admin/logout wiring -->
+  <!-- Logic -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const weekLabel = document.getElementById('weekLabel');
-    const navAdmin  = document.getElementById('navAdmin');
-    const navLogout = document.getElementById('navLogout');
+    const navAdmin   = document.getElementById('navAdmin');
+    const navLogout  = document.getElementById('navLogout');
+    const weekLabel  = document.getElementById('weekLabel');
+    const statusLine = document.getElementById('statusLine');
+    const wrapper    = document.getElementById('matrixWrapper');
+    const headEl     = document.getElementById('matrixHead');
+    const bodyEl     = document.getElementById('matrixBody');
 
+    // --- helpers ---
+    function pad(n){return String(n).padStart(2,'0');}
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
     function startOfWeek(d=new Date()){
       const x = new Date(d);
-      const day = x.getDay() === 0 ? 7 : x.getDay();
+      const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
       x.setHours(0,0,0,0);
       x.setDate(x.getDate() - (day - 1));
       return x;
     }
     function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-    const ws = startOfWeek();
-    const we = addDays(ws,6);
-    weekLabel.textContent = `Current week: ${ws.toLocaleDateString()} – ${we.toLocaleDateString()} (Mon–Sun)`;
+    const weekStart = startOfWeek();
+    const weekEnd   = addDays(weekStart, 7);
+    const weekStartStr = isoDate(weekStart);
 
+    weekLabel.textContent =
+      `Current week: ${weekStart.toLocaleDateString()} – ` +
+      `${addDays(weekStart,6).toLocaleDateString()} (Mon–Sun)`;
+
+    // --- auth + nav wiring ---
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
-      if (!user) return;
+      if (!user) {
+        window.location.replace('login.html');
+        return;
+      }
 
+      // admin
       try {
-        const { data } = await supabase
+        const { data: prof } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
           .maybeSingle();
-        if (data?.is_admin) navAdmin.style.display = '';
+        if (prof?.is_admin) navAdmin.style.display = '';
       } catch {}
 
-      navLogout?.addEventListener('click', async (e) => {
+      // logout
+      navLogout?.addEventListener('click', async (e)=>{
         e.preventDefault();
         try { await supabase.auth.signOut(); } catch {}
         window.location.replace('login.html');
       });
+
+      // after auth, load data
+      await loadMatrix();
     })();
+
+    async function loadMatrix() {
+      statusLine.textContent = 'Loading fixtures…';
+      wrapper.style.display = 'none';
+      headEl.innerHTML = '';
+      bodyEl.innerHTML = '';
+
+      // 1) Featured fixtures for this week
+      const { data: fixtures, error: fxErr } = await supabase
+        .from('fixtures')
+        .select('id, utc_date, home_team, away_team')
+        .eq('featured', true)
+        .gte('utc_date', new Date(weekStart).toISOString())
+        .lt('utc_date', new Date(weekEnd).toISOString())
+        .order('utc_date', { ascending: true });
+
+      if (fxErr) {
+        console.error(fxErr);
+        statusLine.textContent = 'Could not load fixtures.';
+        return;
+      }
+
+      if (!fixtures || fixtures.length === 0) {
+        statusLine.textContent = 'No featured fixtures have been set for this week yet.';
+        return;
+      }
+
+      statusLine.textContent = 'Loading predictions…';
+
+      const fixtureIds = fixtures.map(f => f.id);
+
+      // 2) Predictions for these fixtures
+      const { data: preds, error: prErr } = await supabase
+        .from('predictions')
+        .select('user_id, fixture_id, home_goals, away_goals')
+        .in('fixture_id', fixtureIds);
+
+      if (prErr) {
+        console.error(prErr);
+        statusLine.textContent = 'Could not load predictions.';
+        return;
+      }
+
+      if (!preds || preds.length === 0) {
+        statusLine.textContent = 'No predictions yet for these fixtures.';
+        return;
+      }
+
+      // Unique players
+      const userIds = [...new Set(preds.map(p => p.user_id))];
+
+      // 3) Profiles -> display_name
+      const { data: profiles, error: pfErr } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+
+      if (pfErr) {
+        console.error(pfErr);
+        statusLine.textContent = 'Could not load player names.';
+        return;
+      }
+
+      // 4) Pick locks for this week
+      const { data: locks, error: lkErr } = await supabase
+        .from('pick_locks')
+        .select('user_id, week_start')
+        .eq('week_start', weekStartStr)
+        .in('user_id', userIds);
+
+      if (lkErr) {
+        console.error(lkErr);
+      }
+
+      const lockSet = new Set((locks || []).map(l => l.user_id));
+
+      // Build player list: id + name
+      const players = userIds.map(uid => {
+        const prof = profiles?.find(p => p.id === uid);
+        return {
+          id: uid,
+          name: prof?.display_name || 'Player',
+        };
+      }).sort((a,b)=> a.name.localeCompare(b.name));
+
+      // Build lookup for predictions: key = fixture_id|user_id
+      const predMap = new Map();
+      (preds || []).forEach(p => {
+        const key = `${p.fixture_id}|${p.user_id}`;
+        predMap.set(key, p);
+      });
+
+      // --- Build header ---
+      const headRow = document.createElement('tr');
+      const thFx = document.createElement('th');
+      thFx.className = 'fixture-col';
+      thFx.textContent = 'Fixture';
+      headRow.appendChild(thFx);
+
+      players.forEach(pl => {
+        const th = document.createElement('th');
+        th.innerHTML = `<span class="player-header">${escapeHtml(pl.name)}</span>`;
+        headRow.appendChild(th);
+      });
+
+      headEl.appendChild(headRow);
+
+      // --- Build body ---
+      fixtures.forEach(fx => {
+        const tr = document.createElement('tr');
+
+        // fixture cell
+        const th = document.createElement('th');
+        th.className = 'fixture-col';
+        const dt = new Date(fx.utc_date);
+        const timeStr = dt.toLocaleString(undefined, {
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        th.innerHTML = `
+          <span class="fixture-main">${escapeHtml(fx.home_team)} vs ${escapeHtml(fx.away_team)}</span>
+          <span class="fixture-tag">${escapeHtml(timeStr)}</span>
+        `;
+        tr.appendChild(th);
+
+        // one cell per player
+        players.forEach(pl => {
+          const td = document.createElement('td');
+          td.className = 'pick-cell';
+          const key = `${fx.id}|${pl.id}`;
+          const p = predMap.get(key);
+          if (!p) {
+            td.classList.add('pick-missing');
+            td.textContent = '—';
+          } else {
+            const h = (p.home_goals ?? 0);
+            const a = (p.away_goals ?? 0);
+            const locked = lockSet.has(pl.id);
+            td.innerHTML = `${h}–${a}` + (locked
+              ? ` <span class="badge-pill badge-locked">L</span>`
+              : ''
+            );
+          }
+          tr.appendChild(td);
+        });
+
+        bodyEl.appendChild(tr);
+      });
+
+      wrapper.style.display = 'block';
+      statusLine.textContent =
+        `Fixtures: ${fixtures.length} • Players: ${players.length} • Predictions: ${preds.length}`;
+    }
+
+    function escapeHtml(str='') {
+      return String(str).replace(/[&<>"']/g, ch=>{
+        switch(ch){
+          case '&': return '&amp;';
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '"': return '&quot;';
+          case "'": return '&#39;';
+          default: return ch;
+        }
+      });
+    }
   </script>
 </body>
 </html>
