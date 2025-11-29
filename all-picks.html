@@ -32,39 +32,85 @@
       color:#9ca3af;
       margin-top:6px;
     }
-    .table-sm {
+    .matrix-wrapper {
+      margin-top:12px;
+      max-width:100%;
+      overflow:auto;
+    }
+    .matrix {
+      width:100%;
+      border-collapse:collapse;
       font-size:0.85rem;
+      min-width:620px;
     }
-    .table-sm th,
-    .table-sm td {
+    .matrix th,
+    .matrix td {
       padding:6px 6px;
+      border-bottom:1px solid rgba(51,65,85,0.8);
+      text-align:center;
+      white-space:nowrap;
     }
-    .fixture-tag {
-      font-size:0.78rem;
+    .matrix thead th {
+      position:sticky;
+      top:0;
+      background:rgba(15,23,42,0.98);
+      z-index:1;
       text-transform:uppercase;
-      letter-spacing:.09em;
+      letter-spacing:.08em;
+      font-size:0.75rem;
       color:#9ca3af;
+    }
+    .matrix tbody tr:nth-child(even) {
+      background:rgba(15,23,42,0.7);
+    }
+    .matrix tbody tr:nth-child(odd) {
+      background:rgba(15,23,42,0.5);
+    }
+    .matrix th.fixture-col {
+      text-align:left;
+      min-width:180px;
+      max-width:260px;
     }
     .fixture-main {
       font-weight:600;
       color:#e5e7eb;
+      display:block;
     }
-    .player-name {
+    .fixture-tag {
+      font-size:0.7rem;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      color:#9ca3af;
+      display:block;
+      margin-top:1px;
+    }
+    .player-header {
+      font-weight:600;
+      color:#e5e7eb;
+      font-size:0.8rem;
+    }
+    .pick-cell {
       font-weight:500;
       color:#e5e7eb;
+      font-size:0.85rem;
+    }
+    .pick-missing {
+      color:#64748b;
+      font-style:italic;
     }
     .badge-pill {
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      padding:2px 8px;
+      padding:1px 6px;
       border-radius:999px;
       border:1px solid rgba(148,163,184,0.7);
-      font-size:0.75rem;
+      font-size:0.7rem;
       color:#e5e7eb;
       background:rgba(15,23,42,0.96);
+      margin-left:4px;
     }
-    .badge-live {
+    .badge-locked {
       border-color:#22c55e;
       color:#22c55e;
     }
@@ -81,7 +127,7 @@
         </div>
         <div class="nav-text-group">
           <div class="nav-title">Weekend Predictor</div>
-          <div class="nav-subtitle">See every player’s weekly picks</div>
+          <div class="nav-subtitle">All players’ picks for this week</div>
         </div>
       </div>
       <nav class="top-nav-links">
@@ -114,68 +160,68 @@
           </div>
 
           <p class="subtext">
-            This page will show every player’s prediction for each featured fixture in the current week.
+            Fixtures down the left • each player in a column • cells show their predicted score.
           </p>
 
-          <div class="table-wrapper" style="margin-top:12px;">
-            <table class="table table-sm">
+          <!-- MATRIX MOCKUP -->
+          <div class="matrix-wrapper">
+            <table class="matrix">
               <thead>
                 <tr>
-                  <th style="width:32%;">Fixture</th>
-                  <th style="width:22%;">Player</th>
-                  <th style="width:16%;">Home</th>
-                  <th style="width:16%;">Away</th>
-                  <th style="width:14%;">Status</th>
+                  <th class="fixture-col">Fixture</th>
+                  <th><span class="player-header">Occy</span></th>
+                  <th><span class="player-header">Mark</span></th>
+                  <th><span class="player-header">Serdi</span></th>
+                  <th><span class="player-header">Jono</span></th>
                 </tr>
               </thead>
               <tbody>
-                <!-- Example rows – just mock data for now -->
                 <tr>
-                  <td>
-                    <div class="fixture-tag">Sat 15:00</div>
-                    <div class="fixture-main">Arsenal vs Spurs</div>
-                  </td>
-                  <td><span class="player-name">Occy</span></td>
-                  <td>2</td>
-                  <td>1</td>
-                  <td><span class="badge-pill badge-live">Locked</span></td>
+                  <th class="fixture-col">
+                    <span class="fixture-main">Arsenal vs Spurs</span>
+                    <span class="fixture-tag">Sat 15:00</span>
+                  </th>
+                  <td class="pick-cell">2–1 <span class="badge-pill badge-locked">L</span></td>
+                  <td class="pick-cell">2–0 <span class="badge-pill badge-locked">L</span></td>
+                  <td class="pick-cell">1–1</td>
+                  <td class="pick-cell pick-missing">—</td>
                 </tr>
                 <tr>
-                  <td>
-                    <div class="fixture-tag">Sat 15:00</div>
-                    <div class="fixture-main">Arsenal vs Spurs</div>
-                  </td>
-                  <td><span class="player-name">Serdi</span></td>
-                  <td>1</td>
-                  <td>1</td>
-                  <td><span class="badge-pill">Pending</span></td>
+                  <th class="fixture-col">
+                    <span class="fixture-main">Liverpool vs Chelsea</span>
+                    <span class="fixture-tag">Sat 17:30</span>
+                  </th>
+                  <td class="pick-cell">3–2 <span class="badge-pill badge-locked">L</span></td>
+                  <td class="pick-cell">2–1</td>
+                  <td class="pick-cell">2–0</td>
+                  <td class="pick-cell pick-missing">—</td>
                 </tr>
                 <tr>
-                  <td>
-                    <div class="fixture-tag">Sat 17:30</div>
-                    <div class="fixture-main">Liverpool vs Chelsea</div>
-                  </td>
-                  <td><span class="player-name">Mark2</span></td>
-                  <td>3</td>
-                  <td>2</td>
-                  <td><span class="badge-pill badge-live">Locked</span></td>
+                  <th class="fixture-col">
+                    <span class="fixture-main">Man City vs Newcastle</span>
+                    <span class="fixture-tag">Sun 16:30</span>
+                  </th>
+                  <td class="pick-cell">2–0</td>
+                  <td class="pick-cell">3–1</td>
+                  <td class="pick-cell">2–1</td>
+                  <td class="pick-cell">1–1</td>
                 </tr>
                 <tr>
-                  <td>
-                    <div class="fixture-tag">Sat 17:30</div>
-                    <div class="fixture-main">Liverpool vs Chelsea</div>
-                  </td>
-                  <td><span class="player-name">Serdi</span></td>
-                  <td>2</td>
-                  <td>0</td>
-                  <td><span class="badge-pill">Pending</span></td>
+                  <th class="fixture-col">
+                    <span class="fixture-main">Brighton vs West Ham</span>
+                    <span class="fixture-tag">Sun 14:00</span>
+                  </th>
+                  <td class="pick-cell pick-missing">—</td>
+                  <td class="pick-cell">1–0</td>
+                  <td class="pick-cell">1–1</td>
+                  <td class="pick-cell">0–2</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <p class="subtext" style="margin-top:10px;">
-            Later we’ll add filters (by player, by fixture) and show points once results are in.
+            Later we’ll swap the mock data for live data from Supabase (fixtures × players for the current week).
           </p>
         </div>
       </section>
@@ -185,17 +231,17 @@
         <div class="panel-inner">
           <h2>Planned behaviour</h2>
           <ul class="bullet-list">
-            <li>Auto-load current week’s featured fixtures.</li>
-            <li>Show every player who has locked picks.</li>
-            <li>Optional filters: by player or by fixture.</li>
-            <li>Future: show points per pick once matches finish.</li>
+            <li>Rows = featured fixtures for the current week.</li>
+            <li>Columns = every player who has picks that week.</li>
+            <li>Cell = predicted score (home–away).</li>
+            <li>Small “L” badge if the player has locked their week.</li>
           </ul>
         </div>
       </aside>
     </main>
   </div>
 
-  <!-- Small script: set week label + (later) admin/logout wiring -->
+  <!-- Small script: set week label + admin/logout wiring -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -203,8 +249,6 @@
     const navAdmin  = document.getElementById('navAdmin');
     const navLogout = document.getElementById('navLogout');
 
-    // Week label (same logic as predict page)
-    function pad(n){ return String(n).padStart(2,'0'); }
     function startOfWeek(d=new Date()){
       const x = new Date(d);
       const day = x.getDay() === 0 ? 7 : x.getDay();
@@ -215,10 +259,9 @@
     function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
     const ws = startOfWeek();
-    const we = addDays(ws,7);
-    weekLabel.textContent = `Current week: ${ws.toLocaleDateString()} – ${addDays(ws,6).toLocaleDateString()} (Mon–Sun)`;
+    const we = addDays(ws,6);
+    weekLabel.textContent = `Current week: ${ws.toLocaleDateString()} – ${we.toLocaleDateString()} (Mon–Sun)`;
 
-    // Optional: show Admin link if user is admin
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
