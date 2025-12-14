@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wallet • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=96" />
+
+  <style>
+    .page-header-title { margin-bottom: 4px; }
+    .subtext { font-size:0.8rem; color:#9ca3af; margin-top:6px; }
+    .info-line { font-size:0.8rem; color:#9ca3af; margin-top:8px; }
+
+    .grid {
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap:12px;
+    }
+    @media (max-width: 920px) {
+      .grid { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .card {
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,0.5);
+      background:rgba(15,23,42,0.96);
+      padding:12px;
+    }
+
+    .kpis { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
+    @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
+
+    .kpi {
+      border-radius:14px;
+      border:1px solid rgba(148,163,184,0.45);
+      background:rgba(15,23,42,0.92);
+      padding:10px;
+    }
+    .kpi .label { font-size:0.75rem; color:#9ca3af; text-transform:uppercase; letter-spacing:.08em; }
+    .kpi .value { font-size:1.25rem; font-weight:700; color:#e5e7eb; margin-top:4px; }
+
+    .table-wrapper {
+      margin-top:12px;
+      max-width:100%;
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,0.5);
+      background:rgba(15,23,42,0.96);
+    }
+    .table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:0.85rem;
+      min-width:720px;
+    }
+    .table th, .table td {
+      padding:8px 8px;
+      border-bottom:1px solid rgba(51,65,85,0.8);
+      text-align:left;
+      white-space:nowrap;
+    }
+    .table thead th {
+      position:sticky;
+      top:0;
+      background:rgba(15,23,42,0.98);
+      z-index:1;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:0.75rem;
+      color:#9ca3af;
+    }
+    .table tbody tr:nth-child(even) { background:rgba(15,23,42,0.7); }
+    .table tbody tr:nth-child(odd)  { background:rgba(15,23,42,0.5); }
+
+    .name { font-weight:700; color:#e5e7eb; }
+    .muted { color:#9ca3af; }
+
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.7);
+      font-size:0.75rem;
+      background:rgba(15,23,42,0.95);
+      color:#e5e7eb;
+    }
+    .pill-paid { border-color:#22c55e; color:#22c55e; }
+    .pill-unpaid { border-color:#ef4444; color:#ef4444; }
+
+    .btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .btn {
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.7);
+      background:rgba(15,23,42,0.96);
+      color:#e5e7eb;
+      padding:8px 12px;
+      font-weight:600;
+      cursor:pointer;
+      font-size:0.85rem;
+    }
+    .btn-primary {
+      border:none;
+      background:linear-gradient(135deg,#2563eb,#4f46e5);
+      box-shadow:0 12px 28px rgba(37,99,235,0.35);
+    }
+    .btn:disabled { opacity:0.55; cursor:default; }
+
+    .admin-box { display:none; }
+    .admin-grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; }
+    @media (max-width: 640px) { .admin-grid { grid-template-columns: 1fr; } }
+
+    .input, .select {
+      width:100%;
+      border-radius:12px;
+      border:1px solid rgba(148,163,184,0.7);
+      background:rgba(15,23,42,0.96);
+      color:#e5e7eb;
+      padding:8px 10px;
+      font-size:0.9rem;
+    }
+    .help { font-size:0.78rem; color:#9ca3af; margin-top:6px; }
+
+    .msg { margin-top:10px; min-height:1.1em; font-weight:600; }
+    .ok { color:#22c55e; }
+    .err { color:#ef4444; }
+  </style>
+</head>
+
+<body class="bg-hero">
+  <div class="page-shell">
+
+    <!-- NAV -->
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-logo">
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+        </div>
+        <div class="nav-text-group">
+          <div class="nav-title">Weekend Predictor</div>
+          <div class="nav-subtitle">Weekly pot ledger (flat entry)</div>
+        </div>
+      </div>
+      <nav class="top-nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="my-picks.html">My Picks</a>
+        <a href="all-picks.html">All Picks</a>
+        <a href="stats.html">Stats</a>
+        <a href="wallet.html" class="active">Wallet</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a href="login.html" id="navLogout">Logout</a>
+      </nav>
+    </header>
+
+    <main class="main-layout">
+      <section class="panel panel-main wide">
+        <div class="panel-inner">
+          <h1 class="page-header-title">Wallet ledger</h1>
+          <p class="subtext">
+            Tracks who has paid into the pot for the current week. Money stays off-app; this page is the ledger and transparency.
+          </p>
+
+          <div class="info-line" id="weekLabel">—</div>
+
+          <div class="grid">
+            <div class="card">
+              <div class="kpis">
+                <div class="kpi">
+                  <div class="label">Entry fee</div>
+                  <div class="value" id="feeVal">—</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Paid in</div>
+                  <div class="value" id="paidCountVal">—</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Pot total</div>
+                  <div class="value" id="potVal">—</div>
+                </div>
+              </div>
+
+              <div class="btn-row">
+                <button class="btn" id="refreshBtn" type="button">Refresh</button>
+              </div>
+
+              <div class="msg" id="msg"></div>
+              <div class="help">
+                Tip: “Paid in” is the number of players marked paid for this week. Pot = paid players × entry fee.
+              </div>
+            </div>
+
+            <!-- Admin controls -->
+            <div class="card admin-box" id="adminBox">
+              <div class="name">Admin controls</div>
+              <div class="help">Set the weekly entry fee (default £5) and mark players as paid.</div>
+
+              <div class="admin-grid">
+                <div>
+                  <label class="muted" style="font-size:0.8rem;">Entry fee (£)</label>
+                  <input class="input" id="feeInput" type="number" min="0" step="0.5" value="5" />
+                </div>
+                <div style="display:flex;align-items:flex-end;">
+                  <button class="btn btn-primary" id="saveFeeBtn" type="button">Save fee</button>
+                </div>
+
+                <div>
+                  <label class="muted" style="font-size:0.8rem;">Player</label>
+                  <select class="select" id="playerSelect"></select>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:8px;">
+                  <button class="btn btn-primary" id="markPaidBtn" type="button">Mark Paid</button>
+                  <button class="btn" id="markUnpaidBtn" type="button">Mark Unpaid</button>
+                </div>
+              </div>
+
+              <div class="msg" id="adminMsg"></div>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Paid?</th>
+                  <th>Amount</th>
+                  <th>Paid at</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
+      <aside class="panel panel-side">
+        <div class="panel-inner">
+          <h2>How it works</h2>
+          <ul class="bullet-list">
+            <li>Week is Monday–Sunday (same as predictions).</li>
+            <li>Flat entry fee (default £5).</li>
+            <li>Admin marks who has paid.</li>
+            <li>Pot total is calculated from paid entries.</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const navAdmin   = document.getElementById('navAdmin');
+    const navLogout  = document.getElementById('navLogout');
+
+    const weekLabel  = document.getElementById('weekLabel');
+    const feeVal     = document.getElementById('feeVal');
+    const paidCountVal = document.getElementById('paidCountVal');
+    const potVal     = document.getElementById('potVal');
+    const tbody      = document.getElementById('tbody');
+    const msg        = document.getElementById('msg');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    const adminBox   = document.getElementById('adminBox');
+    const feeInput   = document.getElementById('feeInput');
+    const saveFeeBtn = document.getElementById('saveFeeBtn');
+    const playerSelect = document.getElementById('playerSelect');
+    const markPaidBtn = document.getElementById('markPaidBtn');
+    const markUnpaidBtn = document.getElementById('markUnpaidBtn');
+    const adminMsg   = document.getElementById('adminMsg');
+
+    function pad(n){return String(n).padStart(2,'0');}
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+    function startOfWeek(d=new Date()){
+      const x = new Date(d);
+      const day = x.getDay() === 0 ? 7 : x.getDay();
+      x.setHours(0,0,0,0);
+      x.setDate(x.getDate() - (day - 1));
+      return x;
+    }
+    function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+
+    const weekStart = startOfWeek();
+    const weekStartStr = isoDate(weekStart);
+    weekLabel.textContent =
+      `Current week: ${weekStart.toLocaleDateString()} – ${addDays(weekStart,6).toLocaleDateString()} (Mon–Sun)`;
+
+    function money(n){
+      const v = Number(n || 0);
+      return `£${v.toFixed(2)}`;
+    }
+
+    async function ensureWeekRow(isAdmin){
+      // Anyone can read; only admin can create. If it doesn't exist and user is not admin, we just display "not set".
+      const { data: week, error } = await supabase
+        .from('wallet_weeks')
+        .select('week_start, entry_fee, status, winner_user_id')
+        .eq('week_start', weekStartStr)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!week && isAdmin) {
+        const { error: insErr } = await supabase
+          .from('wallet_weeks')
+          .insert({ week_start: weekStartStr, entry_fee: 5.00, status: 'open' });
+        if (insErr) throw insErr;
+
+        const { data: week2, error: w2Err } = await supabase
+          .from('wallet_weeks')
+          .select('week_start, entry_fee, status, winner_user_id')
+          .eq('week_start', weekStartStr)
+          .maybeSingle();
+        if (w2Err) throw w2Err;
+        return week2;
+      }
+
+      return week;
+    }
+
+    async function loadPlayersForAdmin(userIds){
+      // Populate admin dropdown with players (display_name)
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+
+      if (error) throw error;
+
+      const list = (profiles || [])
+        .map(p => ({ id: p.id, name: p.display_name || 'Player' }))
+        .sort((a,b)=>a.name.localeCompare(b.name));
+
+      playerSelect.innerHTML = '';
+      list.forEach(p=>{
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        playerSelect.appendChild(opt);
+      });
+    }
+
+    async function loadLedger(){
+      msg.textContent = 'Loading…';
+      adminMsg.textContent = '';
+      tbody.innerHTML = '';
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) { window.location.replace('login.html'); return; }
+
+      // Admin check
+      let isAdmin = false;
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        isAdmin = !!prof?.is_admin;
+        if (isAdmin) {
+          navAdmin.style.display = '';
+          adminBox.style.display = 'block';
+        }
+      } catch {}
+
+      // Logout
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
+
+      // Ensure / load week row (admin creates if missing)
+      let weekRow = null;
+      try {
+        weekRow = await ensureWeekRow(isAdmin);
+      } catch (e) {
+        console.error(e);
+      }
+
+      if (!weekRow) {
+        feeVal.textContent = 'Not set';
+        paidCountVal.textContent = '—';
+        potVal.textContent = '—';
+        msg.innerHTML = '<span class="muted">Wallet week not created yet. Ask an admin to open it.</span>';
+        return;
+      }
+
+      // Fee
+      feeVal.textContent = money(weekRow.entry_fee);
+      feeInput.value = Number(weekRow.entry_fee || 5).toString();
+
+      // Load wallet entries (paid/unpaid)
+      const { data: entries, error: entErr } = await supabase
+        .from('wallet_entries')
+        .select('user_id, amount, paid, paid_at')
+        .eq('week_start', weekStartStr);
+
+      if (entErr) {
+        console.error(entErr);
+        msg.innerHTML = '<span class="err">Could not load wallet entries.</span>';
+        return;
+      }
+
+      const entryMap = new Map((entries || []).map(e => [e.user_id, e]));
+
+      // Players: derive from profiles table (everyone with a profile)
+      const { data: profiles, error: pfErr } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .order('display_name', { ascending: true });
+
+      if (pfErr) {
+        console.error(pfErr);
+        msg.innerHTML = '<span class="err">Could not load players.</span>';
+        return;
+      }
+
+      const players = (profiles || []).map(p=>({
+        id: p.id,
+        name: p.display_name || 'Player'
+      }));
+
+      // Admin dropdown
+      if (isAdmin) {
+        await loadPlayersForAdmin(players.map(p=>p.id));
+      }
+
+      // Render table
+      let paidCount = 0;
+
+      players.forEach(p=>{
+        const e = entryMap.get(p.id);
+        const paid = !!e?.paid;
+        const amount = e?.amount ?? weekRow.entry_fee ?? 5;
+        const paidAt = e?.paid_at ? new Date(e.paid_at).toLocaleString() : '—';
+
+        if (paid) paidCount++;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="name">${escapeHtml(p.name)}</span></td>
+          <td>${paid ? `<span class="pill pill-paid">Paid</span>` : `<span class="pill pill-unpaid">Not paid</span>`}</td>
+          <td>${money(amount)}</td>
+          <td class="muted">${escapeHtml(paidAt)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      paidCountVal.textContent = `${paidCount}/${players.length}`;
+      const pot = paidCount * Number(weekRow.entry_fee || 5);
+      potVal.textContent = money(pot);
+
+      msg.innerHTML = '<span class="ok">Loaded.</span>';
+
+      // Admin actions
+      if (isAdmin) wireAdminActions(weekRow.entry_fee);
+    }
+
+    function wireAdminActions(currentFee){
+      saveFeeBtn.onclick = async () => {
+        adminMsg.textContent = 'Saving fee…';
+        try {
+          const fee = Number(feeInput.value || 5);
+          const { error } = await supabase
+            .from('wallet_weeks')
+            .update({ entry_fee: fee })
+            .eq('week_start', weekStartStr);
+          if (error) throw error;
+          adminMsg.innerHTML = '<span class="ok">Fee saved.</span>';
+          await loadLedger();
+        } catch (e) {
+          console.error(e);
+          adminMsg.innerHTML = `<span class="err">Could not save fee.</span>`;
+        }
+      };
+
+      markPaidBtn.onclick = async () => {
+        adminMsg.textContent = 'Marking paid…';
+        try {
+          const uid = playerSelect.value;
+          const { error } = await supabase
+            .from('wallet_entries')
+            .upsert({
+              week_start: weekStartStr,
+              user_id: uid,
+              amount: Number(feeInput.value || 5),
+              paid: true,
+              paid_at: new Date().toISOString()
+            }, { onConflict: 'week_start,user_id' });
+          if (error) throw error;
+          adminMsg.innerHTML = '<span class="ok">Marked paid.</span>';
+          await loadLedger();
+        } catch (e) {
+          console.error(e);
+          adminMsg.innerHTML = `<span class="err">Could not mark paid.</span>`;
+        }
+      };
+
+      markUnpaidBtn.onclick = async () => {
+        adminMsg.textContent = 'Marking unpaid…';
+        try {
+          const uid = playerSelect.value;
+          const { error } = await supabase
+            .from('wallet_entries')
+            .upsert({
+              week_start: weekStartStr,
+              user_id: uid,
+              amount: Number(feeInput.value || 5),
+              paid: false,
+              paid_at: null
+            }, { onConflict: 'week_start,user_id' });
+          if (error) throw error;
+          adminMsg.innerHTML = '<span class="ok">Marked unpaid.</span>';
+          await loadLedger();
+        } catch (e) {
+          console.error(e);
+          adminMsg.innerHTML = `<span class="err">Could not mark unpaid.</span>`;
+        }
+      };
+    }
+
+    function escapeHtml(str='') {
+      return String(str).replace(/[&<>"']/g, ch=>{
+        switch(ch){
+          case '&': return '&amp;';
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '"': return '&quot;';
+          case "'": return '&#39;';
+          default: return ch;
+        }
+      });
+    }
+
+    refreshBtn.addEventListener('click', loadLedger);
+
+    // boot
+    loadLedger();
+  </script>
+</body>
+</html>
