@@ -1,244 +1,66 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>All Weekly Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=96" />
-
+  <title>All Picks • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css" />
   <style>
-    .page-header-title { margin-bottom: 4px; }
-    .controls-row {
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      margin-top:4px;
-    }
-    .controls-row .muted {
-      font-size:0.85rem;
-    }
-    .pill-select {
-      border-radius:999px;
-      border:1px solid rgba(148,163,184,0.7);
-      background:rgba(15,23,42,0.96);
-      color:#e5e7eb;
-      padding:4px 10px;
-      font-size:0.85rem;
-    }
-    .subtext {
-      font-size:0.8rem;
-      color:#9ca3af;
-      margin-top:6px;
-    }
-    .matrix-wrapper {
-      margin-top:12px;
-      max-width:100%;
-      overflow:auto;
-      border-radius:16px;
-      border:1px solid rgba(148,163,184,0.5);
-      background:rgba(15,23,42,0.96);
-    }
-    .matrix {
-      width:100%;
-      border-collapse:collapse;
-      font-size:0.85rem;
-      min-width:620px;
-    }
-    .matrix th,
-    .matrix td {
-      padding:6px 6px;
-      border-bottom:1px solid rgba(51,65,85,0.8);
-      text-align:center;
-      white-space:nowrap;
-    }
-    .matrix thead th {
-      position:sticky;
-      top:0;
-      background:rgba(15,23,42,0.98);
-      z-index:1;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-      font-size:0.75rem;
-      color:#9ca3af;
-    }
-    .matrix tbody tr:nth-child(even) {
-      background:rgba(15,23,42,0.7);
-    }
-    .matrix tbody tr:nth-child(odd) {
-      background:rgba(15,23,42,0.5);
-    }
-    .matrix th.fixture-col {
-      text-align:left;
-      min-width:180px;
-      max-width:260px;
-    }
-    .fixture-main {
-      font-weight:600;
-      color:#e5e7eb;
-      display:block;
-    }
-    .fixture-tag {
-      font-size:0.7rem;
-      text-transform:uppercase;
-      letter-spacing:.06em;
-      color:#9ca3af;
-      display:block;
-      margin-top:1px;
-    }
-    .player-header {
-      font-weight:600;
-      color:#e5e7eb;
-      font-size:0.8rem;
-    }
-    .pick-cell {
-      font-weight:500;
-      font-size:0.85rem;
-      border-left:1px solid rgba(30,41,59,0.8);
-      border-right:1px solid rgba(30,41,59,0.8);
-      transition:background-color 0.15s ease, color 0.15s ease;
-    }
-    .pick-missing {
-      color:#64748b;
-      font-style:italic;
-    }
-
-    /* Colour coding */
-    .pick-neutral {
-      color:#e5e7eb;
-      background:transparent;
-    }
-    .pick-exact {
-      color:#ecfdf5;
-      background:rgba(22,163,74,0.34); /* green */
-      box-shadow:inset 0 0 0 1px rgba(22,163,74,0.6);
-    }
-    .pick-correct {
-      color:#e0f2fe;
-      background:rgba(37,99,235,0.26); /* blue */
-      box-shadow:inset 0 0 0 1px rgba(37,99,235,0.5);
-    }
-    .pick-wrong {
-      color:#cbd5f5;
-      background:rgba(15,23,42,0.9);
-      opacity:0.7;
-    }
-
-    .badge-pill {
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:1px 6px;
-      border-radius:999px;
-      border:1px solid rgba(148,163,184,0.7);
-      font-size:0.7rem;
-      color:#e5e7eb;
-      background:rgba(15,23,42,0.96);
-      margin-left:4px;
-    }
-    .badge-locked {
-      border-color:#22c55e;
-      color:#22c55e;
-    }
-    .info-line {
-      font-size:0.8rem;
-      color:#9ca3af;
-      margin-top:8px;
-    }
-    .legend {
-      margin-top:6px;
-      font-size:0.78rem;
-      color:#9ca3af;
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
-    .legend span {
-      display:inline-flex;
-      align-items:center;
-      gap:4px;
-    }
-    .legend-swatch {
-      width:14px;
-      height:14px;
-      border-radius:4px;
-      border:1px solid rgba(148,163,184,0.8);
-    }
-    .swatch-exact {
-      background:rgba(22,163,74,0.7);
-      border-color:rgba(22,163,74,0.9);
-    }
-    .swatch-correct {
-      background:rgba(37,99,235,0.7);
-      border-color:rgba(37,99,235,0.9);
-    }
-    .swatch-wrong {
-      background:rgba(15,23,42,0.95);
-      border-color:rgba(51,65,85,0.9);
-    }
+    .matrix-wrap { overflow: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,0.28); }
+    table.matrix { width: 100%; border-collapse: collapse; min-width: 920px; }
+    .matrix th, .matrix td { padding: 10px; border-bottom: 1px solid rgba(148,163,184,0.18); text-align: center; }
+    .matrix thead th { position: sticky; top: 0; background: rgba(2,6,23,0.7); z-index: 2; }
+    .fixture-col { text-align: left !important; min-width: 240px; position: sticky; left: 0; z-index: 3; background: rgba(2,6,23,0.72); }
+    .matrix tbody td.fixture-col { background: rgba(2,6,23,0.55); }
+    .player-header { white-space: nowrap; }
+    .status-line { margin: 10px 0 14px; color: #cbd5e1; }
+    .week-title { margin: 0 0 8px; }
+    .pill { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; border: 1px solid rgba(148,163,184,0.35); }
+    .pill-lock { border-color: rgba(244, 63, 94, 0.75); background: rgba(190, 18, 60, 0.28); color: #fecdd3; margin-left: 6px; }
+    .pick-neutral { background: rgba(2,6,23,0.25); }
+    .pick-exact { background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.35); }
+    .pick-correct { background: rgba(59,130,246,0.16); border: 1px solid rgba(59,130,246,0.30); }
+    .pick-wrong { background: rgba(15,23,42,0.35); border: 1px solid rgba(148,163,184,0.18); color: rgba(229,231,235,0.85); }
+    .fx-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .fx-names { font-weight: 700; }
+    .fx-score { color: #e5e7eb; }
+    .fx-kick { color: #9ca3af; font-size: 0.85rem; }
   </style>
 </head>
 <body class="bg-hero">
   <div class="page-shell">
-
-    <!-- NAV -->
     <header class="top-nav">
       <div class="top-nav-left">
         <div class="nav-logo">
           <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
         </div>
-        <div class="nav-text-group">
-          <div class="nav-title">Weekend Predictor</div>
-          <div class="nav-subtitle">All players’ picks for this week</div>
-        </div>
+        <nav class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="predict.html">Predict</a>
+          <a href="my-picks.html">My Picks</a>
+          <a class="active" href="all-picks.html">All Picks</a>
+          <a href="leaderboard.html">Leaderboard</a>
+          <a href="stats.html">Stats</a>
+          <a href="wallet.html">Wallet</a>
+          <a href="profile.html">Profile</a>
+          <a id="navAdmin" href="admin.html" style="display:none;">Admin</a>
+          <a id="navLogout" href="#">Logout</a>
+        </nav>
       </div>
-      <nav class="top-nav-links">
-        <a href="index.html">Home</a>
-        <a href="predict.html">Predict</a>
-        <a href="leaderboard.html">Leaderboard</a>
-        <a href="my-picks.html">My Picks</a>
-        <a href="all-picks.html" class="active">All Picks</a>
-        <a href="stats.html">Stats</a>
-        <a href="profile.html">Profile</a>
-        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a href="login.html" id="navLogout">Logout</a>
-      </nav>
+      <div class="top-nav-right">
+        <span class="muted">All players • Featured fixtures</span>
+      </div>
     </header>
 
     <main class="main-layout">
-      <!-- MAIN PANEL -->
-      <section class="panel panel-main wide">
+      <section class="panel">
         <div class="panel-inner">
-          <h1 class="page-header-title">All weekly picks</h1>
+          <h1 class="week-title">All Picks</h1>
+          <div id="weekRange" class="muted"></div>
+          <div id="statusLine" class="status-line">Loading…</div>
 
-          <div class="controls-row">
-            <p class="muted" id="weekLabel">Current gameweek (Mon–Sun)</p>
-
-            <div style="display:flex;gap:8px;align-items:center;">
-              <span class="muted" style="font-size:0.8rem;">Week</span>
-              <select class="pill-select" disabled>
-                <option>Current week</option>
-              </select>
-            </div>
-          </div>
-
-          <p class="subtext">
-            Fixtures down the left • each player in a column • coloured cells show how good each prediction was.
-          </p>
-
-          <div class="legend">
-            <span><span class="legend-swatch swatch-exact"></span> Exact score (5 pts)</span>
-            <span><span class="legend-swatch swatch-correct"></span> Correct result (3 pts)</span>
-            <span><span class="legend-swatch swatch-wrong"></span> Wrong result</span>
-          </div>
-
-          <div id="statusLine" class="info-line">Loading…</div>
-
-          <!-- MATRIX -->
-          <div class="matrix-wrapper" id="matrixWrapper" style="display:none;">
-            <table class="matrix" id="matrixTable">
+          <div id="tableWrapper" class="matrix-wrap" style="display:none;">
+            <table class="matrix">
               <thead id="matrixHead"></thead>
               <tbody id="matrixBody"></tbody>
             </table>
@@ -246,7 +68,6 @@
         </div>
       </section>
 
-      <!-- SIDE PANEL -->
       <aside class="panel panel-side">
         <div class="panel-inner">
           <h2>How this page works</h2>
@@ -266,40 +87,47 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const navAdmin   = document.getElementById('navAdmin');
-    const navLogout  = document.getElementById('navLogout');
-    const weekLabel  = document.getElementById('weekLabel');
+    const navAdmin = document.getElementById('navAdmin');
+    const navLogout = document.getElementById('navLogout');
+    const weekRange = document.getElementById('weekRange');
     const statusLine = document.getElementById('statusLine');
-    const wrapper    = document.getElementById('matrixWrapper');
-    const headEl     = document.getElementById('matrixHead');
-    const bodyEl     = document.getElementById('matrixBody');
+    const wrapper = document.getElementById('tableWrapper');
+    const headEl = document.getElementById('matrixHead');
+    const bodyEl = document.getElementById('matrixBody');
 
-    // --- helpers ---
-    function pad(n){return String(n).padStart(2,'0');}
-    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
-    function startOfWeek(d=new Date()){
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
+    function startOfWeek(d) {
       const x = new Date(d);
-      const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
       x.setHours(0,0,0,0);
-      x.setDate(x.getDate() - (day - 1));
+      const day = x.getDay(); // Sun=0
+      const diff = day === 0 ? -6 : 1 - day; // Monday start
+      x.setDate(x.getDate() + diff);
       return x;
     }
-    function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-    function outcome(h,a){
+
+    function addDays(d, n) {
+      const x = new Date(d);
+      x.setDate(x.getDate() + n);
+      return x;
+    }
+
+    function outcome(h,a) {
       if (h>a) return 'H';
       if (h<a) return 'A';
       return 'D';
     }
 
-    const weekStart = startOfWeek();
-    const weekEnd   = addDays(weekStart, 7);
-    const weekStartStr = isoDate(weekStart);
-
-    weekLabel.textContent =
-      `Current week: ${weekStart.toLocaleDateString()} – ` +
+    const weekStart = startOfWeek(new Date());
+    const weekStartStr = weekStart.toISOString().slice(0,10);
+    weekRange.textContent =
+      `${weekStart.toLocaleDateString()} – ` +
       `${addDays(weekStart,6).toLocaleDateString()} (Mon–Sun)`;
 
-    // --- auth + nav wiring ---
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
@@ -318,14 +146,12 @@
         if (prof?.is_admin) navAdmin.style.display = '';
       } catch {}
 
-      // logout
       navLogout?.addEventListener('click', async (e)=>{
         e.preventDefault();
         try { await supabase.auth.signOut(); } catch {}
         window.location.replace('login.html');
       });
 
-      // after auth, load data
       await loadMatrix();
     })();
 
@@ -338,10 +164,8 @@
       // 1) Featured fixtures for this week (include scores/status)
       const { data: fixtures, error: fxErr } = await supabase
         .from('fixtures')
-        .select('id, utc_date, home_team, away_team, home_score, away_score, status')
+        .select('id, utc_date, home_team, away_team, home_score, away_score, status, featured')
         .eq('featured', true)
-        .gte('utc_date', new Date(weekStart).toISOString())
-        .lt('utc_date', new Date(weekEnd).toISOString())
         .order('utc_date', { ascending: true });
 
       if (fxErr) {
@@ -351,11 +175,9 @@
       }
 
       if (!fixtures || fixtures.length === 0) {
-        statusLine.textContent = 'No featured fixtures have been set for this week yet.';
+        statusLine.textContent = 'No featured fixtures set yet.';
         return;
       }
-
-      statusLine.textContent = 'Loading predictions…';
 
       const fixtureIds = fixtures.map(f => f.id);
 
@@ -379,10 +201,10 @@
       // Unique players
       const userIds = [...new Set(preds.map(p => p.user_id))];
 
-      // 3) Profiles -> display_name
+      // 3) Profiles -> display_name + is_ai
       const { data: profiles, error: pfErr } = await supabase
         .from('profiles')
-        .select('id, display_name')
+        .select('id, display_name, is_ai')
         .in('id', userIds);
 
       if (pfErr) {
@@ -404,14 +226,18 @@
 
       const lockSet = new Set((locks || []).map(l => l.user_id));
 
-      // Build player list: id + name
+      // Build player list: id + name + is_ai
       const players = userIds.map(uid => {
         const prof = profiles?.find(p => p.id === uid);
         return {
           id: uid,
           name: prof?.display_name || 'Player',
+          is_ai: !!prof?.is_ai,
         };
-      }).sort((a,b)=> a.name.localeCompare(b.name));
+      }).sort((a,b)=>{
+        if (a.is_ai !== b.is_ai) return a.is_ai ? 1 : -1; // keep AI at end
+        return a.name.localeCompare(b.name);
+      });
 
       // Build lookup for predictions: key = fixture_id|user_id
       const predMap = new Map();
@@ -429,92 +255,79 @@
 
       players.forEach(pl => {
         const th = document.createElement('th');
-        th.innerHTML = `<span class="player-header">${escapeHtml(pl.name)}</span>`;
+        th.innerHTML = `<span class="player-header">${escapeHtml(pl.name)}${pl.is_ai ? ' <span class="ai-badge ai-inline">AI</span>' : ''}</span>`;
         headRow.appendChild(th);
       });
 
       headEl.appendChild(headRow);
 
       // --- Build body ---
+      bodyEl.innerHTML = '';
       fixtures.forEach(fx => {
         const tr = document.createElement('tr');
 
-        // fixture cell
-        const th = document.createElement('th');
-        th.className = 'fixture-col';
-        const dt = new Date(fx.utc_date);
-        const timeStr = dt.toLocaleString(undefined, {
-          weekday: 'short',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        th.innerHTML = `
-          <span class="fixture-main">${escapeHtml(fx.home_team)} vs ${escapeHtml(fx.away_team)}</span>
-          <span class="fixture-tag">${escapeHtml(timeStr)}</span>
-        `;
-        tr.appendChild(th);
+        const tdFx = document.createElement('td');
+        tdFx.className = 'fixture-col';
 
-        const isFinished = fx.status === 'FINISHED'
-          && fx.home_score != null
-          && fx.away_score != null;
+        const isFinished = String(fx.status || '').toUpperCase() === 'FINISHED'
+          && fx.home_score != null && fx.away_score != null;
+
+        const kick = fx.utc_date ? new Date(fx.utc_date) : null;
+        const kickText = kick ? kick.toLocaleString() : '—';
+
+        tdFx.innerHTML = `
+          <div class="fx-meta">
+            <span class="fx-names">${escapeHtml(fx.home_team)} vs ${escapeHtml(fx.away_team)}</span>
+            <span class="fx-kick">${escapeHtml(kickText)}</span>
+            ${isFinished ? `<span class="fx-score">${fx.home_score}–${fx.away_score}</span>` : ''}
+          </div>
+        `;
+        tr.appendChild(tdFx);
+
         const actualOutcome = isFinished ? outcome(fx.home_score, fx.away_score) : null;
 
-        // one cell per player
         players.forEach(pl => {
           const td = document.createElement('td');
-          td.className = 'pick-cell';
+
           const key = `${fx.id}|${pl.id}`;
           const p = predMap.get(key);
 
+          const locked = lockSet.has(pl.id);
+          const lockBadge = locked ? `<span class="pill pill-lock">L</span>` : '';
+
           if (!p) {
-            td.classList.add('pick-missing');
-            td.textContent = '—';
-          } else {
-            const h = (p.home_goals ?? 0);
-            const a = (p.away_goals ?? 0);
-            const locked = lockSet.has(pl.id);
-
-            let cls = 'pick-neutral';
-
-            if (isFinished) {
-              const predOutcome = outcome(h, a);
-              if (h === fx.home_score && a === fx.away_score) {
-                cls = 'pick-exact';
-              } else if (predOutcome === actualOutcome) {
-                cls = 'pick-correct';
-              } else {
-                cls = 'pick-wrong';
-              }
-            }
-
-            td.classList.add(cls);
-            td.innerHTML = `${h}–${a}` + (locked
-              ? ` <span class="badge-pill badge-locked">L</span>`
-              : ''
-            );
+            td.innerHTML = `<span class="muted">—</span>${lockBadge}`;
+            tr.appendChild(td);
+            return;
           }
+
+          const h = p.home_goals;
+          const a = p.away_goals;
+
+          td.innerHTML = `${h}–${a}${lockBadge}`;
+
+          let cls = 'pick-neutral';
+
+          if (isFinished) {
+            const predOutcome = outcome(h, a);
+            if (h === fx.home_score && a === fx.away_score) {
+              cls = 'pick-exact';
+            } else if (predOutcome === actualOutcome) {
+              cls = 'pick-correct';
+            } else {
+              cls = 'pick-wrong';
+            }
+          }
+
+          td.classList.add(cls);
           tr.appendChild(td);
         });
 
         bodyEl.appendChild(tr);
       });
 
-      wrapper.style.display = 'block';
-      statusLine.textContent =
-        `Fixtures: ${fixtures.length} • Players: ${players.length} • Predictions: ${preds.length}`;
-    }
-
-    function escapeHtml(str='') {
-      return String(str).replace(/[&<>"']/g, ch=>{
-        switch(ch){
-          case '&': return '&amp;';
-          case '<': return '&lt;';
-          case '>': return '&gt;';
-          case '"': return '&quot;';
-          case "'": return '&#39;';
-          default: return ch;
-        }
-      });
+      statusLine.textContent = `Loaded ${fixtures.length} fixtures and ${players.length} players.`;
+      wrapper.style.display = '';
     }
   </script>
 </body>
