@@ -6,25 +6,45 @@
   <title>All Picks • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css" />
   <style>
+    /* Force landscape-style layout: one full-width column */
+    .main-layout { grid-template-columns: 1fr !important; }
+
     .matrix-wrap { overflow: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,0.28); }
-    table.matrix { width: 100%; border-collapse: collapse; min-width: 920px; }
+    table.matrix { width: 100%; border-collapse: collapse; min-width: 980px; }
     .matrix th, .matrix td { padding: 10px; border-bottom: 1px solid rgba(148,163,184,0.18); text-align: center; }
-    .matrix thead th { position: sticky; top: 0; background: rgba(2,6,23,0.7); z-index: 2; }
-    .fixture-col { text-align: left !important; min-width: 240px; position: sticky; left: 0; z-index: 3; background: rgba(2,6,23,0.72); }
-    .matrix tbody td.fixture-col { background: rgba(2,6,23,0.55); }
+    .matrix thead th { position: sticky; top: 0; background: rgba(2,6,23,0.78); z-index: 2; }
+
+    /* Sticky fixture column */
+    .fixture-col {
+      text-align: left !important;
+      min-width: 300px;
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background: rgba(2,6,23,0.82);
+    }
+    .matrix tbody td.fixture-col { background: rgba(2,6,23,0.62); }
+
     .player-header { white-space: nowrap; }
+
     .status-line { margin: 10px 0 14px; color: #cbd5e1; }
     .week-title { margin: 0 0 8px; }
+
     .pill { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; border: 1px solid rgba(148,163,184,0.35); }
     .pill-lock { border-color: rgba(244, 63, 94, 0.75); background: rgba(190, 18, 60, 0.28); color: #fecdd3; margin-left: 6px; }
+
     .pick-neutral { background: rgba(2,6,23,0.25); }
     .pick-exact { background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.35); }
     .pick-correct { background: rgba(59,130,246,0.16); border: 1px solid rgba(59,130,246,0.30); }
     .pick-wrong { background: rgba(15,23,42,0.35); border: 1px solid rgba(148,163,184,0.18); color: rgba(229,231,235,0.85); }
+
     .fx-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .fx-names { font-weight: 700; }
-    .fx-score { color: #e5e7eb; }
+    .fx-names { font-weight: 800; }
+    .fx-score { color: #e5e7eb; font-weight: 800; }
     .fx-kick { color: #9ca3af; font-size: 0.85rem; }
+
+    /* Make the side panel look good underneath */
+    .panel-side { margin-top: 18px; }
   </style>
 </head>
 <body class="bg-hero">
@@ -48,7 +68,7 @@
         </nav>
       </div>
       <div class="top-nav-right">
-        <span class="muted">All players • Featured fixtures</span>
+        <span class="muted">Current week only • All players visible</span>
       </div>
     </header>
 
@@ -72,9 +92,9 @@
         <div class="panel-inner">
           <h2>How this page works</h2>
           <ul class="bullet-list">
-            <li>Rows = featured fixtures for this week.</li>
-            <li>Columns = every player who has made a prediction.</li>
-            <li>Cell = predicted score <em>(home–away)</em>, coloured by result.</li>
+            <li>Rows = fixtures for the current week (Mon–Sun).</li>
+            <li>Columns = all players (including AI Predictor).</li>
+            <li>Cell = predicted score <em>(home–away)</em>, coloured when the fixture finishes.</li>
             <li>Green = exact score • Blue = correct result • Dark = wrong.</li>
             <li>“L” badge = that player has locked their picks for the week.</li>
           </ul>
@@ -83,7 +103,6 @@
     </main>
   </div>
 
-  <!-- Logic -->
   <script type="module">
     import { supabase } from './supabase-config.js';
 
@@ -116,6 +135,12 @@
       return x;
     }
 
+    function isoDate(d) {
+      const x = new Date(d);
+      x.setHours(0,0,0,0);
+      return x.toISOString();
+    }
+
     function outcome(h,a) {
       if (h>a) return 'H';
       if (h<a) return 'A';
@@ -123,10 +148,11 @@
     }
 
     const weekStart = startOfWeek(new Date());
+    const weekEnd = addDays(weekStart, 7); // exclusive upper bound
     const weekStartStr = weekStart.toISOString().slice(0,10);
+
     weekRange.textContent =
-      `${weekStart.toLocaleDateString()} – ` +
-      `${addDays(weekStart,6).toLocaleDateString()} (Mon–Sun)`;
+      `${weekStart.toLocaleDateString()} – ${addDays(weekStart,6).toLocaleDateString()} (Mon–Sun)`;
 
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -156,17 +182,48 @@
     })();
 
     async function loadMatrix() {
-      statusLine.textContent = 'Loading fixtures…';
+      statusLine.textContent = 'Loading current week fixtures…';
       wrapper.style.display = 'none';
       headEl.innerHTML = '';
       bodyEl.innerHTML = '';
 
-      // 1) Featured fixtures for this week (include scores/status)
-      const { data: fixtures, error: fxErr } = await supabase
+      // 1) Load ALL players (including AI), so everyone is visible even without picks
+      const { data: profiles, error: pfErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, is_ai')
+        .order('display_name', { ascending: true });
+
+      if (pfErr) {
+        console.error(pfErr);
+        statusLine.textContent = 'Could not load players.';
+        return;
+      }
+
+      const players = (profiles || [])
+        .map(p => ({
+          id: p.id,
+          name: p.display_name || 'Player',
+          is_ai: !!p.is_ai
+        }))
+        .sort((a,b)=>{
+          if (a.is_ai !== b.is_ai) return a.is_ai ? 1 : -1; // AI at end
+          return a.name.localeCompare(b.name);
+        });
+
+      // 2) Load fixtures ONLY for the current week
+      // Keep featured-only if you want; set featuredOnly=false to show all fixtures in the week.
+      const featuredOnly = true;
+
+      let fxQuery = supabase
         .from('fixtures')
         .select('id, utc_date, home_team, away_team, home_score, away_score, status, featured')
-        .eq('featured', true)
+        .gte('utc_date', isoDate(weekStart))
+        .lt('utc_date', isoDate(weekEnd))
         .order('utc_date', { ascending: true });
+
+      if (featuredOnly) fxQuery = fxQuery.eq('featured', true);
+
+      const { data: fixtures, error: fxErr } = await fxQuery;
 
       if (fxErr) {
         console.error(fxErr);
@@ -175,13 +232,15 @@
       }
 
       if (!fixtures || fixtures.length === 0) {
-        statusLine.textContent = 'No featured fixtures set yet.';
+        statusLine.textContent = featuredOnly
+          ? 'No featured fixtures for the current week.'
+          : 'No fixtures found for the current week.';
         return;
       }
 
       const fixtureIds = fixtures.map(f => f.id);
 
-      // 2) Predictions for these fixtures
+      // 3) Predictions for these fixtures (any user)
       const { data: preds, error: prErr } = await supabase
         .from('predictions')
         .select('user_id, fixture_id, home_goals, away_goals')
@@ -193,60 +252,21 @@
         return;
       }
 
-      if (!preds || preds.length === 0) {
-        statusLine.textContent = 'No predictions yet for these fixtures.';
-        return;
-      }
-
-      // Unique players
-      const userIds = [...new Set(preds.map(p => p.user_id))];
-
-      // 3) Profiles -> display_name + is_ai
-      const { data: profiles, error: pfErr } = await supabase
-        .from('profiles')
-        .select('id, display_name, is_ai')
-        .in('id', userIds);
-
-      if (pfErr) {
-        console.error(pfErr);
-        statusLine.textContent = 'Could not load player names.';
-        return;
-      }
-
-      // 4) Pick locks for this week
-      const { data: locks, error: lkErr } = await supabase
+      // 4) Pick locks for this week (for ALL players)
+      const { data: locks } = await supabase
         .from('pick_locks')
         .select('user_id, week_start')
-        .eq('week_start', weekStartStr)
-        .in('user_id', userIds);
-
-      if (lkErr) {
-        console.error(lkErr);
-      }
+        .eq('week_start', weekStartStr);
 
       const lockSet = new Set((locks || []).map(l => l.user_id));
-
-      // Build player list: id + name + is_ai
-      const players = userIds.map(uid => {
-        const prof = profiles?.find(p => p.id === uid);
-        return {
-          id: uid,
-          name: prof?.display_name || 'Player',
-          is_ai: !!prof?.is_ai,
-        };
-      }).sort((a,b)=>{
-        if (a.is_ai !== b.is_ai) return a.is_ai ? 1 : -1; // keep AI at end
-        return a.name.localeCompare(b.name);
-      });
 
       // Build lookup for predictions: key = fixture_id|user_id
       const predMap = new Map();
       (preds || []).forEach(p => {
-        const key = `${p.fixture_id}|${p.user_id}`;
-        predMap.set(key, p);
+        predMap.set(`${p.fixture_id}|${p.user_id}`, p);
       });
 
-      // --- Build header ---
+      // --- Header ---
       const headRow = document.createElement('tr');
       const thFx = document.createElement('th');
       thFx.className = 'fixture-col';
@@ -261,7 +281,7 @@
 
       headEl.appendChild(headRow);
 
-      // --- Build body ---
+      // --- Body ---
       bodyEl.innerHTML = '';
       fixtures.forEach(fx => {
         const tr = document.createElement('tr');
@@ -269,8 +289,9 @@
         const tdFx = document.createElement('td');
         tdFx.className = 'fixture-col';
 
-        const isFinished = String(fx.status || '').toUpperCase() === 'FINISHED'
-          && fx.home_score != null && fx.away_score != null;
+        const isFinished =
+          String(fx.status || '').toUpperCase() === 'FINISHED' &&
+          fx.home_score != null && fx.away_score != null;
 
         const kick = fx.utc_date ? new Date(fx.utc_date) : null;
         const kickText = kick ? kick.toLocaleString() : '—';
@@ -307,16 +328,11 @@
           td.innerHTML = `${h}–${a}${lockBadge}`;
 
           let cls = 'pick-neutral';
-
           if (isFinished) {
             const predOutcome = outcome(h, a);
-            if (h === fx.home_score && a === fx.away_score) {
-              cls = 'pick-exact';
-            } else if (predOutcome === actualOutcome) {
-              cls = 'pick-correct';
-            } else {
-              cls = 'pick-wrong';
-            }
+            if (h === fx.home_score && a === fx.away_score) cls = 'pick-exact';
+            else if (predOutcome === actualOutcome) cls = 'pick-correct';
+            else cls = 'pick-wrong';
           }
 
           td.classList.add(cls);
