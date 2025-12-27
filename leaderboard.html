@@ -1,42 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=96" />
+  <link rel="stylesheet" href="brand.css" />
   <style>
-    .summary { margin-top: 6px; font-size: 0.9rem; }
-    .msg { margin-top: 4px; font-size: 0.85rem; min-height: 1.1em; }
-    .err { color: #ef4444; }
-    .controls {
-      margin-top: 12px;
+    .toolbar {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin: 8px 0 12px;
     }
-    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-    .tab {
-      padding: 6px 10px;
+    .toolbar-left {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .tabs {
+      display: inline-flex;
+      gap: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
       border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.8);
-      background: rgba(15, 23, 42, 0.96);
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
+      padding: 6px;
+      background: rgba(2, 6, 23, 0.35);
+    }
+    .tab {
+      border: 0;
+      background: transparent;
       color: #e5e7eb;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      cursor: pointer;
+      opacity: 0.75;
     }
     .tab.active {
-      border-color: rgba(191, 219, 254, 0.95);
-      background: rgba(30, 64, 175, 0.95);
-      color: #f9fafb;
+      opacity: 1;
+      background: rgba(96,165,250,0.22);
+      border: 1px solid rgba(96,165,250,0.55);
     }
     .date-input {
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.8);
-      background: rgba(15, 23, 42, 0.96);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(2, 6, 23, 0.35);
+      padding: 10px 12px;
       color: #e5e7eb;
       font-size: 0.8rem;
       outline: none;
@@ -56,9 +67,11 @@
     .badge-chip {
       display: inline-flex;
       align-items: center;
-      border-radius: 999px;
+      justify-content: center;
       padding: 2px 8px;
+      border-radius: 999px;
       font-size: 0.7rem;
+      font-weight: 800;
       border: 1px solid rgba(191, 219, 254, 0.9);
       background: rgba(30, 64, 175, 0.95);
       color: #e5f2ff;
@@ -75,104 +88,102 @@
         <div class="nav-logo">
           <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
         </div>
-        <div class="nav-text-group">
-          <div class="nav-title">Weekend Predictor</div>
-          <div class="nav-subtitle">Premier League prediction challenge</div>
-        </div>
+        <nav class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="predict.html">Predict</a>
+          <a href="my-picks.html">My Picks</a>
+          <a href="all-picks.html">All Picks</a>
+          <a class="active" href="leaderboard.html">Leaderboard</a>
+          <a href="stats.html">Stats</a>
+          <a href="wallet.html">Wallet</a>
+          <a href="profile.html">Profile</a>
+          <a id="navAdmin" href="admin.html" style="display:none;">Admin</a>
+          <a id="navLogout" href="#">Logout</a>
+        </nav>
       </div>
-      <nav class="top-nav-links">
-        <a href="index.html">Home</a>
-        <a href="predict.html">Predict</a>
-        <a href="leaderboard.html" class="active">Leaderboard</a>
-        <a href="my-picks.html">My Picks</a>
-        <a href="all-picks.html">All Picks</a>
-        <a href="stats.html">Stats</a>
-        <a href="wallet.html">Wallet</a>
-        <a href="profile.html">Profile</a>
-        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a href="#" id="navLogout">Logout</a>
-      </nav>
+      <div class="top-nav-right">
+        <span id="lastUpdated" class="muted"></span>
+      </div>
     </header>
 
     <main class="main-layout">
-      <section class="panel panel-main wide">
+      <section class="panel">
         <div class="panel-inner">
           <h1>Leaderboard</h1>
-          <p class="muted">
-            Switch between this week and full-season points.
-          </p>
+          <p class="muted">Week or Season totals (includes AI Predictor).</p>
 
-          <div class="controls">
-            <div class="tabs">
-              <button id="tabWeek" class="tab active">This week</button>
-              <button id="tabSeason" class="tab">Season</button>
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="tabs">
+                <button id="tabWeek" class="tab active" type="button">Week</button>
+                <button id="tabSeason" class="tab" type="button">Season</button>
+              </div>
+              <input id="weekPicker" class="date-input" type="date" />
+              <button id="refreshBtn" class="btn" type="button">Refresh</button>
             </div>
-
-            <input id="weekPicker" type="date" class="date-input" />
-            <button id="refreshBtn" class="btn-ghost" type="button">
-              Refresh
-            </button>
+            <div id="status" class="muted"></div>
           </div>
 
-          <p id="summary" class="summary muted"></p>
-          <p id="status" class="msg muted"></p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="rank">#</th>
+                <th>Player</th>
+                <th>Exact</th>
+                <th>Correct</th>
+                <th>Points</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
 
-          <div class="table-wrapper" style="margin-top: 10px;">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th class="rank">#</th>
-                  <th>Player</th>
-                  <th>Exact scores</th>
-                  <th>Correct results</th>
-                  <th>Total points</th>
-                </tr>
-              </thead>
-              <tbody id="tbody">
-                <tr><td colspan="5" class="muted-center">Loading…</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <p id="lastUpdated" class="muted" style="margin-top:8px;font-size:0.8rem;"></p>
+          <p id="summary" class="muted" style="margin-top:12px;"></p>
         </div>
       </section>
+
+      <aside class="panel panel-side">
+        <div class="panel-inner">
+          <h2>Notes</h2>
+          <ul class="bullet-list">
+            <li>Week = points from fixtures in the selected week.</li>
+            <li>Season = cumulative points for all finished fixtures.</li>
+            <li>AI Predictor is displayed as a normal player.</li>
+          </ul>
+        </div>
+      </aside>
     </main>
   </div>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const tbody        = document.getElementById('tbody');
-    const statusEl     = document.getElementById('status');
-    const summaryEl    = document.getElementById('summary');
-    const lastUpdated  = document.getElementById('lastUpdated');
-    const navAdmin     = document.getElementById('navAdmin');
-    const navLogout    = document.getElementById('navLogout');
-    const tabWeek      = document.getElementById('tabWeek');
-    const tabSeason    = document.getElementById('tabSeason');
-    const weekPicker   = document.getElementById('weekPicker');
-    const refreshBtn   = document.getElementById('refreshBtn');
+    const navAdmin = document.getElementById('navAdmin');
+    const navLogout = document.getElementById('navLogout');
 
-    // Logout
-    navLogout?.addEventListener('click', async (e) => {
-      e.preventDefault();
-      try { await supabase.auth.signOut(); } catch {}
-      window.location.replace('login.html');
-    });
+    const tabWeek = document.getElementById('tabWeek');
+    const tabSeason = document.getElementById('tabSeason');
+    const weekPicker = document.getElementById('weekPicker');
+    const refreshBtn = document.getElementById('refreshBtn');
 
-    const pad = (n) => String(n).padStart(2, '0');
-    const isoDate = (d) =>
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const statusEl = document.getElementById('status');
+    const lastUpdated = document.getElementById('lastUpdated');
+    const tbody = document.getElementById('tbody');
+    const summaryEl = document.getElementById('summary');
 
-    const startOfWeek = (d = new Date()) => {
+    function startOfWeek(d) {
       const x = new Date(d);
-      const day = x.getDay(); // 0 Sun, 1 Mon...
-      x.setHours(0, 0, 0, 0);
-      const diff = day === 0 ? -6 : 1 - day; // Monday
+      x.setHours(0,0,0,0);
+      const day = x.getDay(); // Sun=0
+      const diff = day === 0 ? -6 : 1 - day;
       x.setDate(x.getDate() + diff);
       return x;
-    };
+    }
+
+    function isoDate(d) {
+      const x = new Date(d);
+      x.setHours(0,0,0,0);
+      return x.toISOString().slice(0,10);
+    }
 
     function setTab(which) {
       if (which === 'week') {
@@ -182,6 +193,36 @@
         tabSeason.classList.add('active');
         tabWeek.classList.remove('active');
       }
+    }
+
+    function isUuid(s) {
+      return typeof s === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+    }
+
+    async function enrichRowsWithProfiles(rows) {
+      if (!rows?.length) return rows || [];
+      // Try to identify the profile id on each row (RPC may return user_id or id)
+      const ids = [...new Set(rows.map(r => r.user_id || r.id).filter(isUuid))];
+
+      let aiMap = new Map();
+      if (ids.length) {
+        const { data: profs, error } = await supabase
+          .from('profiles')
+          .select('id, is_ai')
+          .in('id', ids);
+
+        if (!error && profs) {
+          aiMap = new Map(profs.map(p => [p.id, !!p.is_ai]));
+        }
+      }
+
+      return (rows || []).map(r => {
+        const pid = (r.user_id || r.id);
+        const isAI = (isUuid(pid) && aiMap.get(pid) === true) ||
+          (String(r.display_name || '').toLowerCase() === 'ai predictor');
+        return { ...r, is_ai: isAI };
+      });
     }
 
     function renderRows(rows) {
@@ -199,11 +240,12 @@
         const badgeHtml = badge
           ? `<span class="badge-chip">${badge.toUpperCase()}</span>`
           : '';
+        const aiHtml = r.is_ai ? `<span class="badge-chip">AI</span>` : '';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="rank">${i + 1}</td>
-          <td>${nameSafe}${badgeHtml}</td>
+          <td>${nameSafe}${aiHtml}${badgeHtml}</td>
           <td>${r.correct_scores ?? 0}</td>
           <td>${r.correct_results ?? 0}</td>
           <td>${r.points ?? 0}</td>
@@ -219,31 +261,37 @@
 
     async function ensureSessionAndAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      if (!session?.user) {
+        window.location.replace('login.html');
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', session.user.id)
           .maybeSingle();
-        if (!error && data?.is_admin) {
-          navAdmin.style.display = '';
-        }
-      } catch {
-        // ignore
-      }
-    }
+        if (!error && data?.is_admin) navAdmin.style.display = '';
+      } catch {}
 
-    async function fetchSeason() {
-      const { data, error } = await supabase.rpc('leaderboard_v2');
-      if (error) throw error;
-      return data || [];
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
     }
 
     async function fetchWeek(weekStart) {
       const { data, error } = await supabase.rpc('leaderboard_week_v2', {
         week_start: isoDate(weekStart),
       });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function fetchSeason() {
+      const { data, error } = await supabase.rpc('leaderboard_season_v2');
       if (error) throw error;
       return data || [];
     }
@@ -262,7 +310,8 @@
       try {
         const rows =
           which === 'week' ? await fetchWeek(ws) : await fetchSeason();
-        renderRows(rows);
+        const enriched = await enrichRowsWithProfiles(rows);
+        renderRows(enriched);
         statusEl.textContent = '';
         lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
       } catch (e) {
@@ -294,6 +343,8 @@
       window.currentTab = 'week';
       await load('week');
     })();
+
+    let currentTab = 'week';
   </script>
 </body>
 </html>
