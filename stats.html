@@ -6,52 +6,69 @@
   <title>Stats • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css" />
   <style>
-    /* Force landscape-style layout: one full-width column (matches All Picks) */
+    /* Landscape like All Picks */
     .main-layout { grid-template-columns: 1fr !important; }
 
-    .table-wrap { overflow: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,0.28); }
-    table.stats { width: 100%; border-collapse: collapse; min-width: 980px; }
-    .stats th, .stats td { padding: 10px; border-bottom: 1px solid rgba(148,163,184,0.18); text-align: center; }
-    .stats thead th { position: sticky; top: 0; background: rgba(2,6,23,0.78); z-index: 2; }
+    .toolbar {
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      flex-wrap:wrap; margin: 10px 0 14px;
+    }
+    .toolbar-left{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
-    .stats td.name, .stats th.name { text-align: left; min-width: 260px; }
-    .player-name { font-weight: 800; white-space: nowrap; }
+    .tabs{
+      display:inline-flex; gap:8px; border:1px solid rgba(148,163,184,0.35);
+      border-radius:999px; padding:6px; background: rgba(2,6,23,0.35);
+    }
+    .tab{
+      border:0; background:transparent; color:#e5e7eb; padding:8px 10px;
+      border-radius:999px; font-weight:800; cursor:pointer; opacity:0.75;
+    }
+    .tab.active{
+      opacity:1; background: rgba(96,165,250,0.22); border:1px solid rgba(96,165,250,0.55);
+    }
+    .date-input{
+      border-radius:14px; border:1px solid rgba(148,163,184,0.35);
+      background: rgba(2,6,23,0.35); padding:10px 12px; color:#e5e7eb;
+      font-size:0.85rem; outline:none;
+    }
+    .date-input:focus{ border-color:#60a5fa; box-shadow: 0 0 0 1px rgba(96,165,250,0.5); }
 
-    .status-line { margin: 10px 0 14px; color: #cbd5e1; }
-    .week-title { margin: 0 0 8px; }
+    .status-line{ margin: 0 0 14px; color:#cbd5e1; }
 
-    .rank-badge {
+    .table-wrap { overflow:auto; border-radius:16px; border:1px solid rgba(148,163,184,0.28); }
+    table.stats { width:100%; border-collapse:collapse; min-width: 980px; }
+    .stats th, .stats td{ padding:10px; border-bottom:1px solid rgba(148,163,184,0.18); text-align:center; }
+    .stats thead th{ position:sticky; top:0; background: rgba(2,6,23,0.78); z-index:2; }
+
+    .stats td.name, .stats th.name{ text-align:left; min-width: 260px; }
+    .player-name{ font-weight:800; white-space:nowrap; }
+
+    .rank-badge{
       display:inline-flex; align-items:center; justify-content:center;
-      width: 44px; height: 28px; border-radius: 999px;
-      font-weight: 900; font-size: 0.8rem;
-      border: 1px solid rgba(148,163,184,0.35);
+      width:44px; height:28px; border-radius:999px;
+      font-weight:900; font-size:0.8rem;
+      border:1px solid rgba(148,163,184,0.35);
       background: rgba(2,6,23,0.35);
       color: rgba(229,231,235,0.95);
-      margin-right: 10px;
+      margin-right:10px;
       flex: 0 0 auto;
     }
-    .rank-1 { border-color: rgba(253,224,71,0.6); background: rgba(161,98,7,0.22); }
-    .rank-2 { border-color: rgba(203,213,225,0.55); background: rgba(51,65,85,0.32); }
-    .rank-3 { border-color: rgba(244,114,182,0.55); background: rgba(131,24,67,0.20); }
+    .rank-1{ border-color: rgba(253,224,71,0.6); background: rgba(161,98,7,0.22); }
+    .rank-2{ border-color: rgba(203,213,225,0.55); background: rgba(51,65,85,0.32); }
+    .rank-3{ border-color: rgba(244,114,182,0.55); background: rgba(131,24,67,0.20); }
 
-    /* Under-table info box styling (matches All Picks behaviour) */
-    .panel-side { margin-top: 18px; }
+    .panel-side{ margin-top:18px; }
 
-    .kpi-row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin: 10px 0 14px;
+    .kpi-row{ display:flex; gap:12px; flex-wrap:wrap; margin: 8px 0 14px; }
+    .kpi{
+      border-radius:16px; border:1px solid rgba(148,163,184,0.28);
+      background: rgba(2,6,23,0.35); padding:10px 12px; min-width: 190px;
     }
-    .kpi {
-      border-radius: 16px;
-      border: 1px solid rgba(148,163,184,0.28);
-      background: rgba(2,6,23,0.35);
-      padding: 10px 12px;
-      min-width: 190px;
-    }
-    .kpi .label { color: #9ca3af; font-size: 0.78rem; }
-    .kpi .val { font-weight: 900; font-size: 1.05rem; }
+    .kpi .label{ color:#9ca3af; font-size:0.78rem; }
+    .kpi .val{ font-weight:900; font-size:1.05rem; }
+
+    .muted-center{ text-align:center; color:#9ca3af; }
+    .err{ color:#fecaca; }
   </style>
 </head>
 <body class="bg-hero">
@@ -75,7 +92,7 @@
         </nav>
       </div>
       <div class="top-nav-right">
-        <span class="muted">Current week stats</span>
+        <span id="modeLabel" class="muted">Week</span>
       </div>
     </header>
 
@@ -84,6 +101,19 @@
         <div class="panel-inner">
           <h1 class="week-title">Stats</h1>
           <div id="weekRange" class="muted"></div>
+
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="tabs">
+                <button id="tabWeek" class="tab active" type="button">Week</button>
+                <button id="tabSeason" class="tab" type="button">Season</button>
+              </div>
+              <input id="weekPicker" class="date-input" type="date" />
+              <button id="refreshBtn" class="btn" type="button">Refresh</button>
+            </div>
+            <div id="status" class="muted"></div>
+          </div>
+
           <div id="statusLine" class="status-line">Loading…</div>
 
           <div class="kpi-row" id="kpis" style="display:none;">
@@ -96,7 +126,7 @@
               <div class="val" id="kpiPlayers">—</div>
             </div>
             <div class="kpi">
-              <div class="label">Total predictions processed</div>
+              <div class="label">Predictions processed</div>
               <div class="val" id="kpiPreds">—</div>
             </div>
           </div>
@@ -123,7 +153,8 @@
         <div class="panel-inner">
           <h2>How this page works</h2>
           <ul class="bullet-list">
-            <li>This is the <strong>current week</strong> only (Mon–Sun).</li>
+            <li><strong>Week</strong> = current selected week (Mon–Sun).</li>
+            <li><strong>Season</strong> = all finished fixtures in the database.</li>
             <li>Points: <strong>5</strong> exact score, <strong>3</strong> correct result.</li>
             <li>Accuracy: correct results ÷ total predictions.</li>
             <li>AI Predictor is shown as a normal player.</li>
@@ -136,19 +167,28 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const navAdmin   = document.getElementById('navAdmin');
-    const navLogout  = document.getElementById('navLogout');
+    const navAdmin = document.getElementById('navAdmin');
+    const navLogout = document.getElementById('navLogout');
 
-    const weekRange  = document.getElementById('weekRange');
+    const tabWeek = document.getElementById('tabWeek');
+    const tabSeason = document.getElementById('tabSeason');
+    const weekPicker = document.getElementById('weekPicker');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    const modeLabel = document.getElementById('modeLabel');
+    const weekRange = document.getElementById('weekRange');
+    const status = document.getElementById('status');
     const statusLine = document.getElementById('statusLine');
 
-    const wrapper    = document.getElementById('tableWrapper');
-    const bodyEl     = document.getElementById('statsBody');
-
-    const kpisEl     = document.getElementById('kpis');
-    const kpiFinished= document.getElementById('kpiFinished');
+    const kpisEl = document.getElementById('kpis');
+    const kpiFinished = document.getElementById('kpiFinished');
     const kpiPlayers = document.getElementById('kpiPlayers');
-    const kpiPreds   = document.getElementById('kpiPreds');
+    const kpiPreds = document.getElementById('kpiPreds');
+
+    const wrapper = document.getElementById('tableWrapper');
+    const bodyEl = document.getElementById('statsBody');
+
+    let currentTab = 'week';
 
     function escapeHtml(s) {
       return String(s ?? '').replace(/[&<>"']/g, c => ({
@@ -160,7 +200,7 @@
       const x = new Date(d);
       x.setHours(0,0,0,0);
       const day = x.getDay(); // Sun=0
-      const diff = day === 0 ? -6 : 1 - day; // Monday start
+      const diff = day === 0 ? -6 : 1 - day; // Monday
       x.setDate(x.getDate() + diff);
       return x;
     }
@@ -171,7 +211,13 @@
       return x;
     }
 
-    function isoDate(d) {
+    function isoDateOnly(d) {
+      const x = new Date(d);
+      x.setHours(0,0,0,0);
+      return x.toISOString().slice(0,10);
+    }
+
+    function isoStart(d) {
       const x = new Date(d);
       x.setHours(0,0,0,0);
       return x.toISOString();
@@ -183,20 +229,58 @@
       return 'D';
     }
 
-    const weekStart = startOfWeek(new Date());
-    const weekEnd = addDays(weekStart, 7); // exclusive
-    weekRange.textContent =
-      `${weekStart.toLocaleDateString()} – ${addDays(weekStart,6).toLocaleDateString()} (Mon–Sun)`;
+    function setTab(which) {
+      currentTab = which;
+      if (which === 'week') {
+        tabWeek.classList.add('active');
+        tabSeason.classList.remove('active');
+        modeLabel.textContent = 'Week';
+      } else {
+        tabSeason.classList.add('active');
+        tabWeek.classList.remove('active');
+        modeLabel.textContent = 'Season';
+      }
+    }
 
-    (async () => {
+    function renderTable(rows) {
+      bodyEl.innerHTML = '';
+      if (!rows.length) {
+        bodyEl.innerHTML = '<tr><td colspan="6" class="muted-center">No data to show.</td></tr>';
+        return;
+      }
+
+      rows.forEach((p, idx) => {
+        const rank = idx + 1;
+        const rankClass =
+          rank === 1 ? 'rank-badge rank-1' :
+          rank === 2 ? 'rank-badge rank-2' :
+          rank === 3 ? 'rank-badge rank-3' :
+          'rank-badge';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="name">
+            <span class="${rankClass}">#${rank}</span>
+            <span class="player-name">${escapeHtml(p.name)}${p.is_ai ? ' <span class="ai-badge ai-inline">AI</span>' : ''}</span>
+          </td>
+          <td>${p.points}</td>
+          <td>${p.exact}</td>
+          <td>${p.correct}</td>
+          <td>${p.total}</td>
+          <td>${p.accuracy.toFixed(1)}%</td>
+        `;
+        bodyEl.appendChild(tr);
+      });
+    }
+
+    async function ensureSession() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) {
         window.location.replace('login.html');
-        return;
+        return null;
       }
 
-      // admin
       try {
         const { data: prof } = await supabase
           .from('profiles')
@@ -212,16 +296,25 @@
         window.location.replace('login.html');
       });
 
-      await loadStats();
-    })();
+      return user;
+    }
 
-    async function loadStats() {
-      statusLine.textContent = 'Loading current week finished fixtures…';
+    async function loadStats(which) {
+      setTab(which);
+      status.textContent = 'Loading…';
+      statusLine.textContent = 'Loading…';
       wrapper.style.display = 'none';
       kpisEl.style.display = 'none';
       bodyEl.innerHTML = '';
 
-      // 1) Load ALL players (so everyone appears even if they have no picks)
+      // Determine week window (for Week tab)
+      const base = weekPicker.value ? new Date(weekPicker.value) : new Date();
+      const ws = startOfWeek(base);
+      const we = addDays(ws, 7);
+
+      weekRange.textContent = `${ws.toLocaleDateString()} – ${addDays(ws,6).toLocaleDateString()} (Mon–Sun)`;
+
+      // Load players (always show everyone)
       const { data: profiles, error: pfErr } = await supabase
         .from('profiles')
         .select('id, display_name, is_ai')
@@ -229,46 +322,49 @@
 
       if (pfErr) {
         console.error(pfErr);
-        statusLine.textContent = 'Could not load players.';
+        status.textContent = '';
+        statusLine.innerHTML = '<span class="err">Could not load players.</span>';
         return;
       }
 
       const players = (profiles || [])
-        .map(p => ({
-          id: p.id,
-          name: p.display_name || 'Player',
-          is_ai: !!p.is_ai
-        }))
+        .map(p => ({ id: p.id, name: p.display_name || 'Player', is_ai: !!p.is_ai }))
         .sort((a,b)=>{
           if (a.is_ai !== b.is_ai) return a.is_ai ? 1 : -1; // AI at end
           return a.name.localeCompare(b.name);
         });
 
-      // 2) Finished fixtures in the current week window
-      const { data: fixtures, error: fxErr } = await supabase
+      // Load finished fixtures (week or season)
+      let fxQuery = supabase
         .from('fixtures')
-        .select('id, home_score, away_score, status, utc_date')
-        .gte('utc_date', isoDate(weekStart))
-        .lt('utc_date', isoDate(weekEnd))
+        .select('id, utc_date, home_score, away_score, status')
         .eq('status', 'FINISHED')
         .not('home_score', 'is', null)
         .not('away_score', 'is', null);
 
+      if (which === 'week') {
+        fxQuery = fxQuery.gte('utc_date', isoStart(ws)).lt('utc_date', isoStart(we));
+      }
+
+      const { data: fixtures, error: fxErr } = await fxQuery;
+
       if (fxErr) {
         console.error(fxErr);
-        statusLine.textContent = 'Could not load finished fixtures.';
+        status.textContent = '';
+        statusLine.innerHTML = '<span class="err">Could not load finished fixtures.</span>';
         return;
       }
 
       const finishedCount = fixtures?.length || 0;
       if (!fixtures || fixtures.length === 0) {
-        // Still show all players with zeros
-        renderTable(players.map(p => ({
-          ...p,
-          points: 0, exact: 0, correct: 0, total: 0, accuracy: 0
-        })));
-        statusLine.textContent = 'No finished fixtures yet this week (showing zeros).';
-        kpiFinished.textContent = '0';
+        // show everyone with zeros
+        const rowsZero = players.map(p => ({ ...p, points:0, exact:0, correct:0, total:0, accuracy:0 }));
+        renderTable(rowsZero);
+        status.textContent = '';
+        statusLine.textContent = which === 'week'
+          ? 'No finished fixtures yet this week (showing zeros).'
+          : 'No finished fixtures yet (showing zeros).';
+        kpiFinished.textContent = String(finishedCount);
         kpiPlayers.textContent = String(players.length);
         kpiPreds.textContent = '0';
         kpisEl.style.display = '';
@@ -276,12 +372,10 @@
         return;
       }
 
-      const fixtureIds = fixtures.map(f => f.id);
       const fxMap = new Map(fixtures.map(f => [f.id, f]));
+      const fixtureIds = fixtures.map(f => f.id);
 
-      statusLine.textContent = 'Loading predictions for finished fixtures…';
-
-      // 3) Predictions for finished fixtures (all users)
+      // Load predictions for these fixtures
       const { data: preds, error: prErr } = await supabase
         .from('predictions')
         .select('user_id, fixture_id, home_goals, away_goals')
@@ -289,68 +383,39 @@
 
       if (prErr) {
         console.error(prErr);
-        statusLine.textContent = 'Could not load predictions.';
+        status.textContent = '';
+        statusLine.innerHTML = '<span class="err">Could not load predictions.</span>';
         return;
       }
 
-      // 4) Aggregate per user (initialize all players to 0)
-      const statsByUser = new Map(players.map(p => [p.id, {
-        user_id: p.id,
-        points: 0,
-        exact: 0,
-        correct: 0,
-        total: 0
-      }]));
-
-      let processedPreds = 0;
+      // Init stats for all players (so everyone shows)
+      const statsByUser = new Map(players.map(p => [p.id, { points:0, exact:0, correct:0, total:0 }]));
+      let processed = 0;
 
       for (const p of (preds || [])) {
         const fx = fxMap.get(p.fixture_id);
         if (!fx) continue;
-
-        const ah = fx.home_score;
-        const aa = fx.away_score;
-
-        const ph = p.home_goals;
-        const pa = p.away_goals;
-
+        const ah = fx.home_score, aa = fx.away_score;
+        const ph = p.home_goals, pa = p.away_goals;
         if (ph == null || pa == null) continue;
 
-        processedPreds++;
+        processed++;
 
-        if (!statsByUser.has(p.user_id)) {
-          // In case there are predictions from users who don't have a profile row yet
-          statsByUser.set(p.user_id, { user_id: p.user_id, points: 0, exact: 0, correct: 0, total: 0 });
-        }
-
+        if (!statsByUser.has(p.user_id)) statsByUser.set(p.user_id, { points:0, exact:0, correct:0, total:0 });
         const s = statsByUser.get(p.user_id);
         s.total += 1;
 
-        if (ph === ah && pa === aa) {
-          s.points += 5;
-          s.exact += 1;
-          s.correct += 1;
-        } else if (outcome(ph, pa) === outcome(ah, aa)) {
-          s.points += 3;
-          s.correct += 1;
-        }
+        if (ph === ah && pa === aa) { s.points += 5; s.exact += 1; s.correct += 1; }
+        else if (outcome(ph, pa) === outcome(ah, aa)) { s.points += 3; s.correct += 1; }
       }
 
-      // 5) Build rows for table (ensure every profile is shown)
       const rows = players.map(pl => {
         const s = statsByUser.get(pl.id) || { points:0, exact:0, correct:0, total:0 };
         const acc = s.total ? (s.correct / s.total) * 100 : 0;
-        return {
-          ...pl,
-          points: s.points,
-          exact: s.exact,
-          correct: s.correct,
-          total: s.total,
-          accuracy: acc
-        };
+        return { ...pl, points: s.points, exact: s.exact, correct: s.correct, total: s.total, accuracy: acc };
       });
 
-      // 6) Sort: AI at bottom, then points desc
+      // Sort: AI at bottom, then points desc, then name
       rows.sort((a,b)=>{
         if (a.is_ai !== b.is_ai) return a.is_ai ? 1 : -1;
         if (b.points !== a.points) return b.points - a.points;
@@ -361,57 +426,28 @@
 
       renderTable(rows);
 
-      statusLine.textContent = `Loaded current week stats.`;
+      status.textContent = '';
+      statusLine.textContent = which === 'week' ? 'Loaded week stats.' : 'Loaded season stats.';
       kpiFinished.textContent = String(finishedCount);
       kpiPlayers.textContent = String(players.length);
-      kpiPreds.textContent = String(processedPreds);
+      kpiPreds.textContent = String(processed);
       kpisEl.style.display = '';
       wrapper.style.display = '';
     }
 
-    function renderTable(rows) {
-      bodyEl.innerHTML = '';
+    (async () => {
+      await ensureSession();
 
-      rows.forEach((p, idx) => {
-        const rank = idx + 1;
-        const rankClass =
-          rank === 1 ? 'rank-badge rank-1' :
-          rank === 2 ? 'rank-badge rank-2' :
-          rank === 3 ? 'rank-badge rank-3' :
-          'rank-badge';
+      // Default week = this Monday
+      const ws = startOfWeek(new Date());
+      weekPicker.value = isoDateOnly(ws);
 
-        const tr = document.createElement('tr');
+      refreshBtn.addEventListener('click', () => loadStats(currentTab));
+      tabWeek.addEventListener('click', () => loadStats('week'));
+      tabSeason.addEventListener('click', () => loadStats('season'));
 
-        const tdName = document.createElement('td');
-        tdName.className = 'name';
-        tdName.innerHTML =
-          `<span class="${rankClass}">#${rank}</span>` +
-          `<span class="player-name">${escapeHtml(p.name)}${p.is_ai ? ' <span class="ai-badge ai-inline">AI</span>' : ''}</span>`;
-        tr.appendChild(tdName);
-
-        const tdPoints = document.createElement('td');
-        tdPoints.textContent = String(p.points ?? 0);
-        tr.appendChild(tdPoints);
-
-        const tdExact = document.createElement('td');
-        tdExact.textContent = String(p.exact ?? 0);
-        tr.appendChild(tdExact);
-
-        const tdCorrect = document.createElement('td');
-        tdCorrect.textContent = String(p.correct ?? 0);
-        tr.appendChild(tdCorrect);
-
-        const tdTotal = document.createElement('td');
-        tdTotal.textContent = String(p.total ?? 0);
-        tr.appendChild(tdTotal);
-
-        const tdAcc = document.createElement('td');
-        tdAcc.textContent = `${Number(p.accuracy ?? 0).toFixed(1)}%`;
-        tr.appendChild(tdAcc);
-
-        bodyEl.appendChild(tr);
-      });
-    }
+      await loadStats('week');
+    })();
   </script>
 </body>
 </html>
