@@ -43,8 +43,17 @@
     .fx-score { color: #e5e7eb; font-weight: 800; }
     .fx-kick { color: #9ca3af; font-size: 0.85rem; }
 
-    /* Make the side panel look good underneath */
+    /* Under-table box */
     .panel-side { margin-top: 18px; }
+
+    /* small info marker for AI picks */
+    .ai-tip {
+      display:inline-block;
+      margin-left: 6px;
+      opacity: 0.8;
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body class="bg-hero">
@@ -68,7 +77,7 @@
         </nav>
       </div>
       <div class="top-nav-right">
-        <span class="muted">Current week only • All players visible</span>
+        <span class="muted">Current week only • All players visible • AI hover explains picks</span>
       </div>
     </header>
 
@@ -97,6 +106,7 @@
             <li>Cell = predicted score <em>(home–away)</em>, coloured when the fixture finishes.</li>
             <li>Green = exact score • Blue = correct result • Dark = wrong.</li>
             <li>“L” badge = that player has locked their picks for the week.</li>
+            <li>Hover AI picks to see the reasoning.</li>
           </ul>
         </div>
       </aside>
@@ -211,7 +221,6 @@
         });
 
       // 2) Load fixtures ONLY for the current week
-      // Keep featured-only if you want; set featuredOnly=false to show all fixtures in the week.
       const featuredOnly = true;
 
       let fxQuery = supabase
@@ -243,7 +252,7 @@
       // 3) Predictions for these fixtures (any user)
       const { data: preds, error: prErr } = await supabase
         .from('predictions')
-        .select('user_id, fixture_id, home_goals, away_goals')
+        .select('id, user_id, fixture_id, home_goals, away_goals')
         .in('fixture_id', fixtureIds);
 
       if (prErr) {
@@ -260,11 +269,32 @@
 
       const lockSet = new Set((locks || []).map(l => l.user_id));
 
-      // Build lookup for predictions: key = fixture_id|user_id
-      const predMap = new Map();
-      (preds || []).forEach(p => {
-        predMap.set(`${p.fixture_id}|${p.user_id}`, p);
-      });
+      // 5) AI explanations for the week (keyed by fixture_id)
+      // We join via prediction_id; easiest is:
+      // - map AI prediction_id per fixture for AI user
+      // - then map meta by prediction_id
+      const predMap = new Map(); // fixture_id|user_id => prediction
+      (preds || []).forEach(p => predMap.set(`${p.fixture_id}|${p.user_id}`, p));
+
+      const aiPredIds = [];
+      for (const pl of players) {
+        if (!pl.is_ai) continue;
+        for (const fxId of fixtureIds) {
+          const p = predMap.get(`${fxId}|${pl.id}`);
+          if (p?.id) aiPredIds.push(p.id);
+        }
+      }
+
+      const aiExplainByPredId = new Map();
+      if (aiPredIds.length) {
+        const { data: metas } = await supabase
+          .from('ai_prediction_meta')
+          .select('prediction_id, ai_explanation')
+          .eq('week_start', weekStartStr)
+          .in('prediction_id', aiPredIds);
+
+        (metas || []).forEach(m => aiExplainByPredId.set(m.prediction_id, m.ai_explanation));
+      }
 
       // --- Header ---
       const headRow = document.createElement('tr');
@@ -325,7 +355,17 @@
           const h = p.home_goals;
           const a = p.away_goals;
 
-          td.innerHTML = `${h}–${a}${lockBadge}`;
+          // AI explanation tooltip
+          let tip = "";
+          if (pl.is_ai && p.id) {
+            const ex = aiExplainByPredId.get(p.id);
+            if (ex) {
+              td.title = ex; // hover tooltip
+              tip = ` <span class="ai-tip" aria-label="AI explanation available">ℹ</span>`;
+            }
+          }
+
+          td.innerHTML = `${h}–${a}${lockBadge}${tip}`;
 
           let cls = 'pick-neutral';
           if (isFinished) {
