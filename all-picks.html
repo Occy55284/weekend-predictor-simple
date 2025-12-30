@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>All Picks • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css" />
+
   <style>
-    /* Layout */
     .main-layout { grid-template-columns: 1fr !important; }
 
     .matrix-wrap {
@@ -43,298 +43,228 @@
       background: rgba(2,6,23,0.65);
     }
 
-    .status-line { margin: 10px 0 14px; color: #cbd5e1; }
-
-    .fx-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .fx-names { font-weight: 800; }
-    .fx-score { font-weight: 800; }
-    .fx-kick { color:#9ca3af; font-size:0.85rem; }
-
     .pick-neutral { background: rgba(2,6,23,0.25); }
     .pick-exact { background: rgba(34,197,94,0.18); border:1px solid rgba(34,197,94,0.35); }
     .pick-correct { background: rgba(59,130,246,0.16); border:1px solid rgba(59,130,246,0.30); }
     .pick-wrong { background: rgba(15,23,42,0.35); border:1px solid rgba(148,163,184,0.18); }
 
-    .pill {
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:2px 8px;
-      border-radius:999px;
-      font-size:0.72rem;
-      border:1px solid rgba(148,163,184,0.35);
-      margin-left:6px;
-    }
-    .pill-lock {
-      border-color: rgba(244,63,94,0.7);
-      background: rgba(190,18,60,0.25);
-      color:#fecdd3;
+    .ai-info {
+      margin-left: 6px;
+      font-weight: 900;
+      cursor: help;
+      opacity: 0.9;
     }
 
-    /* AI tooltip */
-    .ai-tip {
-      position: relative;
-      cursor: help;
-      font-weight: 800;
-      opacity: 0.9;
-      margin-left: 6px;
-    }
-    .ai-tip::after {
-      content: attr(data-tip);
-      position: absolute;
-      left: 50%;
-      bottom: 130%;
-      transform: translateX(-50%);
-      min-width: 280px;
+    /* Floating tooltip (NOT clipped) */
+    #aiTooltip {
+      position: fixed;
       max-width: 420px;
       padding: 10px 12px;
-      background: rgba(2,6,23,0.95);
+      background: rgba(2,6,23,0.96);
       color: #e5e7eb;
       border: 1px solid rgba(148,163,184,0.35);
       border-radius: 12px;
       font-size: 0.8rem;
       line-height: 1.4;
-      white-space: normal;
-      opacity: 0;
+      z-index: 9999;
       pointer-events: none;
-      z-index: 50;
-    }
-    .ai-tip::before {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: 120%;
-      transform: translateX(-50%);
-      border-width: 6px;
-      border-style: solid;
-      border-color: rgba(2,6,23,0.95) transparent transparent transparent;
-      opacity: 0;
-    }
-    .ai-tip:hover::after,
-    .ai-tip:hover::before {
-      opacity: 1;
+      display: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
     }
   </style>
 </head>
 
 <body class="bg-hero">
-  <div class="page-shell">
-    <header class="top-nav">
-      <div class="top-nav-left">
-        <div class="nav-logo">
-          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
-        </div>
-        <nav class="nav-links">
-          <a href="index.html">Home</a>
-          <a href="predict.html">Predict</a>
-          <a href="my-picks.html">My Picks</a>
-          <a class="active" href="all-picks.html">All Picks</a>
-          <a href="leaderboard.html">Leaderboard</a>
-          <a href="stats.html">Stats</a>
-          <a href="wallet.html">Wallet</a>
-          <a href="profile.html">Profile</a>
-          <a id="navAdmin" href="admin.html" style="display:none;">Admin</a>
-          <a id="navLogout" href="#">Logout</a>
-        </nav>
+<div class="page-shell">
+  <header class="top-nav">
+    <div class="top-nav-left">
+      <div class="nav-logo">
+        <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
       </div>
-      <div class="top-nav-right">
-        <span class="muted">Current week • AI explanations on hover</span>
-      </div>
-    </header>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="my-picks.html">My Picks</a>
+        <a class="active" href="all-picks.html">All Picks</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="stats.html">Stats</a>
+        <a href="wallet.html">Wallet</a>
+        <a href="profile.html">Profile</a>
+      </nav>
+    </div>
+    <div class="top-nav-right">
+      <span class="muted">AI explanations on hover</span>
+    </div>
+  </header>
 
-    <main class="main-layout">
-      <section class="panel">
-        <div class="panel-inner">
-          <h1>All Picks</h1>
-          <div id="weekRange" class="muted"></div>
-          <div id="statusLine" class="status-line">Loading…</div>
+  <main class="main-layout">
+    <section class="panel">
+      <div class="panel-inner">
+        <h1>All Picks</h1>
+        <div id="statusLine" class="muted">Loading…</div>
 
-          <div id="tableWrapper" class="matrix-wrap" style="display:none;">
-            <table class="matrix">
-              <thead id="matrixHead"></thead>
-              <tbody id="matrixBody"></tbody>
-            </table>
-          </div>
+        <div class="matrix-wrap" id="tableWrap" style="display:none;">
+          <table class="matrix">
+            <thead id="matrixHead"></thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
         </div>
-      </section>
-    </main>
-  </div>
+      </div>
+    </section>
+  </main>
+</div>
 
-  <script type="module">
-    import { supabase } from './supabase-config.js';
+<!-- Floating tooltip -->
+<div id="aiTooltip"></div>
 
-    const statusLine = document.getElementById('statusLine');
-    const wrapper = document.getElementById('tableWrapper');
-    const headEl = document.getElementById('matrixHead');
-    const bodyEl = document.getElementById('matrixBody');
-    const weekRange = document.getElementById('weekRange');
+<script type="module">
+  import { supabase } from './supabase-config.js';
 
-    function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c =>
-        ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])
-      );
-    }
+  const statusLine = document.getElementById('statusLine');
+  const headEl = document.getElementById('matrixHead');
+  const bodyEl = document.getElementById('matrixBody');
+  const wrap = document.getElementById('tableWrap');
+  const tooltip = document.getElementById('aiTooltip');
 
-    function startOfWeek(d) {
-      const x = new Date(d);
-      x.setHours(0,0,0,0);
-      const day = x.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      x.setDate(x.getDate() + diff);
-      return x;
-    }
-    function addDays(d, n) {
-      const x = new Date(d);
-      x.setDate(x.getDate() + n);
-      return x;
-    }
-    function isoDate(d) {
-      const x = new Date(d);
-      x.setHours(0,0,0,0);
-      return x.toISOString();
-    }
-    function outcome(h,a) {
-      if (h>a) return 'H';
-      if (h<a) return 'A';
-      return 'D';
-    }
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])
+    );
+  }
 
-    const weekStart = startOfWeek(new Date());
-    const weekEnd = addDays(weekStart, 7);
-    const weekStartStr = weekStart.toISOString().slice(0,10);
+  function startOfWeek(d) {
+    const x = new Date(d);
+    x.setHours(0,0,0,0);
+    const day = x.getDay();
+    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+    return x;
+  }
+  function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function iso(d){ const x=new Date(d); x.setHours(0,0,0,0); return x.toISOString(); }
+  function outcome(h,a){ return h>a?'H':h<a?'A':'D'; }
 
-    weekRange.textContent =
-      `${weekStart.toLocaleDateString()} – ${addDays(weekStart,6).toLocaleDateString()} (Mon–Sun)`;
+  const ws = startOfWeek(new Date());
+  const we = addDays(ws,7);
+  const weekStartStr = ws.toISOString().slice(0,10);
 
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        window.location.replace('login.html');
-        return;
-      }
-      await loadMatrix();
-    })();
+  (async () => {
+    const { data:{session} } = await supabase.auth.getSession();
+    if(!session?.user){ location.replace('login.html'); return; }
+    await load();
+  })();
 
-    async function loadMatrix() {
-      statusLine.textContent = 'Loading…';
-      wrapper.style.display = 'none';
-      headEl.innerHTML = '';
-      bodyEl.innerHTML = '';
+  async function load(){
+    statusLine.textContent = 'Loading…';
 
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, display_name, is_ai')
-        .order('display_name');
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, is_ai')
+      .order('display_name');
 
-      const players = (profiles || [])
-        .map(p => ({ id: p.id, name: p.display_name || 'Player', is_ai: !!p.is_ai }))
-        .sort((a,b)=> a.is_ai === b.is_ai ? a.name.localeCompare(b.name) : a.is_ai ? 1 : -1);
+    const players = (profiles||[])
+      .map(p=>({id:p.id,name:p.display_name||'Player',is_ai:p.is_ai}))
+      .sort((a,b)=>a.is_ai===b.is_ai?a.name.localeCompare(b.name):a.is_ai?1:-1);
 
-      const { data: fixtures } = await supabase
-        .from('fixtures')
-        .select('id, utc_date, home_team, away_team, home_score, away_score, status')
-        .gte('utc_date', isoDate(weekStart))
-        .lt('utc_date', isoDate(weekEnd))
-        .eq('featured', true)
-        .order('utc_date');
+    const { data: fixtures } = await supabase
+      .from('fixtures')
+      .select('id, utc_date, home_team, away_team, home_score, away_score, status')
+      .gte('utc_date', iso(ws))
+      .lt('utc_date', iso(we))
+      .eq('featured', true)
+      .order('utc_date');
 
-      if (!fixtures?.length) {
-        statusLine.textContent = 'No fixtures this week.';
-        return;
-      }
+    const fxIds = fixtures.map(f=>f.id);
 
-      const fixtureIds = fixtures.map(f => f.id);
+    const { data: preds } = await supabase
+      .from('predictions')
+      .select('id, user_id, fixture_id, home_goals, away_goals')
+      .in('fixture_id', fxIds);
 
-      const { data: preds } = await supabase
-        .from('predictions')
-        .select('id, user_id, fixture_id, home_goals, away_goals')
-        .in('fixture_id', fixtureIds);
+    const predMap = new Map();
+    preds.forEach(p=>predMap.set(`${p.fixture_id}|${p.user_id}`, p));
 
-      const predMap = new Map();
-      (preds || []).forEach(p => predMap.set(`${p.fixture_id}|${p.user_id}`, p));
+    const aiIds = preds.filter(p=>{
+      const pl = players.find(x=>x.id===p.user_id);
+      return pl?.is_ai;
+    }).map(p=>p.id);
 
-      const aiPredIds = [];
-      players.filter(p => p.is_ai).forEach(ai => {
-        fixtureIds.forEach(fx => {
-          const p = predMap.get(`${fx}|${ai.id}`);
-          if (p?.id) aiPredIds.push(p.id);
-        });
+    const { data: meta } = await supabase
+      .from('ai_prediction_meta')
+      .select('prediction_id, ai_explanation')
+      .eq('week_start', weekStartStr)
+      .in('prediction_id', aiIds);
+
+    const explain = new Map();
+    (meta||[]).forEach(m=>explain.set(m.prediction_id, m.ai_explanation));
+
+    // Header
+    const hr = document.createElement('tr');
+    const thFx = document.createElement('th');
+    thFx.className='fixture-col'; thFx.textContent='Fixture';
+    hr.appendChild(thFx);
+    players.forEach(p=>{
+      const th=document.createElement('th');
+      th.innerHTML = `${escapeHtml(p.name)}${p.is_ai?' <span class="ai-badge ai-inline">AI</span>':''}`;
+      hr.appendChild(th);
+    });
+    headEl.appendChild(hr);
+
+    fixtures.forEach(fx=>{
+      const tr=document.createElement('tr');
+      const tdFx=document.createElement('td');
+      tdFx.className='fixture-col';
+      const fin = fx.status==='FINISHED';
+      tdFx.innerHTML = `
+        <strong>${escapeHtml(fx.home_team)} vs ${escapeHtml(fx.away_team)}</strong><br>
+        <span class="muted">${new Date(fx.utc_date).toLocaleString()}</span>
+        ${fin?`<span class="fx-score">${fx.home_score}–${fx.away_score}</span>`:''}
+      `;
+      tr.appendChild(tdFx);
+
+      players.forEach(pl=>{
+        const td=document.createElement('td');
+        const p=predMap.get(`${fx.id}|${pl.id}`);
+        if(!p){ td.textContent='—'; tr.appendChild(td); return; }
+
+        let info='';
+        if(pl.is_ai && explain.has(p.id)){
+          info = ` <span class="ai-info" data-text="${escapeHtml(explain.get(p.id))}">ℹ</span>`;
+        }
+        td.innerHTML = `${p.home_goals}–${p.away_goals}${info}`;
+
+        if(fin){
+          const ao=outcome(fx.home_score,fx.away_score);
+          const po=outcome(p.home_goals,p.away_goals);
+          td.className = (p.home_goals===fx.home_score && p.away_goals===fx.away_score)
+            ? 'pick-exact'
+            : (ao===po?'pick-correct':'pick-wrong');
+        } else td.className='pick-neutral';
+
+        tr.appendChild(td);
       });
+      bodyEl.appendChild(tr);
+    });
 
-      const aiExplain = new Map();
-      if (aiPredIds.length) {
-        const { data: meta } = await supabase
-          .from('ai_prediction_meta')
-          .select('prediction_id, ai_explanation')
-          .eq('week_start', weekStartStr)
-          .in('prediction_id', aiPredIds);
+    wrap.style.display='';
+    statusLine.textContent='Loaded.';
+    bindTooltips();
+  }
 
-        (meta || []).forEach(m => aiExplain.set(m.prediction_id, m.ai_explanation));
-      }
-
-      const hr = document.createElement('tr');
-      const thFx = document.createElement('th');
-      thFx.className = 'fixture-col';
-      thFx.textContent = 'Fixture';
-      hr.appendChild(thFx);
-
-      players.forEach(pl => {
-        const th = document.createElement('th');
-        th.innerHTML = `${escapeHtml(pl.name)}${pl.is_ai ? ' <span class="ai-badge ai-inline">AI</span>' : ''}`;
-        hr.appendChild(th);
+  function bindTooltips(){
+    document.querySelectorAll('.ai-info').forEach(el=>{
+      el.addEventListener('mouseenter',e=>{
+        tooltip.textContent = el.dataset.text;
+        tooltip.style.display='block';
       });
-      headEl.appendChild(hr);
-
-      fixtures.forEach(fx => {
-        const tr = document.createElement('tr');
-        const tdFx = document.createElement('td');
-        tdFx.className = 'fixture-col';
-
-        const finished = fx.status === 'FINISHED' && fx.home_score != null;
-        tdFx.innerHTML = `
-          <div class="fx-meta">
-            <span class="fx-names">${escapeHtml(fx.home_team)} vs ${escapeHtml(fx.away_team)}</span>
-            <span class="fx-kick">${new Date(fx.utc_date).toLocaleString()}</span>
-            ${finished ? `<span class="fx-score">${fx.home_score}–${fx.away_score}</span>` : ''}
-          </div>`;
-        tr.appendChild(tdFx);
-
-        players.forEach(pl => {
-          const td = document.createElement('td');
-          const p = predMap.get(`${fx.id}|${pl.id}`);
-
-          if (!p) {
-            td.innerHTML = '—';
-            tr.appendChild(td);
-            return;
-          }
-
-          const tip = pl.is_ai && aiExplain.has(p.id)
-            ? ` <span class="ai-tip" data-tip="${escapeHtml(aiExplain.get(p.id))}">ℹ</span>`
-            : '';
-
-          td.innerHTML = `${p.home_goals}–${p.away_goals}${tip}`;
-
-          if (finished) {
-            const ao = outcome(fx.home_score, fx.away_score);
-            const po = outcome(p.home_goals, p.away_goals);
-            td.className =
-              (p.home_goals === fx.home_score && p.away_goals === fx.away_score)
-                ? 'pick-exact'
-                : (ao === po ? 'pick-correct' : 'pick-wrong');
-          } else {
-            td.className = 'pick-neutral';
-          }
-
-          tr.appendChild(td);
-        });
-
-        bodyEl.appendChild(tr);
+      el.addEventListener('mousemove',e=>{
+        tooltip.style.left = (e.clientX + 14)+'px';
+        tooltip.style.top  = (e.clientY + 14)+'px';
       });
-
-      statusLine.textContent = 'Loaded.';
-      wrapper.style.display = '';
-    }
-  </script>
+      el.addEventListener('mouseleave',()=>{
+        tooltip.style.display='none';
+      });
+    });
+  }
+</script>
 </body>
 </html>
