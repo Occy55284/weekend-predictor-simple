@@ -6,56 +6,117 @@
   <title>All Picks • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css" />
   <style>
-    /* Force landscape-style layout: one full-width column */
+    /* Layout */
     .main-layout { grid-template-columns: 1fr !important; }
 
-    .matrix-wrap { overflow: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,0.28); }
-    table.matrix { width: 100%; border-collapse: collapse; min-width: 980px; }
-    .matrix th, .matrix td { padding: 10px; border-bottom: 1px solid rgba(148,163,184,0.18); text-align: center; }
-    .matrix thead th { position: sticky; top: 0; background: rgba(2,6,23,0.78); z-index: 2; }
+    .matrix-wrap {
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid rgba(148,163,184,0.28);
+    }
+    table.matrix {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+    .matrix th, .matrix td {
+      padding: 10px;
+      border-bottom: 1px solid rgba(148,163,184,0.18);
+      text-align: center;
+    }
+    .matrix thead th {
+      position: sticky;
+      top: 0;
+      background: rgba(2,6,23,0.78);
+      z-index: 2;
+    }
 
-    /* Sticky fixture column */
     .fixture-col {
       text-align: left !important;
-      min-width: 300px;
+      min-width: 320px;
       position: sticky;
       left: 0;
       z-index: 3;
-      background: rgba(2,6,23,0.82);
+      background: rgba(2,6,23,0.85);
     }
-    .matrix tbody td.fixture-col { background: rgba(2,6,23,0.62); }
-
-    .player-header { white-space: nowrap; }
+    .matrix tbody td.fixture-col {
+      background: rgba(2,6,23,0.65);
+    }
 
     .status-line { margin: 10px 0 14px; color: #cbd5e1; }
-    .week-title { margin: 0 0 8px; }
-
-    .pill { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; border: 1px solid rgba(148,163,184,0.35); }
-    .pill-lock { border-color: rgba(244, 63, 94, 0.75); background: rgba(190, 18, 60, 0.28); color: #fecdd3; margin-left: 6px; }
-
-    .pick-neutral { background: rgba(2,6,23,0.25); }
-    .pick-exact { background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.35); }
-    .pick-correct { background: rgba(59,130,246,0.16); border: 1px solid rgba(59,130,246,0.30); }
-    .pick-wrong { background: rgba(15,23,42,0.35); border: 1px solid rgba(148,163,184,0.18); color: rgba(229,231,235,0.85); }
 
     .fx-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .fx-names { font-weight: 800; }
-    .fx-score { color: #e5e7eb; font-weight: 800; }
-    .fx-kick { color: #9ca3af; font-size: 0.85rem; }
+    .fx-score { font-weight: 800; }
+    .fx-kick { color:#9ca3af; font-size:0.85rem; }
 
-    /* Under-table box */
-    .panel-side { margin-top: 18px; }
+    .pick-neutral { background: rgba(2,6,23,0.25); }
+    .pick-exact { background: rgba(34,197,94,0.18); border:1px solid rgba(34,197,94,0.35); }
+    .pick-correct { background: rgba(59,130,246,0.16); border:1px solid rgba(59,130,246,0.30); }
+    .pick-wrong { background: rgba(15,23,42,0.35); border:1px solid rgba(148,163,184,0.18); }
 
-    /* small info marker for AI picks */
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:0.72rem;
+      border:1px solid rgba(148,163,184,0.35);
+      margin-left:6px;
+    }
+    .pill-lock {
+      border-color: rgba(244,63,94,0.7);
+      background: rgba(190,18,60,0.25);
+      color:#fecdd3;
+    }
+
+    /* AI tooltip */
     .ai-tip {
-      display:inline-block;
+      position: relative;
+      cursor: help;
+      font-weight: 800;
+      opacity: 0.9;
       margin-left: 6px;
-      opacity: 0.8;
-      font-size: 0.85rem;
-      vertical-align: middle;
+    }
+    .ai-tip::after {
+      content: attr(data-tip);
+      position: absolute;
+      left: 50%;
+      bottom: 130%;
+      transform: translateX(-50%);
+      min-width: 280px;
+      max-width: 420px;
+      padding: 10px 12px;
+      background: rgba(2,6,23,0.95);
+      color: #e5e7eb;
+      border: 1px solid rgba(148,163,184,0.35);
+      border-radius: 12px;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      white-space: normal;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .ai-tip::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 120%;
+      transform: translateX(-50%);
+      border-width: 6px;
+      border-style: solid;
+      border-color: rgba(2,6,23,0.95) transparent transparent transparent;
+      opacity: 0;
+    }
+    .ai-tip:hover::after,
+    .ai-tip:hover::before {
+      opacity: 1;
     }
   </style>
 </head>
+
 <body class="bg-hero">
   <div class="page-shell">
     <header class="top-nav">
@@ -77,14 +138,14 @@
         </nav>
       </div>
       <div class="top-nav-right">
-        <span class="muted">Current week only • All players visible • AI hover explains picks</span>
+        <span class="muted">Current week • AI explanations on hover</span>
       </div>
     </header>
 
     <main class="main-layout">
       <section class="panel">
         <div class="panel-inner">
-          <h1 class="week-title">All Picks</h1>
+          <h1>All Picks</h1>
           <div id="weekRange" class="muted"></div>
           <div id="statusLine" class="status-line">Loading…</div>
 
@@ -96,61 +157,42 @@
           </div>
         </div>
       </section>
-
-      <aside class="panel panel-side">
-        <div class="panel-inner">
-          <h2>How this page works</h2>
-          <ul class="bullet-list">
-            <li>Rows = fixtures for the current week (Mon–Sun).</li>
-            <li>Columns = all players (including AI Predictor).</li>
-            <li>Cell = predicted score <em>(home–away)</em>, coloured when the fixture finishes.</li>
-            <li>Green = exact score • Blue = correct result • Dark = wrong.</li>
-            <li>“L” badge = that player has locked their picks for the week.</li>
-            <li>Hover AI picks to see the reasoning.</li>
-          </ul>
-        </div>
-      </aside>
     </main>
   </div>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const navAdmin = document.getElementById('navAdmin');
-    const navLogout = document.getElementById('navLogout');
-    const weekRange = document.getElementById('weekRange');
     const statusLine = document.getElementById('statusLine');
     const wrapper = document.getElementById('tableWrapper');
     const headEl = document.getElementById('matrixHead');
     const bodyEl = document.getElementById('matrixBody');
+    const weekRange = document.getElementById('weekRange');
 
     function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      }[c]));
+      return String(s ?? '').replace(/[&<>"']/g, c =>
+        ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])
+      );
     }
 
     function startOfWeek(d) {
       const x = new Date(d);
       x.setHours(0,0,0,0);
-      const day = x.getDay(); // Sun=0
-      const diff = day === 0 ? -6 : 1 - day; // Monday start
+      const day = x.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
       x.setDate(x.getDate() + diff);
       return x;
     }
-
     function addDays(d, n) {
       const x = new Date(d);
       x.setDate(x.getDate() + n);
       return x;
     }
-
     function isoDate(d) {
       const x = new Date(d);
       x.setHours(0,0,0,0);
       return x.toISOString();
     }
-
     function outcome(h,a) {
       if (h>a) return 'H';
       if (h<a) return 'A';
@@ -158,7 +200,7 @@
     }
 
     const weekStart = startOfWeek(new Date());
-    const weekEnd = addDays(weekStart, 7); // exclusive upper bound
+    const weekEnd = addDays(weekStart, 7);
     const weekStartStr = weekStart.toISOString().slice(0,10);
 
     weekRange.textContent =
@@ -166,223 +208,131 @@
 
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
+      if (!session?.user) {
         window.location.replace('login.html');
         return;
       }
-
-      // admin
-      try {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (prof?.is_admin) navAdmin.style.display = '';
-      } catch {}
-
-      navLogout?.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        try { await supabase.auth.signOut(); } catch {}
-        window.location.replace('login.html');
-      });
-
       await loadMatrix();
     })();
 
     async function loadMatrix() {
-      statusLine.textContent = 'Loading current week fixtures…';
+      statusLine.textContent = 'Loading…';
       wrapper.style.display = 'none';
       headEl.innerHTML = '';
       bodyEl.innerHTML = '';
 
-      // 1) Load ALL players (including AI), so everyone is visible even without picks
-      const { data: profiles, error: pfErr } = await supabase
+      const { data: profiles } = await supabase
         .from('profiles')
         .select('id, display_name, is_ai')
-        .order('display_name', { ascending: true });
-
-      if (pfErr) {
-        console.error(pfErr);
-        statusLine.textContent = 'Could not load players.';
-        return;
-      }
+        .order('display_name');
 
       const players = (profiles || [])
-        .map(p => ({
-          id: p.id,
-          name: p.display_name || 'Player',
-          is_ai: !!p.is_ai
-        }))
-        .sort((a,b)=>{
-          if (a.is_ai !== b.is_ai) return a.is_ai ? 1 : -1; // AI at end
-          return a.name.localeCompare(b.name);
-        });
+        .map(p => ({ id: p.id, name: p.display_name || 'Player', is_ai: !!p.is_ai }))
+        .sort((a,b)=> a.is_ai === b.is_ai ? a.name.localeCompare(b.name) : a.is_ai ? 1 : -1);
 
-      // 2) Load fixtures ONLY for the current week
-      const featuredOnly = true;
-
-      let fxQuery = supabase
+      const { data: fixtures } = await supabase
         .from('fixtures')
-        .select('id, utc_date, home_team, away_team, home_score, away_score, status, featured')
+        .select('id, utc_date, home_team, away_team, home_score, away_score, status')
         .gte('utc_date', isoDate(weekStart))
         .lt('utc_date', isoDate(weekEnd))
-        .order('utc_date', { ascending: true });
+        .eq('featured', true)
+        .order('utc_date');
 
-      if (featuredOnly) fxQuery = fxQuery.eq('featured', true);
-
-      const { data: fixtures, error: fxErr } = await fxQuery;
-
-      if (fxErr) {
-        console.error(fxErr);
-        statusLine.textContent = 'Could not load fixtures.';
-        return;
-      }
-
-      if (!fixtures || fixtures.length === 0) {
-        statusLine.textContent = featuredOnly
-          ? 'No featured fixtures for the current week.'
-          : 'No fixtures found for the current week.';
+      if (!fixtures?.length) {
+        statusLine.textContent = 'No fixtures this week.';
         return;
       }
 
       const fixtureIds = fixtures.map(f => f.id);
 
-      // 3) Predictions for these fixtures (any user)
-      const { data: preds, error: prErr } = await supabase
+      const { data: preds } = await supabase
         .from('predictions')
         .select('id, user_id, fixture_id, home_goals, away_goals')
         .in('fixture_id', fixtureIds);
 
-      if (prErr) {
-        console.error(prErr);
-        statusLine.textContent = 'Could not load predictions.';
-        return;
-      }
-
-      // 4) Pick locks for this week (for ALL players)
-      const { data: locks } = await supabase
-        .from('pick_locks')
-        .select('user_id, week_start')
-        .eq('week_start', weekStartStr);
-
-      const lockSet = new Set((locks || []).map(l => l.user_id));
-
-      // 5) AI explanations for the week (keyed by fixture_id)
-      // We join via prediction_id; easiest is:
-      // - map AI prediction_id per fixture for AI user
-      // - then map meta by prediction_id
-      const predMap = new Map(); // fixture_id|user_id => prediction
+      const predMap = new Map();
       (preds || []).forEach(p => predMap.set(`${p.fixture_id}|${p.user_id}`, p));
 
       const aiPredIds = [];
-      for (const pl of players) {
-        if (!pl.is_ai) continue;
-        for (const fxId of fixtureIds) {
-          const p = predMap.get(`${fxId}|${pl.id}`);
+      players.filter(p => p.is_ai).forEach(ai => {
+        fixtureIds.forEach(fx => {
+          const p = predMap.get(`${fx}|${ai.id}`);
           if (p?.id) aiPredIds.push(p.id);
-        }
-      }
+        });
+      });
 
-      const aiExplainByPredId = new Map();
+      const aiExplain = new Map();
       if (aiPredIds.length) {
-        const { data: metas } = await supabase
+        const { data: meta } = await supabase
           .from('ai_prediction_meta')
           .select('prediction_id, ai_explanation')
           .eq('week_start', weekStartStr)
           .in('prediction_id', aiPredIds);
 
-        (metas || []).forEach(m => aiExplainByPredId.set(m.prediction_id, m.ai_explanation));
+        (meta || []).forEach(m => aiExplain.set(m.prediction_id, m.ai_explanation));
       }
 
-      // --- Header ---
-      const headRow = document.createElement('tr');
+      const hr = document.createElement('tr');
       const thFx = document.createElement('th');
       thFx.className = 'fixture-col';
       thFx.textContent = 'Fixture';
-      headRow.appendChild(thFx);
+      hr.appendChild(thFx);
 
       players.forEach(pl => {
         const th = document.createElement('th');
-        th.innerHTML = `<span class="player-header">${escapeHtml(pl.name)}${pl.is_ai ? ' <span class="ai-badge ai-inline">AI</span>' : ''}</span>`;
-        headRow.appendChild(th);
+        th.innerHTML = `${escapeHtml(pl.name)}${pl.is_ai ? ' <span class="ai-badge ai-inline">AI</span>' : ''}`;
+        hr.appendChild(th);
       });
+      headEl.appendChild(hr);
 
-      headEl.appendChild(headRow);
-
-      // --- Body ---
-      bodyEl.innerHTML = '';
       fixtures.forEach(fx => {
         const tr = document.createElement('tr');
-
         const tdFx = document.createElement('td');
         tdFx.className = 'fixture-col';
 
-        const isFinished =
-          String(fx.status || '').toUpperCase() === 'FINISHED' &&
-          fx.home_score != null && fx.away_score != null;
-
-        const kick = fx.utc_date ? new Date(fx.utc_date) : null;
-        const kickText = kick ? kick.toLocaleString() : '—';
-
+        const finished = fx.status === 'FINISHED' && fx.home_score != null;
         tdFx.innerHTML = `
           <div class="fx-meta">
             <span class="fx-names">${escapeHtml(fx.home_team)} vs ${escapeHtml(fx.away_team)}</span>
-            <span class="fx-kick">${escapeHtml(kickText)}</span>
-            ${isFinished ? `<span class="fx-score">${fx.home_score}–${fx.away_score}</span>` : ''}
-          </div>
-        `;
+            <span class="fx-kick">${new Date(fx.utc_date).toLocaleString()}</span>
+            ${finished ? `<span class="fx-score">${fx.home_score}–${fx.away_score}</span>` : ''}
+          </div>`;
         tr.appendChild(tdFx);
-
-        const actualOutcome = isFinished ? outcome(fx.home_score, fx.away_score) : null;
 
         players.forEach(pl => {
           const td = document.createElement('td');
-
-          const key = `${fx.id}|${pl.id}`;
-          const p = predMap.get(key);
-
-          const locked = lockSet.has(pl.id);
-          const lockBadge = locked ? `<span class="pill pill-lock">L</span>` : '';
+          const p = predMap.get(`${fx.id}|${pl.id}`);
 
           if (!p) {
-            td.innerHTML = `<span class="muted">—</span>${lockBadge}`;
+            td.innerHTML = '—';
             tr.appendChild(td);
             return;
           }
 
-          const h = p.home_goals;
-          const a = p.away_goals;
+          const tip = pl.is_ai && aiExplain.has(p.id)
+            ? ` <span class="ai-tip" data-tip="${escapeHtml(aiExplain.get(p.id))}">ℹ</span>`
+            : '';
 
-          // AI explanation tooltip
-          let tip = "";
-          if (pl.is_ai && p.id) {
-            const ex = aiExplainByPredId.get(p.id);
-            if (ex) {
-              td.title = ex; // hover tooltip
-              tip = ` <span class="ai-tip" aria-label="AI explanation available">ℹ</span>`;
-            }
+          td.innerHTML = `${p.home_goals}–${p.away_goals}${tip}`;
+
+          if (finished) {
+            const ao = outcome(fx.home_score, fx.away_score);
+            const po = outcome(p.home_goals, p.away_goals);
+            td.className =
+              (p.home_goals === fx.home_score && p.away_goals === fx.away_score)
+                ? 'pick-exact'
+                : (ao === po ? 'pick-correct' : 'pick-wrong');
+          } else {
+            td.className = 'pick-neutral';
           }
 
-          td.innerHTML = `${h}–${a}${lockBadge}${tip}`;
-
-          let cls = 'pick-neutral';
-          if (isFinished) {
-            const predOutcome = outcome(h, a);
-            if (h === fx.home_score && a === fx.away_score) cls = 'pick-exact';
-            else if (predOutcome === actualOutcome) cls = 'pick-correct';
-            else cls = 'pick-wrong';
-          }
-
-          td.classList.add(cls);
           tr.appendChild(td);
         });
 
         bodyEl.appendChild(tr);
       });
 
-      statusLine.textContent = `Loaded ${fixtures.length} fixtures and ${players.length} players.`;
+      statusLine.textContent = 'Loaded.';
       wrapper.style.display = '';
     }
   </script>
