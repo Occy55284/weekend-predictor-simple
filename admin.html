@@ -181,6 +181,7 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
+import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, parseISODate, formatWeekRange } from './app-week.js';
     // ---------- Utilities ----------
     const $ = (id)=>document.getElementById(id);
     const fixturesBody = $('fixturesBody');
@@ -208,13 +209,8 @@
       return dt;
     }
 
-    function isoDate(d){ return d.toISOString().slice(0,10); }
-
-    let weekStart, weekEnd;
-    function setWeekWindow(){
-      weekStart = startOfWeekUTC(new Date());
-      weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate()+7);
-      weekLabel.textContent = `${weekStart.toUTCString().slice(0,16)} — ${new Date(weekEnd-1).toUTCString().slice(0,16)}`;
+    function isoDate(d) {
+      return isoDateLocal(d);
     }
 
     function updateSelectedCounter(){

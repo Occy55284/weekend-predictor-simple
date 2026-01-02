@@ -145,6 +145,7 @@
   <!-- Logout wiring -->
   <script type="module">
     import { supabase } from './supabase-config.js';
+import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, parseISODate, formatWeekRange } from './app-week.js';
     document.addEventListener('DOMContentLoaded', () => {
       const navLogout = document.getElementById('navLogout');
       navLogout?.addEventListener('click', async (e) => {
@@ -170,33 +171,12 @@
     const navAdmin = document.getElementById('navAdmin');
 
     function pad(n){return String(n).padStart(2,'0')}
-    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
-
-    function startOfWeek(d=new Date()){
-      const x = new Date(d);
-      const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
-      x.setHours(0,0,0,0);
-      x.setDate(x.getDate() - (day - 1));
-      return x;
+    function isoDate(d) {
+      return isoDateLocal(d);
     }
-    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-
-    const weekStart = startOfWeek(); // Monday (local time)
-    const weekEnd = addDays(weekStart, 7); // next Monday
-    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
-
-    // --- Ensure profile row exists ---
-    async function ensureProfileExists(user) {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.warn('ensureProfileExists select error', error);
-        }
+    function addDays(d, n) {
+      return addDaysLocal(d, n);
+    }
 
         if (!data) {
           await supabase

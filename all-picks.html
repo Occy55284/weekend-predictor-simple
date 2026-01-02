@@ -126,6 +126,7 @@
 <script type="module">
   import { supabase } from './supabase-config.js';
 
+import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, parseISODate, formatWeekRange } from './app-week.js';
   const statusLine = document.getElementById('statusLine');
   const headEl = document.getElementById('matrixHead');
   const bodyEl = document.getElementById('matrixBody');
@@ -138,26 +139,12 @@
     );
   }
 
-  function startOfWeek(d) {
-    const x = new Date(d);
-    x.setHours(0,0,0,0);
-    const day = x.getDay();
-    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
-    return x;
-  }
-  function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-  function iso(d){ const x=new Date(d); x.setHours(0,0,0,0); return x.toISOString(); }
-  function outcome(h,a){ return h>a?'H':h<a?'A':'D'; }
-
-  const ws = startOfWeek(new Date());
-  const we = addDays(ws,7);
-  const weekStartStr = ws.toISOString().slice(0,10);
-
-  (async () => {
-    const { data:{session} } = await supabase.auth.getSession();
-    if(!session?.user){ location.replace('login.html'); return; }
-    await load();
-  })();
+  function startOfWeek(d = new Date()) {
+      return startOfWeekMonday(d);
+    }
+  function addDays(d, n) {
+      return addDaysLocal(d, n);
+    })();
 
   async function load(){
     statusLine.textContent = 'Loading…';

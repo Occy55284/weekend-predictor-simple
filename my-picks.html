@@ -118,6 +118,7 @@
   <!-- Logout -->
   <script type="module">
     import { supabase } from './supabase-config.js';
+import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, parseISODate, formatWeekRange } from './app-week.js';
     document.addEventListener('DOMContentLoaded', () => {
       const navLogout = document.getElementById('navLogout');
       navLogout?.addEventListener('click', async (e) => {

@@ -146,6 +146,7 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
+import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, parseISODate, formatWeekRange } from './app-week.js';
     const navAdmin = document.getElementById('navAdmin');
     const navLogout = document.getElementById('navLogout');
 
@@ -170,25 +171,16 @@
       }[c]));
     }
 
-    function startOfWeek(d) {
-      const x = new Date(d);
-      x.setHours(0,0,0,0);
-      const day = x.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      x.setDate(x.getDate() + diff);
-      return x;
+    function startOfWeek(d = new Date()) {
+      return startOfWeekMonday(d);
     }
 
     function addDays(d, n) {
-      const x = new Date(d);
-      x.setDate(x.getDate() + n);
-      return x;
+      return addDaysLocal(d, n);
     }
 
     function isoDateOnly(d) {
-      const x = new Date(d);
-      x.setHours(0,0,0,0);
-      return x.toISOString().slice(0,10);
+      return isoDateLocal(d);
     }
 
     function isoStart(d) {
