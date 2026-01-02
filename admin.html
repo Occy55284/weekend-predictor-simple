@@ -120,6 +120,12 @@
               <p class="muted admin-week">
                 Week window:
                 <span id="weekLabel">Loading…</span>
+                <span style="margin-left:10px; opacity:.85;">View:</span>
+                <select id="weekSelect" aria-label="Select week" style="margin-left:6px; padding:6px 10px; border-radius:10px; background:rgba(255,255,255,.06); color:#f9fafb; border:1px solid rgba(255,255,255,.14);">
+                  <option value="-1">Previous</option>
+                  <option value="0" selected>This</option>
+                  <option value="1">Next</option>
+                </select>
               </p>
             </div>
             <div class="admin-actions">
@@ -181,9 +187,10 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    import { startOfWeekMonday, isoDate, formatWeekRange } from './app-week.js';
+    import { startOfWeekMonday, addDays, isoDate, formatWeekRange } from './app-week.js';
+
     // ---------- Utilities ----------
-    const $ = (id)=>document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
     const fixturesBody = $('fixturesBody');
     const saveBtn = $('saveFeaturedBtn');
     const saveStatus = $('saveStatus');
@@ -192,13 +199,7 @@
     const subsMeta = $('subsMeta');
     const lockBtn = $('lockBtn');
     const weekLabel = $('weekLabel');
-
-    const weekStart = startOfWeekMonday(new Date());
-    const weekStartISO = weekStartISO;
-
-    function setWeekWindow(){
-      weekLabel.textContent = `Week window: ${formatWeekRange(weekStartISO)} (Start: ${weekStartISO})`;
-    }
+    const weekSelect = $('weekSelect');
 
     const errorBox = $('errorBox');
     const errorText = $('errorText');
@@ -209,22 +210,32 @@
       errorBox.style.display = 'block';
     }
 
-    function startOfWeekUTC(d=new Date()){
-      const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-      const dow = dt.getUTCDay(); // 0..6, 1=Mon
-      const offset = dow === 0 ? -6 : 1 - dow;
-      dt.setUTCDate(dt.getUTCDate() + offset);
-      return dt;
-    }
-
-    function isoDate(d) {
-      return isoDateLocal(d);
-    }
-
     function updateSelectedCounter(){
       const n = document.querySelectorAll('.feat:checked').length;
       selectedCountEl.textContent = n;
       saveBtn.disabled = (n !== 5);
+    }
+
+    // ---------- Week selection ----------
+    const baseWeekStartDate = startOfWeekMonday(new Date()); // local Monday
+    let weekOffset = 0; // -1 previous, 0 this, 1 next
+
+    function getWeekStartDate(){
+      return addDays(baseWeekStartDate, weekOffset * 7);
+    }
+
+    function getWeekStartISO(){
+      return isoDate(getWeekStartDate());
+    }
+
+    function getWeekEndISO(){
+      return isoDate(addDays(getWeekStartDate(), 7)); // exclusive end
+    }
+
+    function setWeekWindowLabel(){
+      const ws = getWeekStartISO();
+      const which = weekOffset === 0 ? 'This' : (weekOffset < 0 ? 'Previous' : 'Next');
+      weekLabel.textContent = `${which} week • ${formatWeekRange(ws)} (Start: ${ws})`;
     }
 
     // ---------- Data ----------
@@ -232,10 +243,13 @@
 
     async function secureSession(){
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
+      if (!session?.user) {
+        window.location.replace('login.html');
+        throw new Error('No session');
+      }
 
       // logout button
-      document.getElementById('navLogout').onclick = async ()=>{
+      document.getElementById('navLogout').onclick = async () => {
         await supabase.auth.signOut();
         window.location.replace('login.html');
       };
@@ -256,22 +270,25 @@
 
     async function loadFixtures(){
       fixturesBody.innerHTML = '<tr><td colspan="4" class="muted">Loading fixtures…</td></tr>';
+      const weekStartISO = getWeekStartISO();
+      const weekEndISO = getWeekEndISO();
+
       const { data, error } = await supabase
         .from('fixtures')
         .select('id,home_team,away_team,utc_date,home_score,away_score,status,featured')
         .gte('utc_date', weekStartISO)
-        .lt('utc_date', isoDate(weekEnd))
+        .lt('utc_date', weekEndISO)
         .order('utc_date', { ascending: true });
 
       if (error) {
-        fixturesBody.innerHTML =
-          '<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>';
+        fixturesBody.innerHTML = '<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>';
         throw error;
       }
+
       fixtures = data || [];
       if (!fixtures.length) {
-        fixturesBody.innerHTML =
-          '<tr><td colspan="4" class="muted">No fixtures for this week (yet).</td></tr>';
+        fixturesBody.innerHTML = '<tr><td colspan="4" class="muted">No fixtures in this week window.</td></tr>';
+        updateSelectedCounter();
         return;
       }
 
@@ -279,9 +296,10 @@
       for (const f of fixtures){
         const dt = new Date(f.utc_date);
         const datestr = dt.toISOString().replace('T',' ').slice(0,16) + ' UTC';
-        const res = (f.home_score ?? '') !== '' && (f.away_score ?? '') !== ''
+        const res = (f.home_score ?? null) !== null && (f.away_score ?? null) !== null
           ? `${f.home_score}–${f.away_score}`
           : (f.status || '—');
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><input type="checkbox" class="feat" data-id="${f.id}" ${f.featured ? 'checked' : ''} /></td>
@@ -291,23 +309,23 @@
         `;
         fixturesBody.appendChild(tr);
       }
-      document
-        .querySelectorAll('.feat')
-        .forEach(cb => cb.addEventListener('change', updateSelectedCounter));
+
+      document.querySelectorAll('.feat').forEach(cb => cb.addEventListener('change', updateSelectedCounter));
       updateSelectedCounter();
     }
 
     async function saveFeatured(){
       const checks = Array.from(document.querySelectorAll('.feat'));
-      const picked = checks.filter(c=>c.checked).map(c=>c.dataset.id);
+      const picked = checks.filter(c => c.checked).map(c => c.dataset.id);
       if (picked.length !== 5){
         alert('Please select exactly 5 fixtures.');
         return;
       }
+
       saveBtn.disabled = true;
       saveStatus.textContent = 'Saving…';
       try{
-        const idsAll = fixtures.map(f=>f.id);
+        const idsAll = fixtures.map(f => f.id);
         if (idsAll.length){
           const { error: e1 } = await supabase
             .from('fixtures')
@@ -329,11 +347,12 @@
         showError(e);
       } finally {
         saveBtn.disabled = false;
-        setTimeout(()=>saveStatus.textContent='', 1500);
+        setTimeout(() => (saveStatus.textContent = ''), 1500);
       }
     }
 
     async function lockWeek(){
+      const weekStartISO = getWeekStartISO();
       lockBtn.disabled = true;
       try{
         const { error } = await supabase
@@ -343,7 +362,7 @@
             { onConflict: 'week_start' }
           );
         if (error) throw error;
-        alert('Week locked for everyone.');
+        alert(`Week locked: ${weekStartISO}`);
       } catch(e){
         showError(e);
         alert('Could not lock the week.');
@@ -356,8 +375,8 @@
       listPicked.innerHTML = '';
       subsMeta.textContent = 'Loading…';
 
-      const featured = fixtures.filter(f=>f.featured);
-      const featuredIds = featured.map(f=>f.id);
+      const featured = fixtures.filter(f => f.featured);
+      const featuredIds = featured.map(f => f.id);
       const totalNeeded = featuredIds.length;
 
       if (totalNeeded === 0){
@@ -373,8 +392,7 @@
 
       const userTotals = new Map();
       for (const p of preds || []){
-        const prev = userTotals.get(p.user_id) || 0;
-        userTotals.set(p.user_id, prev + 1);
+        userTotals.set(p.user_id, (userTotals.get(p.user_id) || 0) + 1);
       }
 
       const userIds = [...userTotals.keys()];
@@ -383,7 +401,6 @@
         return;
       }
 
-      // 🔹 only id + display_name (no email column)
       const { data: profs, error: profErr } = await supabase
         .from('profiles')
         .select('id, display_name')
@@ -395,27 +412,37 @@
         name: p.display_name || 'Player',
         c: userTotals.get(p.id) || 0
       }));
-      items.sort((a,b)=> (b.c===a.c ? a.name.localeCompare(b.name) : b.c-a.c));
+      items.sort((a,b) => (b.c === a.c ? a.name.localeCompare(b.name) : b.c - a.c));
 
       listPicked.innerHTML = '';
-      items.forEach(it=>{
+      for (const it of items){
         const li = document.createElement('li');
         li.className = 'small';
         const tick = it.c >= totalNeeded ? ' ✓' : '';
         li.textContent = `${it.name} — ${it.c}/${totalNeeded}${tick}`;
         listPicked.appendChild(li);
-      });
+      }
 
-      subsMeta.textContent =
-        `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
+      subsMeta.textContent = `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
+    }
+
+    async function onWeekChange(){
+      weekOffset = Number(weekSelect.value || 0);
+      setWeekWindowLabel();
+      saveStatus.textContent = '';
+      await loadFixtures();
+      await loadSubmissions();
     }
 
     async function init(){
       try{
-        setWeekWindow();
         await secureSession();
         saveBtn.onclick = saveFeatured;
         lockBtn.onclick = lockWeek;
+        weekSelect.onchange = () => onWeekChange().catch(showError);
+
+        // initial render
+        setWeekWindowLabel();
         await loadFixtures();
         await loadSubmissions();
       } catch(e){
