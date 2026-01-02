@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wallet • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css" />
-  <style>
+  
+  <!-- Auth gate (standard) -->
+  <script type="module">
+    import { requireSession } from './app-auth.js';
+    await requireSession();
+  </script>
+<style>
     .grid { display:grid; grid-template-columns: 1fr; gap: 14px; }
     @media (min-width: 980px) { .grid { grid-template-columns: 1.4fr 1fr; } }
     .row { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }

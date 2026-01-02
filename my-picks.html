@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Picks • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
-  <style>
+  
+  <!-- Auth gate (standard) -->
+  <script type="module">
+    import { requireSession } from './app-auth.js';
+    await requireSession();
+  </script>
+<style>
     .small-note { margin-top: 8px; font-size: 0.85rem; }
     .muted-center { text-align: center; color: #9ca3af; font-size: 0.9rem; }
     .pill {

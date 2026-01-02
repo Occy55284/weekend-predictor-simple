@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
-  <style>
+  
+  <!-- Auth gate (standard) -->
+  <script type="module">
+    import { requireSession } from './app-auth.js';
+    await requireSession();
+  </script>
+<style>
     .admin-header{
       display:flex;
       justify-content:space-between;

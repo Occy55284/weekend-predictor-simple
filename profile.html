@@ -5,18 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Your Profile • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css?v=96" />
-
-  <!-- Redirect if not logged in -->
+  <!-- Auth gate (standard) -->
   <script type="module">
-    import { supabase } from './supabase-config.js';
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.replace('login.html');
-      throw new Error('Redirecting…');
-    }
+    import { requireSession } from './app-auth.js';
+    await requireSession();
   </script>
-
-  <style>
+<style>
     .msg {
       margin-top: 10px;
       min-height: 1.1em;

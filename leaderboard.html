@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard • Weekend Predictor</title>
   <link rel="stylesheet" href="brand.css" />
-  <style>
+  
+  <!-- Auth gate (standard) -->
+  <script type="module">
+    import { requireSession } from './app-auth.js';
+    await requireSession();
+  </script>
+<style>
     /* Landscape like All Picks / Stats */
     .main-layout { grid-template-columns: 1fr !important; }
 
