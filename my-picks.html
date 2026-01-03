@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Picks • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=115" />
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>My Picks • Weekend Predictor</title>
+<link href="brand.css?v=200" rel="stylesheet"/>
+<style>
     /* Remove hero/logo/wallpaper */
     body { background: #f8fafc !important; background-image: none !important; }
     .hero,.page-hero,.wall,.wallpaper,.bg-hero,.brand-hero,
@@ -40,55 +41,53 @@
   </style>
 </head>
 <body>
-  <header class="top">
-    <div class="bar">
-      <a class="brand" href="index.html">
-        <div class="badge">WP</div>
+<header class="top">
+<div class="bar">
+<a class="brand" href="index.html">
+<div class="badge">WP</div>
         Weekend Predictor
       </a>
-      <nav class="nav">
-        <a href="predict.html" data-nav="predict">Predict</a>
-        <a href="my-picks.html" data-nav="my-picks" class="active">My Picks</a>
-        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-        <a href="profile.html" data-nav="profile">Profile</a>
-        <a href="rivals.html" data-nav="rivals">Rivals</a>
-        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a class="logout" id="navLogout" href="login.html">Logout</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="wrap grid-2">
-    <section class="card">
-      <h1>My picks</h1>
-      <div class="muted" style="margin-bottom:6px">Your selections for the current gameweek.</div>
-
-      <div id="empty" class="empty" style="display:none">No picks found for your account.</div>
-
-      <div id="tableWrap" style="display:none">
-        <table aria-label="Your picks">
-          <thead>
-            <tr>
-              <th>Fixture</th>
-              <th class="center">Your Pick</th>
-              <th class="center">Result</th>
-              <th class="right">Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-        <div class="meta" id="lastUpdated" style="margin-top:6px"></div>
-      </div>
-    </section>
-
-    <aside class="card">
-      <div class="meta"><strong>Tip:</strong> Once your picks are <em>locked</em>, they cannot be changed.</div>
-      <div class="meta" style="margin-top:6px">Head-to-head: try the new <a href="rivals.html"><strong>Rivals</strong></a> page.</div>
-    </aside>
-  </main>
-
-  <!-- Auth + logout wiring -->
-  <script type="module">
+<nav class="nav-links">
+<a href="index.html">Home</a>
+<a href="predict.html">Predict</a>
+<a href="leaderboard.html">Leaderboard</a>
+<a href="my-picks.html">My Picks</a>
+<a href="all-picks.html">All Picks</a>
+<a href="stats.html">Stats</a>
+<a href="wallet.html">Wallet</a>
+<a href="profile.html">Profile</a>
+<a href="admin.html">Admin</a>
+<a href="login.html">Logout</a>
+</nav>
+</div>
+</header>
+<main class="wrap grid-2">
+<section class="card">
+<h1>My picks</h1>
+<div class="muted" style="margin-bottom:6px">Your selections for the current gameweek.</div>
+<div class="empty" id="empty" style="display:none">No picks found for your account.</div>
+<div id="tableWrap" style="display:none">
+<table aria-label="Your picks">
+<thead>
+<tr>
+<th>Fixture</th>
+<th class="center">Your Pick</th>
+<th class="center">Result</th>
+<th class="right">Status</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+<div class="meta" id="lastUpdated" style="margin-top:6px"></div>
+</div>
+</section>
+<aside class="card">
+<div class="meta"><strong>Tip:</strong> Once your picks are <em>locked</em>, they cannot be changed.</div>
+<div class="meta" style="margin-top:6px">Head-to-head: try the new <a href="rivals.html"><strong>Rivals</strong></a> page.</div>
+</aside>
+</main>
+<!-- Auth + logout wiring -->
+<script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
       const navLogout = document.getElementById('navLogout');
@@ -99,9 +98,8 @@
       });
     });
   </script>
-
-  <!-- Page logic: picks (picks) + fixture details (fixtures) -->
-  <script type="module">
+<!-- Page logic: picks (picks) + fixture details (fixtures) -->
+<script type="module">
     import { supabase } from './supabase-config.js';
 
     const $ = id => document.getElementById(id);

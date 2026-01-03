@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Make Predictions • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=96" />
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Make Predictions • Weekend Predictor</title>
+<link href="brand.css?v=200" rel="stylesheet"/>
+<style>
     .wrap{max-width:960px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
           box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
@@ -20,12 +21,10 @@
     .ok{color:#16a34a}.err{color:#b91c1c}.muted{color:#64748b}
     .empty{padding:10px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
   </style>
-
-  <!-- Supabase client -->
-  <script type="module" src="supabase-config.js"></script>
-
-  <!-- Early logout wiring -->
-  <script type="module">
+<!-- Supabase client -->
+<script src="supabase-config.js" type="module"></script>
+<!-- Early logout wiring -->
+<script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
       const navLogout = document.getElementById('navLogout');
@@ -38,53 +37,52 @@
   </script>
 </head>
 <body class="bg-hero">
-  <header class="top">
-    <div class="inner">
-      <a class="logo" href="index.html">WP</a>
-      <nav class="topnav">
-        <a href="predict.html" data-nav="predict" class="active">Predict</a>
-        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-        <a href="profile.html" data-nav="profile">Profile</a>
-        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a class="logout" id="navLogout" href="login.html">Logout</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <section class="card">
-      <h2>This Week’s Predictions</h2>
-      <div id="weekLabel" class="meta">—</div>
-
-      <div id="empty" class="empty" style="display:none">
-        <div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>
-      </div>
-
-      <table id="table" style="display:none">
-        <thead>
-          <tr>
-            <th>Fixture</th>
-            <th style="width:120px">Home</th>
-            <th style="width:120px">Away</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-
-      <div class="actions" style="margin-top:10px">
-        <button class="btn" id="lockBtn" type="button">Lock my picks</button>
-      </div>
-      <div id="msg" class="msg"></div>
-      <p class="meta">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.</p>
-    </section>
-
-    <section class="card">
-      <h2>Season Progress</h2>
-      <div class="meta" id="progress">—</div>
-    </section>
-  </main>
-
-  <script type="module">
+<header class="top">
+<div class="inner">
+<a class="logo" href="index.html">WP</a>
+<nav class="nav-links">
+<a href="index.html">Home</a>
+<a href="predict.html">Predict</a>
+<a href="leaderboard.html">Leaderboard</a>
+<a href="my-picks.html">My Picks</a>
+<a href="all-picks.html">All Picks</a>
+<a href="stats.html">Stats</a>
+<a href="wallet.html">Wallet</a>
+<a href="profile.html">Profile</a>
+<a href="admin.html">Admin</a>
+<a href="login.html">Logout</a>
+</nav>
+</div>
+</header>
+<main class="wrap">
+<section class="card">
+<h2>This Week’s Predictions</h2>
+<div class="meta" id="weekLabel">—</div>
+<div class="empty" id="empty" style="display:none">
+<div class="muted">No featured fixtures found for this week yet. Once an admin selects the 5 games, they’ll appear here.</div>
+</div>
+<table id="table" style="display:none">
+<thead>
+<tr>
+<th>Fixture</th>
+<th style="width:120px">Home</th>
+<th style="width:120px">Away</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+<div class="actions" style="margin-top:10px">
+<button class="btn" id="lockBtn" type="button">Lock my picks</button>
+</div>
+<div class="msg" id="msg"></div>
+<p class="meta">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result.</p>
+</section>
+<section class="card">
+<h2>Season Progress</h2>
+<div class="meta" id="progress">—</div>
+</section>
+</main>
+<script type="module">
     import { supabase } from './supabase-config.js';
 
     // --- Elements & helpers ---

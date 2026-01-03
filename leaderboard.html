@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Leaderboard • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=90" />
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Leaderboard • Weekend Predictor</title>
+<link href="brand.css?v=200" rel="stylesheet"/>
+<style>
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
           box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
@@ -30,8 +31,8 @@
     .badge.pro{background:linear-gradient(135deg,#1f357a,#2c4ba8);color:#fff}
     .badge.goat{background:linear-gradient(135deg,#2c4ba8,#7c3aed);color:#fff;box-shadow:0 0 8px rgba(124,58,237,.4)}
   </style>
-  <script type="module" src="supabase-config.js"></script>
-  <script type="module">
+<script src="supabase-config.js" type="module"></script>
+<script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
       const navLogout = document.getElementById('navLogout');
@@ -44,49 +45,52 @@
   </script>
 </head>
 <body class="bg-hero">
-  <header class="top">
-    <div class="inner">
-      <a class="logo" href="index.html">WP</a>
-      <nav class="topnav">
-        <a href="predict.html" data-nav="predict">Predict</a>
-        <a href="leaderboard.html" data-nav="leaderboard" class="active">Leaderboard</a>
-        <a href="profile.html" data-nav="profile">Profile</a>
-        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a class="logout" id="navLogout" href="login.html">Logout</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <section class="card">
-      <h1>Leaderboard</h1>
-      <div class="controls">
-        <div class="tabs">
-          <button id="tabWeek" class="tab active" type="button">This week</button>
-          <button id="tabSeason" class="tab" type="button">Season</button>
-        </div>
-        <input id="range" class="range" type="week" />
-        <button id="refreshBtn" class="ghost" type="button">Refresh</button>
-        <div class="meta" id="lastUpdated">—</div>
-      </div>
-      <div class="note">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result</div>
-      <div class="meta" id="status" style="margin-top:6px;">—</div>
-      <table>
-        <thead>
-          <tr>
-            <th class="rank">#</th>
-            <th>Player</th>
-            <th style="width:160px">Correct scores</th>
-            <th style="width:170px">Correct results</th>
-            <th style="width:110px">Points</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </section>
-  </main>
-
-  <script type="module">
+<header class="top">
+<div class="inner">
+<a class="logo" href="index.html">WP</a>
+<nav class="nav-links">
+<a href="index.html">Home</a>
+<a href="predict.html">Predict</a>
+<a href="leaderboard.html">Leaderboard</a>
+<a href="my-picks.html">My Picks</a>
+<a href="all-picks.html">All Picks</a>
+<a href="stats.html">Stats</a>
+<a href="wallet.html">Wallet</a>
+<a href="profile.html">Profile</a>
+<a href="admin.html">Admin</a>
+<a href="login.html">Logout</a>
+</nav>
+</div>
+</header>
+<main class="wrap">
+<section class="card">
+<h1>Leaderboard</h1>
+<div class="controls">
+<div class="tabs">
+<button class="tab active" id="tabWeek" type="button">This week</button>
+<button class="tab" id="tabSeason" type="button">Season</button>
+</div>
+<input class="range" id="range" type="week"/>
+<button class="ghost" id="refreshBtn" type="button">Refresh</button>
+<div class="meta" id="lastUpdated">—</div>
+</div>
+<div class="note">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result</div>
+<div class="meta" id="status" style="margin-top:6px;">—</div>
+<table>
+<thead>
+<tr>
+<th class="rank">#</th>
+<th>Player</th>
+<th style="width:160px">Correct scores</th>
+<th style="width:170px">Correct results</th>
+<th style="width:110px">Points</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</section>
+</main>
+<script type="module">
     import { supabase } from './supabase-config.js';
     (async ()=>{
       try{

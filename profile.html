@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your Profile • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=104" />
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Your Profile • Weekend Predictor</title>
+<link href="brand.css?v=200" rel="stylesheet"/>
+<style>
     .wrap{max-width:880px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
           box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
@@ -36,78 +37,75 @@
   </style>
 </head>
 <body>
-  <header class="top">
-    <div class="bar">
-      <a class="brand" href="index.html">
-        <div class="badge">WP</div>
+<header class="top">
+<div class="bar">
+<a class="brand" href="index.html">
+<div class="badge">WP</div>
         Weekend Predictor
       </a>
-      <nav class="nav">
-        <a href="predict.html" data-nav="predict">Predict</a>
-        <a href="my-picks.html" data-nav="my-picks">My Picks</a>
-        <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-        <a href="profile.html" data-nav="profile" class="active">Profile</a>
-        <a href="rivals.html" data-nav="rivals">Rivals</a>
-        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
-        <a class="logout" id="navLogout" href="login.html">Logout</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <section class="card">
-      <h1>Your profile</h1>
-      <form id="form">
-        <div class="field">
-          <label for="name">Display name</label>
-          <input id="name" type="text" placeholder="Your name" required />
-        </div>
-        <div class="actions">
-          <button id="save" type="submit" class="btn primary">Save changes</button>
-          <a class="btn" href="predict.html">Go to predictions</a>
-          <a class="btn" href="rivals.html">Open Rivals</a>
-        </div>
-      </form>
-      <div id="message" class="msg"></div>
-    </section>
-
-    <section class="card">
-      <div class="grid">
-        <div>
-          <div class="big" style="margin-bottom:6px;">Your Status</div>
-          <div class="muted" style="margin-bottom:10px;">Badges are earned from exact score predictions.</div>
-          <div style="margin-bottom:8px">
-            <span id="badgePill" class="badge-pill hide"></span>
-            <span id="badgeNone" class="muted">— none yet</span>
-          </div>
-
-          <div class="muted">
-            <div>Exact scores: <strong id="statExact">0</strong></div>
-            <div>Correct results: <strong id="statResult">0</strong></div>
-            <div>Points: <strong id="statPoints">0</strong></div>
-            <div>Season rank: <strong id="statRank">—</strong></div>
-          </div>
-
-          <div class="bar" style="margin:12px 0 6px">
-            <div id="barFill" style="width:0%"></div>
-          </div>
-          <div id="nextText" class="muted">Next milestone: ROOKIE (10) — 10 to go</div>
-        </div>
-
-        <div>
-          <div class="big" style="margin-bottom:6px;">How badges work</div>
-          <ul class="muted">
-            <li>Rookie (10), Amateur (15), Pro (20), GOAT (30) — based on total exact scores.</li>
-            <li>Badges appear next to your name on the Leaderboard.</li>
-            <li>Scoring: 5 pts exact score • 3 pts correct result.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Logout -->
-  <script type="module">
+<nav class="nav-links">
+<a href="index.html">Home</a>
+<a href="predict.html">Predict</a>
+<a href="leaderboard.html">Leaderboard</a>
+<a href="my-picks.html">My Picks</a>
+<a href="all-picks.html">All Picks</a>
+<a href="stats.html">Stats</a>
+<a href="wallet.html">Wallet</a>
+<a href="profile.html">Profile</a>
+<a href="admin.html">Admin</a>
+<a href="login.html">Logout</a>
+</nav>
+</div>
+</header>
+<main class="wrap">
+<section class="card">
+<h1>Your profile</h1>
+<form id="form">
+<div class="field">
+<label for="name">Display name</label>
+<input id="name" placeholder="Your name" required="" type="text"/>
+</div>
+<div class="actions">
+<button class="btn primary" id="save" type="submit">Save changes</button>
+<a class="btn" href="predict.html">Go to predictions</a>
+<a class="btn" href="rivals.html">Open Rivals</a>
+</div>
+</form>
+<div class="msg" id="message"></div>
+</section>
+<section class="card">
+<div class="grid">
+<div>
+<div class="big" style="margin-bottom:6px;">Your Status</div>
+<div class="muted" style="margin-bottom:10px;">Badges are earned from exact score predictions.</div>
+<div style="margin-bottom:8px">
+<span class="badge-pill hide" id="badgePill"></span>
+<span class="muted" id="badgeNone">— none yet</span>
+</div>
+<div class="muted">
+<div>Exact scores: <strong id="statExact">0</strong></div>
+<div>Correct results: <strong id="statResult">0</strong></div>
+<div>Points: <strong id="statPoints">0</strong></div>
+<div>Season rank: <strong id="statRank">—</strong></div>
+</div>
+<div class="bar" style="margin:12px 0 6px">
+<div id="barFill" style="width:0%"></div>
+</div>
+<div class="muted" id="nextText">Next milestone: ROOKIE (10) — 10 to go</div>
+</div>
+<div>
+<div class="big" style="margin-bottom:6px;">How badges work</div>
+<ul class="muted">
+<li>Rookie (10), Amateur (15), Pro (20), GOAT (30) — based on total exact scores.</li>
+<li>Badges appear next to your name on the Leaderboard.</li>
+<li>Scoring: 5 pts exact score • 3 pts correct result.</li>
+</ul>
+</div>
+</div>
+</section>
+</main>
+<!-- Logout -->
+<script type="module">
     import { supabase } from './supabase-config.js';
     document.addEventListener('DOMContentLoaded', ()=>{
       const navLogout = document.getElementById('navLogout');
@@ -118,9 +116,8 @@
       });
     });
   </script>
-
-  <!-- Profile logic -->
-  <script type="module">
+<!-- Profile logic -->
+<script type="module">
     import { supabase } from './supabase-config.js';
 
     const $ = (id)=> document.getElementById(id);

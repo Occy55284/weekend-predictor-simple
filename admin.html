@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=60" />
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Admin • Weekend Predictor</title>
+<link href="brand.css?v=200" rel="stylesheet"/>
+<style>
     .wrap{max-width:1000px;margin:0 auto;padding:16px}
     .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
     .card h2{margin:0 0 10px;color:#1f357a}
@@ -27,70 +28,67 @@
   </style>
 </head>
 <body>
-  <!-- Top nav -->
-  <nav class="topnav">
-    <a href="predict.html" data-nav="predict">Predict</a>
-    <a href="my-picks.html" data-nav="mypicks">My Picks</a>
-    <a href="leaderboard.html" data-nav="leaderboard">Leaderboard</a>
-    <a href="profile.html" data-nav="profile">Profile</a>
-    <a href="admin.html" class="active" data-nav="admin">Admin</a>
-    <button class="logout" id="navLogout">Logout</button>
-  </nav>
-
-  <main class="wrap">
-    <!-- Header -->
-    <section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <div>
-        <h2>Admin Dashboard</h2>
-        <div class="meta">Week of <span id="weekLabel">—</span></div>
-      </div>
-      <div class="row-actions">
-        <button id="lockBtn" class="btn">Lock Week for Everyone</button>
-      </div>
-    </section>
-
-    <!-- Featured fixtures -->
-    <section class="card">
-      <h2>Pick This Week’s Featured Fixtures</h2>
-      <p class="meta">Select <b>exactly 5</b> fixtures for players to predict. Then click <b>Save Featured</b>.</p>
-
-      <div class="row-actions" style="margin:8px 0 10px">
-        <span class="pill">Selected: <span id="selectedCount">0</span>/5</span>
-        <button id="saveFeaturedBtn" class="btn" disabled>Save Featured</button>
-        <span id="saveStatus" class="meta"></span>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Pick</th>
-            <th>Date (UTC)</th>
-            <th>Fixture</th>
-            <th>Status / Result</th>
-          </tr>
-        </thead>
-        <tbody id="fixturesBody">
-          <tr><td colspan="4" class="muted">Loading fixtures…</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Submissions (ONLY those who picked) -->
-    <section class="card">
-      <h2>Who Has Submitted Picks (This Week)</h2>
-      <div class="meta" id="subsMeta">Loading…</div>
-      <ul class="list" id="listPicked"></ul>
-    </section>
-
-    <!-- Error box (so “loading” doesn’t hang silently) -->
-    <section class="card errors" id="errorBox">
-      <strong>Errors</strong>
-      <pre id="errorText"></pre>
-    </section>
-  </main>
-
-  <script type="module" src="supabase-config.js"></script>
-  <script type="module">
+<!-- Top nav -->
+<nav class="nav-links">
+<a href="index.html">Home</a>
+<a href="predict.html">Predict</a>
+<a href="leaderboard.html">Leaderboard</a>
+<a href="my-picks.html">My Picks</a>
+<a href="all-picks.html">All Picks</a>
+<a href="stats.html">Stats</a>
+<a href="wallet.html">Wallet</a>
+<a href="profile.html">Profile</a>
+<a href="admin.html">Admin</a>
+<a href="login.html">Logout</a>
+</nav>
+<main class="wrap">
+<!-- Header -->
+<section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div>
+<h2>Admin Dashboard</h2>
+<div class="meta">Week of <span id="weekLabel">—</span></div>
+</div>
+<div class="row-actions">
+<button class="btn" id="lockBtn">Lock Week for Everyone</button>
+</div>
+</section>
+<!-- Featured fixtures -->
+<section class="card">
+<h2>Pick This Week’s Featured Fixtures</h2>
+<p class="meta">Select <b>exactly 5</b> fixtures for players to predict. Then click <b>Save Featured</b>.</p>
+<div class="row-actions" style="margin:8px 0 10px">
+<span class="pill">Selected: <span id="selectedCount">0</span>/5</span>
+<button class="btn" disabled="" id="saveFeaturedBtn">Save Featured</button>
+<span class="meta" id="saveStatus"></span>
+</div>
+<table>
+<thead>
+<tr>
+<th>Pick</th>
+<th>Date (UTC)</th>
+<th>Fixture</th>
+<th>Status / Result</th>
+</tr>
+</thead>
+<tbody id="fixturesBody">
+<tr><td class="muted" colspan="4">Loading fixtures…</td></tr>
+</tbody>
+</table>
+</section>
+<!-- Submissions (ONLY those who picked) -->
+<section class="card">
+<h2>Who Has Submitted Picks (This Week)</h2>
+<div class="meta" id="subsMeta">Loading…</div>
+<ul class="list" id="listPicked"></ul>
+</section>
+<!-- Error box (so “loading” doesn’t hang silently) -->
+<section class="card errors" id="errorBox">
+<strong>Errors</strong>
+<pre id="errorText"></pre>
+</section>
+</main>
+<script src="supabase-config.js" type="module"></script>
+<script type="module">
     import { supabase } from './supabase-config.js';
 
     // ---------- Utilities ----------

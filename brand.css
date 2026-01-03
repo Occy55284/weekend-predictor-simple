@@ -1,28 +1,102 @@
-/* === Hero Background (Option A) ===
-   Apply by adding class="bg-hero" to the <body> of a page.
-   Uses a dark overlay + mild blur so content stays readable. */
+/* Weekend Predictor - Brand */
+:root{
+  --bg:#0b1220;
+  --card:rgba(15,23,42,0.72);
+  --card2:rgba(2,6,23,0.55);
+  --text:#f9fafb;
+  --muted:rgba(249,250,251,0.72);
+  --stroke:rgba(148,163,184,0.22);
+  --stroke2:rgba(148,163,184,0.35);
+  --accent:rgba(59,130,246,0.9);
+  --danger:rgba(239,68,68,0.9);
+  --shadow:0 10px 30px rgba(0,0,0,0.35);
+}
 
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--text);
+  background: radial-gradient(1200px 600px at 20% 10%, rgba(59,130,246,0.18), transparent 60%),
+              radial-gradient(1000px 500px at 90% 20%, rgba(239,68,68,0.16), transparent 55%),
+              var(--bg);
+  min-height:100vh;
+}
+
+/* Optional hero background image (if pages use it) */
 body.bg-hero{
-  /* point this to your image path */
-  --hero-img: url("prem-hero.jpg");
-  --hero-tint: rgba(0,0,0,.45);   /* overlay strength */
-  --hero-blur: 6px;               /* background blur */
-  background-image: var(--hero-img);
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  position: relative;
+  background-image:
+    radial-gradient(1200px 600px at 20% 10%, rgba(59,130,246,0.18), transparent 60%),
+    radial-gradient(1000px 500px at 90% 20%, rgba(239,68,68,0.16), transparent 55%),
+    url("prem-hero.jpg");
+  background-size:cover;
+  background-position:center;
+  background-attachment:fixed;
 }
 
-body.bg-hero::before{
-  content:"";
-  position: fixed;
-  inset: 0;
-  background: var(--hero-tint); /* keeps the soft dark overlay */
-  z-index: 0;
+a{color:inherit}
+
+/* Top bar / header containers used across pages */
+.topbar, header, .header{
+  width:min(1200px, calc(100% - 32px));
+  margin:16px auto 0;
+  padding:14px 18px;
+  border-radius:22px;
+  background: linear-gradient(180deg, rgba(2,6,23,0.55), rgba(2,6,23,0.32));
+  border:1px solid var(--stroke);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
 }
 
-body.bg-hero > *{
-  position: relative;
-  z-index: 1; /* keep your cards/nav above the overlay */
+.nav-links{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:flex-end;
+  align-items:center;
 }
+
+.nav-links a{
+  text-decoration:none;
+  padding:10px 14px;
+  border-radius:14px;
+  border:1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(15,23,42,0.70), rgba(15,23,42,0.40));
+  color:var(--text);
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.nav-links a:hover{
+  transform: translateY(-1px);
+  border-color: var(--stroke2);
+}
+
+.nav-links a.active{
+  border-color: rgba(59,130,246,0.65);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.18) inset;
+}
+
+/* Cards */
+.card, .panel, .box{
+  background: linear-gradient(180deg, var(--card), var(--card2));
+  border:1px solid var(--stroke);
+  border-radius:22px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+}
+
+.muted{color:var(--muted)}
+
+/* Buttons */
+button, .btn{
+  cursor:pointer;
+  border-radius:14px;
+  padding:10px 14px;
+  border:1px solid var(--stroke);
+  background: rgba(15,23,42,0.70);
+  color:var(--text);
+}
+button:hover, .btn:hover{border-color:var(--stroke2)}
+button.primary, .btn.primary{border-color:rgba(59,130,246,0.55)}
+button.danger, .btn.danger{border-color:rgba(239,68,68,0.55)}

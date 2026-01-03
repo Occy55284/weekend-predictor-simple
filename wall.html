@@ -40,10 +40,10 @@
 </table>
 <p class="muted" style="margin-top:8px"><a href="index.html">← Back to home</a></p>
 </div>
-
-
-<script type="module">import { supabase } from './supabase-config.js';
-// (We keep crests for teams here; NOT player-team badges)
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script>
+    // (We keep crests for teams here; NOT player-team badges)
     const CRESTS = {
       'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
       'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
@@ -77,8 +77,9 @@
 
     async function loadPredictions(){
       const msg=document.getElementById('msg'); const table=document.getElementById('predTable'); const tbody=table.querySelector('tbody');
-      const client = supabase;
-// 1) Pull UPCOMING fixtures only
+      const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+      // 1) Pull UPCOMING fixtures only
       const nowIso = new Date().toISOString();
       const { data: fixes, error: fErr } = await client
         .from('fixtures')

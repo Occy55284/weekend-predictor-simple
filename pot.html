@@ -65,11 +65,12 @@
 <p id="winnerMsg" style="display:none; font-weight:700; margin-top:10px;"></p>
 <p class="muted" style="margin-top:10px"><a href="leaderboard.html">← Leaderboard</a> · <a href="index.html">Home</a></p>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script>
+    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-
-<script type="module">import { supabase } from './supabase-config.js';
-const client = supabase;
-// Weekend window (Europe/London): Fri 00:00 → Mon 03:00
+    // Weekend window (Europe/London): Fri 00:00 → Mon 03:00
     function currentWeekendRange(){
       // Compute in local time then use ISO; this is approximate but fine for a friendly pool.
       const now = new Date();
