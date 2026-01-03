@@ -1,13 +1,14 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Occy Weekend Football — Weekend Pot</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
+<meta charset="utf-8"/>
+<title>Occy Weekend Football — Weekend Pot</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<link href="/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="/favicon.svg" rel="apple-touch-icon"/>
+<meta content="#0f172a" name="theme-color"/>
+<style>
     body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
       background:linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
     header { text-align:center; margin:40px 0 24px; }
@@ -26,55 +27,49 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>⚽ Occy Weekend Football · Weekend Pot</h1>
-    <p class="muted">Everyone chips in offline · App tracks who paid and who won</p>
-  </header>
+<header>
+<h1>⚽ Occy Weekend Football · Weekend Pot</h1>
+<p class="muted">Everyone chips in offline · App tracks who paid and who won</p>
+</header>
+<div class="card">
+<div class="row">
+<div><b>Weekend:</b> <span id="rangeLabel">—</span></div>
+<div style="margin-left:auto">
+<b>Entry (£):</b> <input id="entryFee" min="0" step="0.5" type="number" value="2"/>
+<button id="refresh">Recalculate</button>
+</div>
+</div>
+<p class="muted" id="note">No payments are taken by the app. Settle offline.</p>
+<table id="tbl" style="display:none">
+<thead>
+<tr>
+<th>#</th>
+<th>Name</th>
+<th>Points</th>
+<th>Exact</th>
+<th>Paid?</th>
+</tr>
+</thead>
+<tbody></tbody>
+<tfoot>
+<tr>
+<td colspan="4" style="text-align:right"><b>Players marked paid:</b></td>
+<td id="paidCount">0</td>
+</tr>
+<tr>
+<td colspan="4" style="text-align:right"><b>Pot total (£):</b></td>
+<td id="potTotal">£0.00</td>
+</tr>
+</tfoot>
+</table>
+<p id="winnerMsg" style="display:none; font-weight:700; margin-top:10px;"></p>
+<p class="muted" style="margin-top:10px"><a href="leaderboard.html">← Leaderboard</a> · <a href="index.html">Home</a></p>
+</div>
 
-  <div class="card">
-    <div class="row">
-      <div><b>Weekend:</b> <span id="rangeLabel">—</span></div>
-      <div style="margin-left:auto">
-        <b>Entry (£):</b> <input id="entryFee" type="number" min="0" step="0.5" value="2" />
-        <button id="refresh">Recalculate</button>
-      </div>
-    </div>
 
-    <p id="note" class="muted">No payments are taken by the app. Settle offline.</p>
-
-    <table id="tbl" style="display:none">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Points</th>
-          <th>Exact</th>
-          <th>Paid?</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" style="text-align:right"><b>Players marked paid:</b></td>
-          <td id="paidCount">0</td>
-        </tr>
-        <tr>
-          <td colspan="4" style="text-align:right"><b>Pot total (£):</b></td>
-          <td id="potTotal">£0.00</td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <p id="winnerMsg" style="display:none; font-weight:700; margin-top:10px;"></p>
-    <p class="muted" style="margin-top:10px"><a href="leaderboard.html">← Leaderboard</a> · <a href="index.html">Home</a></p>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script>
-    const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-    // Weekend window (Europe/London): Fri 00:00 → Mon 03:00
+<script type="module">import { supabase } from './supabase-config.js';
+const client = supabase;
+// Weekend window (Europe/London): Fri 00:00 → Mon 03:00
     function currentWeekendRange(){
       // Compute in local time then use ISO; this is approximate but fine for a friendly pool.
       const now = new Date();

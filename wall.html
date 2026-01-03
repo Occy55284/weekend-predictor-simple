@@ -1,13 +1,14 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Occy Weekend Football — Predictions Wall</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
-  <meta name="theme-color" content="#0f172a" />
-  <style>
+<meta charset="utf-8"/>
+<title>Occy Weekend Football — Predictions Wall</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<link href="/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="/favicon.svg" rel="apple-touch-icon"/>
+<meta content="#0f172a" name="theme-color"/>
+<style>
     body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:0 16px; min-height:100vh;
       background: linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a); color:#fff; }
     header { text-align:center; margin:40px 0 24px; }
@@ -25,26 +26,24 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>⚽ Occy Weekend Football · Predictions Wall</h1>
-    <p class="muted">Only upcoming fixtures are shown</p>
-  </header>
+<header>
+<h1>⚽ Occy Weekend Football · Predictions Wall</h1>
+<p class="muted">Only upcoming fixtures are shown</p>
+</header>
+<div class="card">
+<p class="muted" id="msg">Loading…</p>
+<table id="predTable" style="display:none">
+<thead>
+<tr><th>Name</th><th>Fixture</th><th>Home</th><th>Away</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+<p class="muted" style="margin-top:8px"><a href="index.html">← Back to home</a></p>
+</div>
 
-  <div class="card">
-    <p id="msg" class="muted">Loading…</p>
-    <table id="predTable" style="display:none">
-      <thead>
-        <tr><th>Name</th><th>Fixture</th><th>Home</th><th>Away</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p class="muted" style="margin-top:8px"><a href="index.html">← Back to home</a></p>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script>
-    // (We keep crests for teams here; NOT player-team badges)
+<script type="module">import { supabase } from './supabase-config.js';
+// (We keep crests for teams here; NOT player-team badges)
     const CRESTS = {
       'Arsenal':'https://resources.premierleague.com/premierleague/badges/70/t3.png',
       'Aston Villa':'https://resources.premierleague.com/premierleague/badges/70/t7.png',
@@ -78,9 +77,8 @@
 
     async function loadPredictions(){
       const msg=document.getElementById('msg'); const table=document.getElementById('predTable'); const tbody=table.querySelector('tbody');
-      const client=supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-      // 1) Pull UPCOMING fixtures only
+      const client = supabase;
+// 1) Pull UPCOMING fixtures only
       const nowIso = new Date().toISOString();
       const { data: fixes, error: fErr } = await client
         .from('fixtures')
@@ -139,6 +137,3 @@
   </script>
 </body>
 </html>
-
-
-

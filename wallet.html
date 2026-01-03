@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wallet • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css" />
+  <style>
+    .grid { display:grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 980px) { .grid { grid-template-columns: 1.4fr 1fr; } }
+    .row { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+    .pill { display:inline-flex; align-items:center; justify-content:center; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; border: 1px solid rgba(148,163,184,0.35); background: rgba(2,6,23,0.35); }
+    .pill-paid { border-color: rgba(34,197,94,0.55); background: rgba(20,83,45,0.22); color: #bbf7d0; }
+    .pill-unpaid { border-color: rgba(239,68,68,0.55); background: rgba(127,29,29,0.22); color: #fecaca; }
+    .field { border-radius: 14px; border: 1px solid rgba(148,163,184,0.35); background: rgba(2,6,23,0.35); padding: 10px 12px; color: #e5e7eb; font-size: 0.9rem; outline:none; }
+    .field:focus { border-color: rgba(96,165,250,0.7); box-shadow: 0 0 0 1px rgba(96,165,250,0.35); }
+    .tbl { width:100%; border-collapse: collapse; overflow:hidden; border-radius: 16px; border: 1px solid rgba(148,163,184,0.28); }
+    .tbl th, .tbl td { padding: 10px; border-bottom: 1px solid rgba(148,163,184,0.18); text-align:left; }
+    .tbl thead th { background: rgba(2,6,23,0.6); position: sticky; top: 0; z-index: 2; }
+    .right { text-align:right; }
+    .muted { color:#9ca3af; }
+    .err { color:#fecaca; }
+    .kpi { display:flex; gap: 10px; flex-wrap:wrap; margin-top: 8px; }
+    .kpi .box { border-radius: 16px; border: 1px solid rgba(148,163,184,0.28); background: rgba(2,6,23,0.35); padding: 10px 12px; }
+    .kpi .label { color:#9ca3af; font-size: 0.78rem; }
+    .kpi .val { font-weight: 900; font-size: 1.05rem; }
+    .name { font-weight: 800; }
+  </style>
+</head>
+<body class="bg-hero">
+  <div class="page-shell">
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-logo">
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+        </div>
+        <nav class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="predict.html">Predict</a>
+          <a href="my-picks.html">My Picks</a>
+          <a href="all-picks.html">All Picks</a>
+          <a href="leaderboard.html">Leaderboard</a>
+          <a href="stats.html">Stats</a>
+          <a class="active" href="wallet.html">Wallet</a>
+          <a href="profile.html">Profile</a>
+          <a id="navAdmin" href="admin.html" style="display:none;">Admin</a>
+          <a id="navLogout" href="#">Logout</a>
+        </nav>
+      </div>
+      <div class="top-nav-right">
+        <span class="muted">Wallet ledger</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="panel">
+        <div class="panel-inner">
+          <h1>Weekly Entry</h1>
+          <p class="muted">Track weekly entry fee payments. AI Predictor is excluded from wallet/pot calculations.</p>
+
+          <div class="row">
+            <label class="muted" for="weekInput">Week start (Mon)</label>
+            <input id="weekInput" class="field" type="date" />
+            <button id="reloadBtn" class="btn" type="button">Load</button>
+          </div>
+
+          <div id="msg" class="muted" style="margin:10px 0 12px;">Loading…</div>
+
+          <div class="kpi">
+            <div class="box">
+              <div class="label">Entry Fee</div>
+              <div id="kpiFee" class="val">—</div>
+            </div>
+            <div class="box">
+              <div class="label">Paid</div>
+              <div id="kpiPaid" class="val">—</div>
+            </div>
+            <div class="box">
+              <div class="label">Not Paid</div>
+              <div id="kpiUnpaid" class="val">—</div>
+            </div>
+            <div class="box">
+              <div class="label">Pot Total</div>
+              <div id="kpiPot" class="val">—</div>
+            </div>
+          </div>
+
+          <hr class="sep" />
+
+          <div style="overflow:auto; border-radius:16px;">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Status</th>
+                  <th class="right">Amount</th>
+                  <th class="muted">Paid at</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel panel-side" id="adminBox" style="display:none;">
+        <div class="panel-inner">
+          <h2>Admin</h2>
+          <p class="muted">Mark payments. (AI is excluded.)</p>
+
+          <div class="row">
+            <select id="playerSelect" class="field" style="min-width: 220px;"></select>
+            <input id="feeInput" class="field" type="number" min="0" step="0.01" value="5" style="width: 110px;" />
+          </div>
+
+          <div class="row" style="margin-top: 10px;">
+            <button id="markPaidBtn" class="btn btn-primary" type="button">Mark Paid</button>
+            <button id="markUnpaidBtn" class="btn" type="button">Mark Unpaid</button>
+          </div>
+
+          <div id="adminMsg" class="muted" style="margin-top:10px;"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const navAdmin = document.getElementById('navAdmin');
+    const navLogout = document.getElementById('navLogout');
+
+    const weekInput = document.getElementById('weekInput');
+    const reloadBtn = document.getElementById('reloadBtn');
+
+    const msg = document.getElementById('msg');
+    const tbody = document.getElementById('tbody');
+
+    const kpiFee = document.getElementById('kpiFee');
+    const kpiPaid = document.getElementById('kpiPaid');
+    const kpiUnpaid = document.getElementById('kpiUnpaid');
+    const kpiPot = document.getElementById('kpiPot');
+
+    const adminBox = document.getElementById('adminBox');
+    const adminMsg = document.getElementById('adminMsg');
+
+    const playerSelect = document.getElementById('playerSelect');
+    const feeInput = document.getElementById('feeInput');
+    const markPaidBtn = document.getElementById('markPaidBtn');
+    const markUnpaidBtn = document.getElementById('markUnpaidBtn');
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
+    function money(n) {
+      const x = Number(n || 0);
+      return `£${x.toFixed(2)}`;
+    }
+
+    function startOfWeek(d) {
+      const x = new Date(d);
+      x.setHours(0,0,0,0);
+      const day = x.getDay(); // Sun=0
+      const diff = day === 0 ? -6 : 1 - day;
+      x.setDate(x.getDate() + diff);
+      return x;
+    }
+
+    function isoDate(d) {
+      const x = new Date(d);
+      x.setHours(0,0,0,0);
+      return x.toISOString().slice(0,10);
+    }
+
+    async function ensureWeekRow(weekStartStr, isAdmin) {
+      const { data: week, error } = await supabase
+        .from('wallet_weeks')
+        .select('week_start, entry_fee, status, winner_user_id')
+        .eq('week_start', weekStartStr)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!week && isAdmin) {
+        const { error: insErr } = await supabase
+          .from('wallet_weeks')
+          .insert({ week_start: weekStartStr, entry_fee: 5.00, status: 'open' });
+        if (insErr) throw insErr;
+
+        const { data: week2, error: w2Err } = await supabase
+          .from('wallet_weeks')
+          .select('week_start, entry_fee, status, winner_user_id')
+          .eq('week_start', weekStartStr)
+          .maybeSingle();
+        if (w2Err) throw w2Err;
+        return week2;
+      }
+
+      return week;
+    }
+
+    async function loadWeek() {
+      msg.textContent = 'Loading…';
+      adminMsg.textContent = '';
+      tbody.innerHTML = '';
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) { window.location.replace('login.html'); return; }
+
+      // Admin check
+      let isAdmin = false;
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        isAdmin = !!prof?.is_admin;
+        if (isAdmin) {
+          navAdmin.style.display = '';
+          adminBox.style.display = 'block';
+        }
+      } catch {}
+
+      // Ensure / load week row (admin creates if missing)
+      const weekStart = weekInput.value ? startOfWeek(new Date(weekInput.value)) : startOfWeek(new Date());
+      const weekStartStr = isoDate(weekStart);
+      weekInput.value = weekStartStr;
+
+      let weekRow = null;
+      try {
+        weekRow = await ensureWeekRow(weekStartStr, isAdmin);
+      } catch (e) {
+        console.error(e);
+        msg.innerHTML = '<span class="err">Could not load/create week row.</span>';
+        return;
+      }
+
+      const entryFee = Number(weekRow?.entry_fee ?? 5);
+      kpiFee.textContent = money(entryFee);
+      feeInput.value = String(entryFee);
+
+      // Load wallet entries (paid/unpaid)
+      const { data: entries, error: entErr } = await supabase
+        .from('wallet_entries')
+        .select('user_id, amount, paid, paid_at')
+        .eq('week_start', weekStartStr);
+
+      if (entErr) {
+        console.error(entErr);
+        msg.innerHTML = '<span class="err">Could not load wallet entries.</span>';
+        return;
+      }
+
+      const entryMap = new Map((entries || []).map(e => [e.user_id, e]));
+
+      // Players: derive from profiles table (everyone with a profile) — EXCLUDE AI
+      const { data: profiles, error: pfErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, is_ai')
+        .order('display_name', { ascending: true });
+
+      if (pfErr) {
+        console.error(pfErr);
+        msg.innerHTML = '<span class="err">Could not load players.</span>';
+        return;
+      }
+
+      const players = (profiles || [])
+        .filter(p => !p.is_ai)
+        .map(p=>({
+          id: p.id,
+          name: p.display_name || 'Player'
+        }));
+
+      // Admin dropdown
+      playerSelect.innerHTML = '';
+      players.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        playerSelect.appendChild(opt);
+      });
+
+      // Render table + KPIs
+      let paidCount = 0;
+      let potTotal = 0;
+
+      tbody.innerHTML = '';
+      players.forEach(p => {
+        const e = entryMap.get(p.id);
+        const paid = !!e?.paid;
+        const amount = e?.amount ?? weekRow?.entry_fee ?? 5;
+        const paidAt = e?.paid_at ? new Date(e.paid_at).toLocaleString() : '—';
+
+        if (paid) {
+          paidCount++;
+          potTotal += Number(amount || 0);
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="name">${escapeHtml(p.name)}</span></td>
+          <td>${paid ? `<span class="pill pill-paid">Paid</span>` : `<span class="pill pill-unpaid">Not paid</span>`}</td>
+          <td class="right">${money(amount)}</td>
+          <td class="muted">${escapeHtml(paidAt)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      kpiPaid.textContent = String(paidCount);
+      kpiUnpaid.textContent = String(Math.max(0, players.length - paidCount));
+      kpiPot.textContent = money(potTotal);
+
+      msg.textContent = `Loaded ${players.length} players for week starting ${weekStartStr}.`;
+
+      // Admin actions
+      markPaidBtn.onclick = async () => {
+        adminMsg.textContent = 'Marking paid…';
+        try {
+          const uid = playerSelect.value;
+          const { error } = await supabase
+            .from('wallet_entries')
+            .upsert({
+              week_start: weekStartStr,
+              user_id: uid,
+              amount: Number(feeInput.value || 5),
+              paid: true,
+              paid_at: new Date().toISOString()
+            }, { onConflict: 'week_start,user_id' });
+          if (error) throw error;
+          adminMsg.textContent = 'Marked paid.';
+          await loadWeek();
+        } catch (e) {
+          console.error(e);
+          adminMsg.innerHTML = '<span class="err">Could not mark paid.</span>';
+        }
+      };
+
+      markUnpaidBtn.onclick = async () => {
+        adminMsg.textContent = 'Marking unpaid…';
+        try {
+          const uid = playerSelect.value;
+          const { error } = await supabase
+            .from('wallet_entries')
+            .upsert({
+              week_start: weekStartStr,
+              user_id: uid,
+              amount: Number(feeInput.value || 5),
+              paid: false,
+              paid_at: null
+            }, { onConflict: 'week_start,user_id' });
+          if (error) throw error;
+          adminMsg.textContent = 'Marked unpaid.';
+          await loadWeek();
+        } catch (e) {
+          console.error(e);
+          adminMsg.innerHTML = '<span class="err">Could not mark unpaid.</span>';
+        }
+      };
+    }
+
+    (async () => {
+      // Auth guard + logout
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { window.location.replace('login.html'); return; }
+
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await supabase.auth.signOut(); } catch {}
+        window.location.replace('login.html');
+      });
+
+      // default date = this Monday
+      const ws = startOfWeek(new Date());
+      weekInput.value = isoDate(ws);
+
+      reloadBtn.addEventListener('click', loadWeek);
+      await loadWeek();
+    })();
+  </script>
+</body>
+</html>
