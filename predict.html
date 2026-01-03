@@ -146,6 +146,7 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, parseISODate, formatWeekRange } from './app-week.js';
+import { getEffectiveLock, createUserWeekLock } from './app-locks.js';
     document.addEventListener('DOMContentLoaded', () => {
       const navLogout = document.getElementById('navLogout');
       navLogout?.addEventListener('click', async (e) => {
@@ -296,23 +297,26 @@ import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, pa
       lockBtn.disabled = true;
     }
 
-    // --- Enforce lock state if already locked this week ---
+    // --- Enforce lock state (global lock OR user lock) ---
     async function enforceLockUI() {
-      const { data: lockRow, error } = await supabase
-        .from('pick_locks')
-        .select('locked_at, week_start')
-        .eq('user_id', user.id)
-        .eq('week_start', isoDate(weekStart))
-        .maybeSingle();
+      try{
+        const week_start = isoDate(weekStart);
+        const state = await getEffectiveLock(supabase, { user_id: user.id, week_start });
 
-      if (error) {
-        console.error('lock check error', error);
-        return;
+        if (state.locked) {
+          disableInputs();
+          const ts = state.locked_at ? new Date(state.locked_at).toLocaleString() : '';
+          const who = state.reason === 'global' ? 'Admin locked' : 'You locked';
+          msg.innerHTML = `<span class="muted">${who}${ts ? ` on ${ts}` : ''}. Changes are disabled.</span>`;
+        }
+      }catch(e){
+        console.error('lock check error', e);
       }
+    }
 
       if (lockRow) {
         disableInputs();
-        const ts = lockRow.locked_at ? new Date(lockRow.locked_at).toLocaleString() : '';
+        const ts = lockRow.created_at ? new Date(lockRow.created_at).toLocaleString() : '';
         msg.innerHTML = `<span class="muted">Locked on ${ts}. Changes are disabled.</span>`;
       }
     }
@@ -342,15 +346,8 @@ import { startOfWeekMonday, addDays as addDaysLocal, isoDate as isoDateLocal, pa
           .upsert(payload, { onConflict: 'user_id,fixture_id' });
         if (upErr) throw upErr;
 
-        const { error: lockErr } = await supabase
-          .from('pick_locks')
-          .upsert({
-            user_id: user.id,
-            week_start: isoDate(weekStart)
-          }, { onConflict: 'user_id,week_start' });
-        if (lockErr) throw lockErr;
-
-        msg.innerHTML = '<span class="ok">Your picks are locked in for this week!</span>';
+        await createUserWeekLock(supabase, user.id, isoDate(weekStart));
+msg.innerHTML = '<span class="ok">Your picks are locked in for this week!</span>';
         disableInputs();
       }catch(err){
         console.error(err);

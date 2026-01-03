@@ -140,6 +140,7 @@
                 Lock week
               </button>
               <span id="saveStatus" class="muted" style="font-size:0.8rem;"></span>
+              <span id="lockNote" class="muted" style="font-size:0.8rem; margin-left:8px;"></span>
             </div>
           </div>
 
@@ -189,6 +190,7 @@
 
     import { startOfWeekMonday, addDays, isoDate, formatWeekRange } from './app-week.js';
 
+import { getGlobalLock, setGlobalLock } from './app-locks.js';
     // ---------- Utilities ----------
     const $ = (id) => document.getElementById(id);
     const fixturesBody = $('fixturesBody');
@@ -236,6 +238,35 @@
       const ws = getWeekStartISO();
       const which = weekOffset === 0 ? 'This' : (weekOffset < 0 ? 'Previous' : 'Next');
       weekLabel.textContent = `${which} week • ${formatWeekRange(ws)} (Start: ${ws})`;
+    }
+
+
+    async function refreshLockUI(){
+      try{
+        const ws = getWeekStartISO();
+        const g = await getGlobalLock(supabase, ws);
+
+        const locked = !!g.locked;
+
+        // Disable actions when admin has locked the week
+        document.querySelectorAll('.feat').forEach(cb => cb.disabled = locked);
+        saveBtn.disabled = locked || (document.querySelectorAll('.feat:checked').length !== 5);
+        lockBtn.disabled = locked; // cannot lock again
+
+        // Visual hint
+        lockBtn.textContent = locked ? 'Week locked' : 'Lock week';
+        lockBtn.classList.toggle('btn-disabled', locked);
+
+        const noteEl = document.getElementById('lockNote');
+        if (noteEl){
+          noteEl.textContent = locked
+            ? `Locked${g.locked_at ? ` on ${new Date(g.locked_at).toLocaleString()}` : ''}.`
+            : 'Open for changes.';
+          noteEl.className = locked ? 'muted' : 'muted';
+        }
+      }catch(e){
+        console.error('refreshLockUI error', e);
+      }
     }
 
     // ---------- Data ----------
@@ -355,20 +386,17 @@
       const weekStartISO = getWeekStartISO();
       lockBtn.disabled = true;
       try{
-        const { error } = await supabase
-          .from('global_locks')
-          .upsert(
-            { week_start: weekStartISO, locked: true },
-            { onConflict: 'week_start' }
-          );
-        if (error) throw error;
+        await setGlobalLock(supabase, weekStartISO, true);
+        await refreshLockUI();
         alert(`Week locked: ${weekStartISO}`);
-      } catch(e){
+      }catch(e){
         showError(e);
         alert('Could not lock the week.');
-      } finally {
+      }finally{
         lockBtn.disabled = false;
       }
+    }
+
     }
 
     async function loadSubmissions(){
