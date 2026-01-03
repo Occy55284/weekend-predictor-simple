@@ -4,174 +4,54 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign In • Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=96" />
-
+  <link rel="stylesheet" href="brand.css?v=90" />
   <style>
-    .login-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-      gap: 20px;
-      align-items: center;
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0}
+    .card{
+      background:#fff;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.15);
+      padding:40px 30px;width:100%;max-width:380px;text-align:center
     }
-    .msg {
-      margin-top: 10px;
-      min-height: 1.1em;
-      font-size: 0.9rem;
-    }
-    .ok { color: #22c55e; }
-    .err { color: #ef4444; }
-    .hint {
-      margin-top: 10px;
-      font-size: 0.85rem;
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      padding: 4px 10px;
-      font-size: 0.8rem;
-      color: #e5e7eb;
-      background: rgba(15, 23, 42, 0.96);
-      margin-top: 8px;
-    }
-    .pill-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 10px rgba(34,197,94,.9);
-    }
-    @media (max-width: 840px) {
-      .login-layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
+    h1{margin:0 0 8px;font-size:1.8rem;color:#1f357a;font-weight:800}
+    p.sub{margin:0 0 20px;color:#475569}
+    form{display:flex;flex-direction:column;gap:16px}
+    input[type="email"]{height:48px;border:1px solid #cbd5e1;border-radius:12px;padding:0 14px;font-size:1rem;text-align:center}
+    button{height:48px;border:none;border-radius:12px;background:#1f357a;color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
+    button:hover{background:#2c4ba8}
+    .msg{margin-top:12px;font-weight:600}
+    .ok{color:#16a34a}.err{color:#b91c1c}
+    footer{margin-top:25px;color:#e2e8f0;font-size:.85rem}
   </style>
+  <script type="module" src="supabase-config.js"></script>
 </head>
 <body class="bg-hero">
-  <div class="page-shell">
-    <!-- NAV -->
-    <header class="top-nav">
-      <div class="top-nav-left">
-        <div class="nav-logo">
-          <img src="assets/brand-logo.png" alt="Logo" />
-        </div>
-        <div class="nav-text-group">
-          <div class="nav-title">Weekend Predictor</div>
-          <div class="nav-subtitle">Magic link sign-in</div>
-        </div>
-      </div>
-      <nav class="nav-links">
-        <a href="index.html">Home</a>
-        <a href="predict.html">Predict</a>
-        <a href="leaderboard.html">Leaderboard</a>
-        <a href="my-picks.html">My Picks</a>
-        <a href="profile.html">Profile</a>
-        <a href="login.html" class="active">Login</a>
-      </nav>
-    </header>
-
-    <!-- MAIN -->
-    <main class="panel">
-      <div class="panel-inner login-layout">
-        <!-- Left: form -->
-        <section>
-          <h1>Sign in with a magic link</h1>
-          <p class="muted">
-            No passwords. Enter your email and we’ll send you a one-time link
-            to jump straight into your profile and predictions.
-          </p>
-
-          <form id="loginForm" class="form">
-            <label class="form-label" for="email">Work email</label>
-            <input
-              id="email"
-              class="input"
-              type="email"
-              required
-              autocomplete="email"
-              placeholder="you@company.com"
-            />
-
-            <button type="submit" class="btn-primary">
-              Send magic link
-            </button>
-
-            <div id="msg" class="msg"></div>
-          </form>
-
-          <p class="muted hint">
-            After clicking the link in your email, you’ll land on your profile page.
-            From there you can head to <strong>Predict</strong> or <strong>My Picks</strong>.
-          </p>
-
-          <div class="pill">
-            <span class="pill-dot"></span>
-            Check your spam/junk if the email doesn’t appear within a minute.
-          </div>
-        </section>
-
-        <!-- Right: info -->
-        <aside>
-          <h2>How it works</h2>
-          <ul class="bullet-list muted">
-            <li>Enter the same email every time – it’s your player identity.</li>
-            <li>We send a secure, one-time sign-in link.</li>
-            <li>Click it and you’re taken to your profile, already logged in.</li>
-          </ul>
-
-          <div class="info-card" style="margin-top:14px;">
-            <div class="info-label">Tip</div>
-            <p class="info-text">
-              Open the magic link on the same device/browser you’ll use for making your
-              weekly predictions to stay signed in.
-            </p>
-          </div>
-        </aside>
-      </div>
-    </main>
-  </div>
+  <main class="card">
+    <h1>Weekend Predictor</h1>
+    <p class="sub">Sign in to make your picks</p>
+    <form id="form">
+      <input id="email" type="email" placeholder="Enter your email" required />
+      <button type="submit">Send magic link</button>
+    </form>
+    <div id="msg" class="msg"></div>
+    <footer>© 2025 Weekend Predictor</footer>
+  </main>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
-
-    const form = document.getElementById('loginForm');
+    const form = document.getElementById('form');
     const msg = document.getElementById('msg');
-    const emailInput = document.getElementById('email');
-
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      msg.textContent = 'Sending magic link…';
-      msg.className = 'msg';
-
-      const email = emailInput.value.trim();
-      if (!email) {
-        msg.innerHTML = '<span class="err">Please enter your email.</span>';
-        return;
-      }
-
-      try {
+      msg.textContent = 'Sending magic link…'; msg.className='msg';
+      const email = document.getElementById('email').value.trim();
+      try{
         const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            // 🔹 After clicking the email link, send them to profile page
-            emailRedirectTo: `${window.location.origin}/profile.html`,
-          },
+          email, options:{ emailRedirectTo: `${window.location.origin}/predict.html` }
         });
-
-        if (error) {
-          console.error(error);
-          msg.innerHTML = `<span class="err">${error.message || 'Could not send magic link.'}</span>`;
-          return;
-        }
-
-        msg.innerHTML = '<span class="ok">Magic link sent. Check your inbox.</span>';
-        emailInput.value = '';
-      } catch (err) {
+        if (error) throw error;
+        msg.innerHTML = '<span class="ok">Check your inbox for the sign-in link.</span>';
+      }catch(err){
         console.error(err);
-        msg.innerHTML = `<span class="err">${err.message || 'Unexpected error. Please try again.'}</span>`;
+        msg.innerHTML = '<span class="err">Could not send link.</span>';
       }
     });
   </script>

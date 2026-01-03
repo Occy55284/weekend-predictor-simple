@@ -1,314 +1,84 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Weekend Predictor</title>
-  <link rel="stylesheet" href="brand.css?v=96" />
+  <link rel="stylesheet" href="brand.css" />
+  <script defer src="supabase-config.js"></script>
   <style>
-    .hero-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-      gap: 20px;
-      align-items: stretch;
+    :root{
+      --bg-start:#0b1220;
+      --bg-end:#0e1630;
+      --text:#e9eefc;
+      --muted:#9aa7c7;
+      --border:rgba(255,255,255,.06);
+      --accent:#8ab3ff;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --glow:#7aa4ff;
+      --red-glow:#ff4d4d;
     }
-    .hero-title {
-      font-size: 2rem;
-      letter-spacing: 0.04em;
-      margin: 0 0 6px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    html,body{height:100%; margin:0;}
+    body{
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 800px at 80% -10%, rgba(138,179,255,.12), transparent 40%),
+                  linear-gradient(180deg, var(--bg-start), var(--bg-end));
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh;
+      animation: fadeInBody 1s ease forwards;
+      opacity: 0;
+      text-align:center;
     }
-    .hero-logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 999px;
-      background: radial-gradient(circle at 30% 20%, #ffffff, #dbeafe);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow:
-        0 0 0 1px rgba(248, 250, 252, 0.9),
-        0 0 24px rgba(96, 165, 250, 0.9);
-    }
-    .hero-logo img {
-      width: 26px;
-      height: 26px;
-      display: block;
-    }
-    .hero-tagline {
-      margin: 4px 0 14px;
-      font-size: 0.95rem;
-      color: #9ca3af;
-      max-width: 460px;
-    }
-    .hero-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 12px 0 18px;
-    }
-    .pill {
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      background: rgba(15, 23, 42, 0.92);
-      padding: 5px 10px;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #cbd5f5;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .pill-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 10px rgba(34,197,94,.9);
-    }
-    .pill-alt {
-      border-color: rgba(248, 250, 252, 0.7);
-      background: rgba(30, 64, 175, 0.9);
-    }
+    @keyframes fadeInBody { to { opacity: 1; } }
 
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      margin-top: 4px;
+    .logo{
+      width:110px; height:110px; border-radius:999px; background:#0c1a34; display:grid; place-items:center;
+      border:1px solid var(--border); box-shadow:0 0 25px rgba(122,164,255,.25), inset 0 0 20px rgba(122,164,255,.1);
+      animation: fadeInUp 1.5s ease forwards, glowPulse 4s ease-in-out infinite;
+      opacity:0; margin-bottom:24px;
     }
-    .btn-primary-main {
-      border-radius: 999px;
-      border: none;
-      padding: 10px 18px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #2563eb, #4f46e5);
-      color: #f9fafb;
-      box-shadow: 0 14px 26px rgba(37, 99, 235, 0.6);
-      text-decoration: none;
-    }
-    .btn-primary-main:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 18px 34px rgba(37, 99, 235, 0.7);
-    }
-    .btn-secondary {
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.8);
-      padding: 9px 14px;
-      font-size: 0.9rem;
-      background: rgba(15, 23, 42, 0.96);
-      color: #e5e7eb;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .logo img{width:70px; height:70px; object-fit:contain; border-radius:50%;}
+    .name{font-weight:800; font-size:36px; letter-spacing:.4px; animation: fadeInUp 1.8s ease forwards, redGlowPulse 4s ease-in-out infinite;
+      opacity:0; margin-bottom:40px; color:var(--text); text-shadow:0 0 10px var(--red-glow);}
 
-    .meta-row {
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: 0.85rem;
-      color: #9ca3af;
-    }
-    .meta-row span strong {
-      color: #e5e7eb;
-    }
+    @keyframes glowPulse {0%,100%{box-shadow:0 0 20px rgba(122,164,255,.25),inset 0 0 20px rgba(122,164,255,.1);}50%{box-shadow:0 0 40px rgba(122,164,255,.45),inset 0 0 30px rgba(122,164,255,.2);}}
+    @keyframes redGlowPulse {0%,100%{text-shadow:0 0 10px rgba(255,77,77,.5),0 0 20px rgba(255,77,77,.3);}50%{text-shadow:0 0 20px rgba(255,77,77,.8),0 0 40px rgba(255,77,77,.6);}}
+    @keyframes fadeInUp {0%{opacity:0;transform:translateY(20px);}100%{opacity:1;transform:translateY(0);}}
 
-    .note-card {
-      margin-top: 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(96, 165, 250, 0.6);
-      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 60%),
-                  rgba(15, 23, 42, 0.98);
-      padding: 10px 12px;
-      font-size: 0.85rem;
-      color: #e5e7eb;
-    }
+    .hero{display:flex;flex-direction:column;align-items:center;max-width:720px;text-align:center;animation:fadeInUp 2s ease forwards;opacity:0;}
+    .kicker{color:var(--muted);font-weight:700;letter-spacing:.12em;font-size:12px;text-transform:uppercase;margin-bottom:18px;}
+    .title{font-size:clamp(40px,7vw,80px);line-height:1.1;font-weight:850;letter-spacing:-.02em;margin:0 0 18px;}
+    .subtitle{color:var(--muted);font-size:clamp(16px,2.2vw,20px);max-width:46ch;margin:0 0 40px;}
 
-    .fixture-mini {
-      border-radius: 16px;
-      border: 1px solid rgba(148, 163, 184, 0.5);
-      background: rgba(15, 23, 42, 0.97);
-      padding: 12px 14px;
-      margin-bottom: 10px;
-    }
-    .fixture-mini-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8rem;
-      color: #9ca3af;
-      margin-bottom: 4px;
-    }
-    .fixture-mini-main {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
-    }
-    .fixture-mini-teams {
-      font-size: 0.95rem;
-    }
-    .fixture-mini-teams strong {
-      color: #e5e7eb;
-    }
-    .fixture-mini-score {
-      font-size: 0.9rem;
-      text-align: right;
-    }
-    .fixture-mini-footer {
-      margin-top: 6px;
-      font-size: 0.8rem;
-      color: #9ca3af;
-      display: flex;
-      justify-content: space-between;
-    }
-    .sparkline {
-      display: flex;
-      align-items: flex-end;
-      gap: 3px;
-      height: 24px;
-      margin-top: 4px;
-    }
-    .sparkline span {
-      flex: 1;
-      border-radius: 999px;
-      background: linear-gradient(to top, rgba(56, 189, 248, 0.9), rgba(96, 165, 250, 0.1));
-    }
+    .primary-cta{display:inline-block;font-weight:800;text-decoration:none;background:transparent;color:var(--text);border:1px solid var(--border);padding:16px 100px;border-radius:12px;transition:border-color .2s ease,box-shadow .2s ease;animation:glowPulse 4s ease-in-out infinite;box-shadow:0 0 20px rgba(122,164,255,.15),inset 0 0 10px rgba(122,164,255,.1);}
+    .primary-cta:hover{border-color:#2a3a5a;box-shadow:0 0 30px rgba(122,164,255,.45),inset 0 0 20px rgba(122,164,255,.2);}
 
-    @media (max-width: 840px) {
-      .hero-layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
+    nav{margin-top:40px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
+    nav a{color:var(--accent);text-decoration:none;font-weight:600;transition:color .2s ease;}
+    nav a:hover{color:#fff;}
+
+    .foot{margin-top:48px;color:var(--muted);font-size:14px;}
+    .link{color:var(--accent);text-decoration:none;}
+    .link:hover{filter:brightness(1.15);}
   </style>
 </head>
-<body class="bg-hero">
-  <div class="page-shell">
-    <header class="top-nav">
-      <div class="top-nav-left">
-        <div class="nav-logo">
-          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
-        </div>
-        <div class="nav-text-group">
-          <div class="nav-title">Weekend Predictor</div>
-          <div class="nav-subtitle">Premier League prediction challenge</div>
-        </div>
-      </div>
-      <nav class="nav-links">
-        <a href="index.html" class="active">Home</a>
-        <a href="predict.html">Predict</a>
-        <a href="leaderboard.html">Leaderboard</a>
-        <a href="my-picks.html">My Picks</a>
-        <a href="all-picks.html">All Picks</a>
-        <a href="stats.html">Stats</a>
-        <a href="wallet.html">Wallet</a>
-        <a href="profile.html">Profile</a>
-        <a href="admin.html">Admin</a>
-        <a href="login.html">Login</a>
-      </nav>
-    </header>
+<body>
+  <div class="logo"><img src="assets/brand-logo.png" alt="Weekend Predictor Logo" /></div>
+  <div class="name">Weekend Predictor</div>
 
-    <main class="hero-layout panel">
-      <section class="panel-inner">
-        <h1 class="hero-title">
-          <span class="hero-logo">
-            <img src="assets/brand-logo.png" alt="WP" />
-          </span>
-          Weekend Predictor
-        </h1>
-        <p class="hero-tagline">
-          Make your score predictions, track your points, and see who really
-          knows their football in a friendly Premier League challenge.
-        </p>
-
-        <div class="hero-pills">
-          <div class="pill">
-            <span class="pill-dot"></span>
-            Live leaderboard
-          </div>
-          <div class="pill">
-            <span class="pill-dot"></span>
-            Exact score &amp; result points
-          </div>
-          <div class="pill pill-alt">
-            Weekly picks • Season-long bragging rights
-          </div>
-        </div>
-
-        <div class="hero-actions">
-          <a href="login.html" class="btn-primary-main">
-            Get started
-          </a>
-          <a href="predict.html" class="btn-secondary">
-            Go to predictions
-          </a>
-        </div>
-
-        <div class="meta-row">
-          <span><strong>5</strong> featured fixtures each week</span>
-          <span><strong>1</strong> shared game</span>
-          <span><strong>0</strong> cash prizes – all bragging rights</span>
-        </div>
-
-        <div class="note-card">
-          No account to remember – just your work email. We’ll send you a secure
-          magic link so you can jump straight back into your picks.
-        </div>
-      </section>
-
-      <aside class="panel-inner">
-        <div class="fixture-mini">
-          <div class="fixture-mini-head">
-            <span>Example fixture</span>
-            <span>Gameweek preview</span>
-          </div>
-          <div class="fixture-mini-main">
-            <div class="fixture-mini-teams">
-              <div><strong>Home FC</strong> vs <strong>Away United</strong></div>
-              <div class="muted" style="font-size:0.85rem;">Saturday • 15:00</div>
-            </div>
-            <div class="fixture-mini-score">
-              <div class="muted" style="font-size:0.8rem;">Your pick</div>
-              <div><strong>2 - 1</strong></div>
-            </div>
-          </div>
-          <div class="fixture-mini-footer">
-            <span>Exact score = big points</span>
-            <span>Result only = smaller points</span>
-          </div>
-        </div>
-
-        <div class="fixture-mini">
-          <div class="fixture-mini-head">
-            <span>Season tracker (example)</span>
-            <span>Form over time</span>
-          </div>
-          <div class="sparkline">
-            <span style="height:20%;"></span>
-            <span style="height:55%;"></span>
-            <span style="height:80%;"></span>
-            <span style="height:40%;"></span>
-            <span style="height:90%;"></span>
-          </div>
-          <div class="fixture-mini-footer">
-            <span>Total points climbs as you nail results.</span>
-            <span>Check the leaderboard any time.</span>
-          </div>
-        </div>
-      </aside>
-    </main>
-  </div>
+  <section class="hero">
+    <div class="kicker">Pick • Lock • Climb</div>
+    <h1 class="title">Predict 5 fixtures.<br/>Top the leaderboard.</h1>
+    <p class="subtitle">Make your weekend picks in minutes. Lock them before kick-off and chase bragging rights all season.</p>
+    <a class="primary-cta" href="login.html">Get started</a>
+    <nav>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="my-picks.html">My Picks</a>
+      <a href="profile.html">Profile</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+    <div class="foot">Already have an account? <a class="link" href="login.html">Sign in</a>.</div>
+  </section>
 </body>
 </html>

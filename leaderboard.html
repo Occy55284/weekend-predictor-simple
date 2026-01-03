@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leaderboard • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=90" />
+  <style>
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+          box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+    h1{margin:0 0 8px;color:#1f357a}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .tabs{display:flex;gap:6px;flex-wrap:wrap}
+    .tab{padding:6px 10px;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;font-weight:700;cursor:pointer}
+    .tab.active{background:#e0e7ff;border-color:#93c5fd;color:#1f357a}
+    .meta{color:#475569;font-size:.9rem}
+    .note{color:#1f2937;font-size:.9rem;margin-top:6px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{background:#f8fafc;text-transform:uppercase;font-size:.82rem;letter-spacing:.03em}
+    .rank{width:60px;text-align:center;font-weight:800}
+    .name{font-weight:700}
+    .pts{font-weight:800}
+    .ghost{background:transparent;border:1px solid #cbd5e1;border-radius:10px;height:38px;padding:0 12px;font-weight:700}
+    .range{height:38px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 8px}
+    .badge{border-radius:999px;padding:2px 8px;font-size:.75rem;font-weight:700;display:inline-block;margin-left:8px;vertical-align:middle}
+    .badge.rookie{background:#cdd5f0;color:#1f357a}
+    .badge.amateur{background:#5c7ddf;color:#fff}
+    .badge.pro{background:linear-gradient(135deg,#1f357a,#2c4ba8);color:#fff}
+    .badge.goat{background:linear-gradient(135deg,#2c4ba8,#7c3aed);color:#fff;box-shadow:0 0 8px rgba(124,58,237,.4)}
+  </style>
+  <script type="module" src="supabase-config.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const navLogout = document.getElementById('navLogout');
+      navLogout?.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{ await supabase.auth.signOut(); }catch{}
+        window.location.replace('login.html');
+      });
+    });
+  </script>
+</head>
+<body class="bg-hero">
+  <header class="top">
+    <div class="inner">
+      <a class="logo" href="index.html">WP</a>
+      <nav class="topnav">
+        <a href="predict.html" data-nav="predict">Predict</a>
+        <a href="leaderboard.html" data-nav="leaderboard" class="active">Leaderboard</a>
+        <a href="profile.html" data-nav="profile">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a class="logout" id="navLogout" href="login.html">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h1>Leaderboard</h1>
+      <div class="controls">
+        <div class="tabs">
+          <button id="tabWeek" class="tab active" type="button">This week</button>
+          <button id="tabSeason" class="tab" type="button">Season</button>
+        </div>
+        <input id="range" class="range" type="week" />
+        <button id="refreshBtn" class="ghost" type="button">Refresh</button>
+        <div class="meta" id="lastUpdated">—</div>
+      </div>
+      <div class="note">Scoring: <strong>5</strong> pts exact score • <strong>3</strong> pts correct result</div>
+      <div class="meta" id="status" style="margin-top:6px;">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="rank">#</th>
+            <th>Player</th>
+            <th style="width:160px">Correct scores</th>
+            <th style="width:170px">Correct results</th>
+            <th style="width:110px">Points</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+    (async ()=>{
+      try{
+        const { data:{ session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
+        if (!error && data?.is_admin) document.getElementById('navAdmin').style.display = '';
+      }catch{}
+    })();
+
+    const tbody = document.getElementById('tbody');
+    const statusEl = document.getElementById('status');
+    const tabWeek = document.getElementById('tabWeek');
+    const tabSeason = document.getElementById('tabSeason');
+    const rangeEl = document.getElementById('range');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+
+    function pad(n){return String(n).padStart(2,'0')}
+    function startOfWeek(d=new Date()){ const x=new Date(d); const day=x.getDay()===0?7:x.getDay(); x.setHours(0,0,0,0); x.setDate(x.getDate()-(day-1)); return x; }
+    function isoDate(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+    function fmt(n){ return new Intl.NumberFormat().format(n||0) }
+
+    let currentTab = 'week';
+    function setTab(t){ currentTab=t; tabWeek.classList.toggle('active',t==='week'); tabSeason.classList.toggle('active',t==='season'); }
+    function renderRows(rows){
+      tbody.innerHTML='';
+      if(!rows?.length){ tbody.innerHTML = `<tr><td colspan="5" class="meta">No data to show.</td></tr>`; return; }
+      rows.forEach((r,i)=>{
+        const badge = r.badge && String(r.badge).toLowerCase();
+        const nameHtml = badge ? `${r.display_name||'—'} <span class="badge ${badge}">${badge.toUpperCase()}</span>` : `${r.display_name||'—'}`;
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td class="rank">${i+1}</td><td class="name">${nameHtml}</td><td>${fmt(r.correct_scores)}</td><td>${fmt(r.correct_results)}</td><td class="pts">${fmt(r.points)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function fetchSeason(){ const { data, error } = await supabase.rpc('leaderboard_v2'); if (error) throw error; return data||[]; }
+    async function fetchWeek(weekStart){ const { data, error } = await supabase.rpc('leaderboard_week_v2', { week_start: isoDate(weekStart) }); if (error) throw error; return data||[]; }
+
+    async function load(which){
+      setTab(which); statusEl.textContent='Loading…'; tbody.innerHTML='';
+      const ws = rangeEl.valueAsDate ? startOfWeek(rangeEl.valueAsDate) : startOfWeek(new Date());
+      try{
+        const rows = which==='week' ? await fetchWeek(ws) : await fetchSeason();
+        renderRows(rows); statusEl.textContent=''; lastUpdatedEl.textContent=`Updated ${new Date().toLocaleTimeString()}`;
+      }catch(e){ console.error(e); statusEl.textContent='Could not load leaderboard.'; }
+    }
+
+    refreshBtn.addEventListener('click', ()=>load(currentTab));
+    tabWeek.addEventListener('click', ()=>load('week'));
+    tabSeason.addEventListener('click', ()=>load('season'));
+
+    await load('week');
+  </script>
+</body>
+</html>
