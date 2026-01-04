@@ -40,7 +40,16 @@
     .btn{border-radius:14px; padding:10px 12px; border:1px solid rgba(148,163,184,0.35); background: rgba(96,165,250,0.18); color:#e5e7eb; font-weight:900; cursor:pointer;}
     .btn:disabled{opacity:.5; cursor:not-allowed;}
     .tag{display:inline-flex; min-width:28px; justify-content:center; padding:4px 8px; border-radius:999px; font-weight:900; font-size:.78rem; border:1px solid rgba(148,163,184,0.35); background: rgba(2,6,23,0.35);}
-  </style>
+  
+    .formstrip{display:flex; gap:8px; flex-wrap:wrap;}
+    .formbadge{min-width:34px; text-align:center; padding:8px 10px; border-radius:999px; font-weight:800; letter-spacing:0.5px;
+      background: rgba(15,23,42,0.55); border:1px solid rgba(148,163,184,0.35); }
+    .formbadge.w{box-shadow: 0 0 0 1px rgba(34,197,94,0.25) inset;}
+    .formbadge.d{box-shadow: 0 0 0 1px rgba(245,158,11,0.25) inset;}
+    .formbadge.l{box-shadow: 0 0 0 1px rgba(239,68,68,0.25) inset;}
+    .splitgrid{display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px;}
+    .splitgrid .kpi{padding:12px 12px;}
+</style>
 </head>
 <body>
   <div class="app-shell">
@@ -86,6 +95,27 @@
         </div>
 
         <div class="grid" id="kpiGrid"></div>
+        <div class="card" style="margin-top:12px;">
+          <div class="row" style="align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+              <div class="label" style="margin-bottom:4px;">Form (last 5)</div>
+              <div id="formStrip" class="formstrip"></div>
+            </div>
+            <div class="muted2" id="formHint"></div>
+          </div>
+        </div>
+
+        <div class="two-col" style="margin-top:12px;">
+          <div class="card">
+            <div class="label" style="margin-bottom:8px;">Home record</div>
+            <div id="homeSplit" class="splitgrid"></div>
+          </div>
+          <div class="card">
+            <div class="label" style="margin-bottom:8px;">Away record</div>
+            <div id="awaySplit" class="splitgrid"></div>
+          </div>
+        </div>
+
 
         <div class="two-col">
           <div>
@@ -116,6 +146,11 @@
   const kpiGrid = document.getElementById('kpiGrid');
   const recentBox = document.getElementById('recentBox');
   const upcomingBox = document.getElementById('upcomingBox');
+  const formStrip = document.getElementById('formStrip');
+  const formHint = document.getElementById('formHint');
+  const homeSplit = document.getElementById('homeSplit');
+  const awaySplit = document.getElementById('awaySplit');
+
   const navAdmin = document.getElementById('navAdmin');
   const navLogout = document.getElementById('navLogout');
 
@@ -142,7 +177,36 @@
     if (gf < ga) return {res:'L', pts:0, gf, ga};
     return {res:'D', pts:1, gf, ga};
   }
-  function tag(res){
+  
+  function computeStats(list, team){
+    let P=0,W=0,D=0,L=0,GF=0,GA=0,PTS=0,CS=0;
+    list.forEach(f=>{
+      if(!isFinished(f)) return;
+      const r = resultForTeam(f, team);
+      P++; GF += r.gf; GA += r.ga; PTS += r.pts;
+      if(r.res==='W') W++; else if(r.res==='D') D++; else if(r.res==='L') L++;
+      if(r.ga===0) CS++;
+    });
+    return {P,W,D,L,GF,GA,PTS,CS,GD:GF-GA,ACC: P? Math.round((PTS/(P*3))*100):0};
+  }
+  function renderSplit(el, s){
+    const items = [
+      ['P', s.P],
+      ['Pts', s.PTS],
+      ['W/D/L', `${s.W}/${s.D}/${s.L}`],
+      ['GF', s.GF],
+      ['GA', s.GA],
+      ['GD', s.GD],
+    ];
+    el.innerHTML = items.map(([label,value])=>`
+      <div class="kpi">
+        <div class="label">${label}</div>
+        <div class="value">${value}</div>
+      </div>
+    `).join('');
+  }
+
+function tag(res){
     return `<span class="tag">${res}</span>`;
   }
 
@@ -182,6 +246,11 @@
     kpiGrid.innerHTML = '';
     recentBox.innerHTML = '';
     upcomingBox.innerHTML = '';
+    formStrip.innerHTML = '';
+    formHint.textContent = '';
+    homeSplit.innerHTML = '';
+    awaySplit.innerHTML = '';
+
     rangeText.textContent = '';
 
     // fetch fixtures where team is home or away

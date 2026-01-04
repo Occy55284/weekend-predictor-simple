@@ -74,7 +74,9 @@
       border-color:#fecaca;
       color:#f97373;
     }
-  </style>
+    .team-link{color:inherit;text-decoration:none;}
+  .team-link:hover{text-decoration:underline;}
+</style>
 </head>
 <body class="bg-hero">
   <div class="page-shell">
@@ -266,7 +268,7 @@
         const tr = document.createElement('tr');
         tr.dataset.fixtureId = String(fx.id);
         tr.innerHTML = `
-          <td><strong>${escapeHtml(fx.home_team)}</strong> vs <strong>${escapeHtml(fx.away_team)}</strong></td>
+          <td><a class="team-link" href="${teamHref(fx.home_team)}"><strong>${escapeHtml(fx.home_team)}</strong></a> vs <a class="team-link" href="${teamHref(fx.away_team)}"><strong>${escapeHtml(fx.away_team)}</strong></a></td>
           <td>
             <div class="form-wrap">
               <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home">
@@ -397,6 +399,7 @@
           case "'": return '&#39;';
           default: return ch;
         }
+    function teamHref(name){ return 'teams.html?team=' + encodeURIComponent(name); }
       });
     }
 
