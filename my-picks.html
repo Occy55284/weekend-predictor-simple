@@ -1,178 +1,253 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>My Picks • Weekend Predictor</title>
-<link href="brand.css?v=200" rel="stylesheet"/>
-<style>
-    /* Remove hero/logo/wallpaper */
-    body { background: #f8fafc !important; background-image: none !important; }
-    .hero,.page-hero,.wall,.wallpaper,.bg-hero,.brand-hero,
-    .logo,.logo-wrap,img.logo,header img[alt*="logo"],
-    .prem-hero,img[src*="prem-hero"],.prem-hero-img { display:none!important; }
-
-    .wrap{max-width:1000px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;
-      box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
-    h1{margin:0 0 8px;color:#1f357a}
-    .muted{color:#64748b}
-    .top .bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
-    .brand{display:flex;align-items:center;gap:8px;color:#1f357a;text-decoration:none;font-weight:900}
-    .brand .badge{display:inline-flex;height:28px;align-items:center;padding:0 10px;border-radius:999px;background:#1f357a;color:#fff;border:1px solid #1f357a}
-    .nav a{margin-left:14px;text-decoration:none;color:#334155;font-weight:700}
-    .nav a.active{color:#1f357a}
-    .nav .logout{color:#dc2626}
-
-    table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
-    thead th{background:#f8fafc;color:#334155;font-weight:800;text-align:left;padding:10px;border-bottom:1px solid #e5e7eb}
-    tbody td{padding:10px;border-bottom:1px solid #eef2f7;vertical-align:top}
-    tbody tr:last-child td{border-bottom:none}
-    .right{text-align:right}
-    .center{text-align:center}
-    .pill{font-size:.75rem;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#1f357a;border:1px solid #c7d2fe;display:inline-block}
-    .pill.locked{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
-    .pill.open{background:#fef3c7;color:#92400e;border-color:#fde68a}
-    .empty{padding:16px;border:1px dashed #cbd5e1;border-radius:12px;text-align:center;color:#64748b}
-    .meta{color:#475569;font-size:.9rem}
-    .grid-2{display:grid;grid-template-columns:1fr 320px;gap:16px}
-    @media (max-width: 960px){ .grid-2{grid-template-columns:1fr} }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Picks • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=96" />
+  <style>
+    .small-note { margin-top: 8px; font-size: 0.85rem; }
+    .muted-center { text-align: center; color: #9ca3af; font-size: 0.9rem; }
+    .pill {
+      font-size: .75rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      display: inline-block;
+      border: 1px solid rgba(148,163,184,0.8);
+    }
+    .pill.locked {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+    .pill.open {
+      background: #fefce8;
+      color: #854d0e;
+      border-color: #facc15;
+    }
   </style>
 </head>
-<body>
-<header class="top">
-<div class="bar">
-<a class="brand" href="index.html">
-<div class="badge">WP</div>
-        Weekend Predictor
-      </a>
-<nav class="nav-links">
-<a href="index.html">Home</a>
-<a href="predict.html">Predict</a>
-<a href="leaderboard.html">Leaderboard</a>
-<a href="my-picks.html">My Picks</a>
-<a href="all-picks.html">All Picks</a>
-<a href="stats.html">Stats</a>
-<a href="wallet.html">Wallet</a>
-<a href="profile.html">Profile</a>
-<a href="admin.html">Admin</a>
-<a href="login.html">Logout</a>
-</nav>
-</div>
-</header>
-<main class="wrap grid-2">
-<section class="card">
-<h1>My picks</h1>
-<div class="muted" style="margin-bottom:6px">Your selections for the current gameweek.</div>
-<div class="empty" id="empty" style="display:none">No picks found for your account.</div>
-<div id="tableWrap" style="display:none">
-<table aria-label="Your picks">
-<thead>
-<tr>
-<th>Fixture</th>
-<th class="center">Your Pick</th>
-<th class="center">Result</th>
-<th class="right">Status</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
-<div class="meta" id="lastUpdated" style="margin-top:6px"></div>
-</div>
-</section>
-<aside class="card">
-<div class="meta"><strong>Tip:</strong> Once your picks are <em>locked</em>, they cannot be changed.</div>
-<div class="meta" style="margin-top:6px">Head-to-head: try the new <a href="rivals.html"><strong>Rivals</strong></a> page.</div>
-</aside>
-</main>
-<!-- Auth + logout wiring -->
-<script type="module">
+<body class="bg-hero">
+  <div class="page-shell">
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-logo">
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+        </div>
+        <div class="nav-text-group">
+          <div class="nav-title">Weekend Predictor</div>
+          <div class="nav-subtitle">Premier League prediction challenge</div>
+        </div>
+      </div>
+      <nav class="top-nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="my-picks.html" class="active">My Picks</a>
+        <a href="all-picks.html">All Picks</a>
+        <a href="stats.html">Stats</a>
+        <a href="wallet.html">Wallet</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none">Admin</a>
+        <a href="#" id="navLogout">Logout</a>
+      </nav>
+    </header>
+
+    <main class="main-layout">
+      <section class="panel panel-main">
+        <div class="panel-inner">
+          <h1>My picks</h1>
+          <p class="muted">
+            Your predictions for this week’s featured fixtures.
+          </p>
+
+          <div class="user-banner">
+            Signed in as: <span id="userEmail"></span>
+          </div>
+
+          <p class="muted small-note">
+            Picks are shown for the current gameweek (Mon–Sun). Once games kick off,
+            fixtures will gradually move from “Open” to “Locked”.
+          </p>
+
+          <div id="empty" class="muted-center" style="margin-top:14px; display:none;">
+            No picks yet for this week. Go to the Predict page to make your selections.
+          </div>
+
+          <div id="tableWrap" class="table-wrapper" style="margin-top: 14px; display:none;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Fixture</th>
+                  <th>Your pick</th>
+                  <th>Result</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody">
+                <tr>
+                  <td colspan="4" class="muted-center">Loading your picks…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p id="lastUpdated" class="muted" style="margin-top:8px;font-size:0.8rem;"></p>
+        </div>
+      </section>
+
+      <aside class="panel panel-side">
+        <div class="panel-inner">
+          <h2>Quick tips</h2>
+          <ul class="bullet-list muted">
+            <li>Use this page to double-check your scores before kick-off.</li>
+            <li>“Locked” fixtures are in progress or finished – no changes allowed.</li>
+            <li>Compare your picks with the actual results to spot patterns.</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Logout -->
+  <script type="module">
     import { supabase } from './supabase-config.js';
-    document.addEventListener('DOMContentLoaded', ()=>{
+    document.addEventListener('DOMContentLoaded', () => {
       const navLogout = document.getElementById('navLogout');
-      navLogout?.addEventListener('click', async (e)=>{
+      navLogout?.addEventListener('click', async (e) => {
         e.preventDefault();
-        try{ await supabase.auth.signOut(); }catch{}
+        try { await supabase.auth.signOut(); } catch {}
         window.location.replace('login.html');
       });
     });
   </script>
-<!-- Page logic: picks (picks) + fixture details (fixtures) -->
-<script type="module">
+
+  <!-- Page logic: picks (picks) + fixture details (fixtures) -->
+  <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const $ = id => document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
     const tbody = $('tbody');
     const empty = $('empty');
     const wrap = $('tableWrap');
     const lastUpdated = $('lastUpdated');
     const navAdmin = $('navAdmin');
+    const userEmailEl = $('userEmail');
 
-    const pad = n => String(n).padStart(2,'0');
-    const startOfWeek = (d=new Date())=>{
+    const pad = (n) => String(n).padStart(2, '0');
+    const startOfWeek = (d = new Date()) => {
       const x = new Date(d);
       const day = x.getDay(); // 0 Sun, 1 Mon...
-      x.setHours(0,0,0,0);
-      const diff = (day === 0 ? -6 : 1 - day); // Monday start
+      x.setHours(0, 0, 0, 0);
+      const diff = day === 0 ? -6 : 1 - day; // Monday start
       x.setDate(x.getDate() + diff);
       return x;
     };
-    const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    const bool = v => v === true || v === 'true' || v === 1;
+    const isoDate = (d) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-    const pickScore = p => {
-      const hg = p.home ?? p.home_goals ?? p.home_score ?? p.h ?? p.pred_home ?? null;
-      const ag = p.away ?? p.away_goals ?? p.away_score ?? p.a ?? p.pred_away ?? null;
+    const bool = (v) =>
+      v === true || v === 'true' || v === 1;
+
+    const pickScore = (p) => {
+      const hg =
+        p.home ??
+        p.home_goals ??
+        p.home_score ??
+        p.h ??
+        p.pred_home ??
+        null;
+      const ag =
+        p.away ??
+        p.away_goals ??
+        p.away_score ??
+        p.a ??
+        p.pred_away ??
+        null;
       if (hg == null && ag == null) return '—';
       return `${hg ?? '–'} : ${ag ?? '–'}`;
     };
 
-    const resultFromFixture = f => {
+    const resultFromFixture = (f) => {
       const hs = f.home_score ?? f.hs ?? null;
       const as = f.away_score ?? f.as ?? null;
       if (hs == null && as == null) return '—';
       return `${hs ?? '–'} : ${as ?? '–'}`;
     };
 
-    const lockedFromFixture = f => {
-      const k = f.utc_date ?? f.kickoff ?? f.kickoff_at ?? f.start_time ?? f.datetime ?? null;
-      const t = (typeof k === 'string' || k instanceof String) ? Date.parse(k) : (k instanceof Date ? k.getTime() : null);
-      if (Number.isFinite(t)) return (Date.now() >= t);
+    const lockedFromFixture = (f) => {
+      const k =
+        f.utc_date ??
+        f.kickoff ??
+        f.kickoff_at ??
+        f.start_time ??
+        f.datetime ??
+        null;
+      const t =
+        typeof k === 'string' || k instanceof String
+          ? Date.parse(k)
+          : k instanceof Date
+          ? k.getTime()
+          : null;
+      if (Number.isFinite(t)) return Date.now() >= t;
       return false;
     };
 
-    function render(rows){
+    function render(rows) {
       tbody.innerHTML = '';
-      if (!rows?.length){ wrap.style.display='none'; empty.style.display=''; return; }
-      wrap.style.display=''; empty.style.display='none';
+      if (!rows?.length) {
+        wrap.style.display = 'none';
+        empty.style.display = '';
+        lastUpdated.textContent = '';
+        return;
+      }
+      wrap.style.display = '';
+      empty.style.display = 'none';
 
-      rows.forEach(r=>{
+      rows.forEach((r) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>
             ${r.fixtureHtml}
-            ${r.subHtml ? `<div class="muted" style="font-size:.85rem">${r.subHtml}</div>` : ''}
+            ${
+              r.subHtml
+                ? `<div class="muted" style="font-size:.85rem">${r.subHtml}</div>`
+                : ''
+            }
           </td>
           <td class="center"><strong>${r.pick}</strong></td>
           <td class="center">${r.result}</td>
-          <td class="right"><span class="pill ${r.locked?'locked':'open'}">${r.locked?'Locked':'Open'}</span></td>
+          <td class="right">
+            <span class="pill ${r.locked ? 'locked' : 'open'}">
+              ${r.locked ? 'Locked' : 'Open'}
+            </span>
+          </td>
         `;
         tbody.appendChild(tr);
       });
-      lastUpdated.textContent = `Loaded ${rows.length} pick${rows.length===1?'':'s'}.`;
+      lastUpdated.textContent = `Loaded ${rows.length} pick${
+        rows.length === 1 ? '' : 's'
+      }.`;
     }
 
-    (async ()=>{
-      const { data:{ session } } = await supabase.auth.getSession();
-      if (!session?.user){ window.location.replace('login.html'); return; }
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        window.location.replace('login.html');
+        return;
+      }
       const uid = session.user.id;
+      userEmailEl.textContent = session.user.email || '';
 
       // Admin link
-      try{
-        const { data } = await supabase.from('profiles').select('is_admin').eq('id', uid).maybeSingle();
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', uid)
+          .maybeSingle();
         if (data?.is_admin) navAdmin.style.display = '';
-      }catch{}
+      } catch {}
 
       const weekStart = isoDate(startOfWeek(new Date()));
 
@@ -182,21 +257,26 @@
         .select('fixture_id, week_start, home, away, user_id')
         .eq('user_id', uid)
         .eq('week_start', weekStart)
-        .order('fixture_id', { ascending:true });
+        .order('fixture_id', { ascending: true });
 
-      if (pkErr || !picks?.length){ render([]); return; }
+      if (pkErr || !picks?.length) {
+        render([]);
+        return;
+      }
 
-      // 2) Fetch fixture details by ID
-      const ids = [...new Set(picks.map(p => p.fixture_id))];
+      // 2) Fixture details
+      const ids = [...new Set(picks.map((p) => p.fixture_id))];
       const { data: fixtures } = await supabase
         .from('fixtures')
-        .select('id, utc_date, status, competition, matchday, home_team, away_team, home_score, away_score')
+        .select(
+          'id, utc_date, status, competition, matchday, home_team, away_team, home_score, away_score'
+        )
         .in('id', ids);
 
-      const byId = new Map((fixtures || []).map(f => [String(f.id), f]));
+      const byId = new Map((fixtures || []).map((f) => [String(f.id), f]));
 
-      // 3) Compose render rows
-      const rows = picks.map(p => {
+      // 3) Compose rows
+      const rows = picks.map((p) => {
         const fx = byId.get(String(p.fixture_id));
         const homeName = fx?.home_team ?? `Fixture #${p.fixture_id}`;
         const awayName = fx?.away_team ?? '';
@@ -204,15 +284,29 @@
           ? `<strong>${homeName}</strong> vs <strong>${awayName}</strong>`
           : homeName;
 
-        // kickoff local time & status chip
-        let subBits = [];
-        if (fx?.utc_date){
+        const subBits = [];
+        if (fx?.utc_date) {
           const dt = new Date(fx.utc_date);
-          if (!isNaN(dt)) subBits.push(`${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`);
+          if (!isNaN(dt)) {
+            subBits.push(
+              `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}`
+            );
+          }
         }
-        if (fx?.status){
+        if (fx?.status) {
           const s = String(fx.status).toUpperCase();
-          subBits.push(s === 'IN_PLAY' ? 'Live' : s === 'FINISHED' ? 'FT' : s === 'SCHEDULED' ? 'Scheduled' : s);
+          subBits.push(
+            s === 'IN_PLAY'
+              ? 'Live'
+              : s === 'FINISHED'
+              ? 'FT'
+              : s === 'SCHEDULED'
+              ? 'Scheduled'
+              : s
+          );
         }
 
         return {
@@ -220,7 +314,7 @@
           subHtml: subBits.join(' • '),
           pick: pickScore(p),
           result: fx ? resultFromFixture(fx) : '—',
-          locked: fx ? lockedFromFixture(fx) : false
+          locked: fx ? lockedFromFixture(fx) : false,
         };
       });
 

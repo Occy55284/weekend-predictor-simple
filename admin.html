@@ -1,94 +1,178 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Admin • Weekend Predictor</title>
-<link href="brand.css?v=200" rel="stylesheet"/>
-<style>
-    .wrap{max-width:1000px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
-    .card h2{margin:0 0 10px;color:#1f357a}
-    .row-actions{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{background:#28428f;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .meta{font-size:.9rem;color:#475569}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
-    th{background:#f8fafc;text-transform:uppercase;font-size:.85rem;letter-spacing:.03em}
-    .muted{color:#64748b}
-    .count{font-weight:800;color:#1f357a}
-    .list{list-style:none;margin:8px 0 0;padding:0}
-    .list li{padding:6px 0;border-bottom:1px dashed #e5e7eb}
-    .small{font-size:.95rem}
-    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#ecfeff;color:#164e63;font-weight:800;font-size:.8rem}
-    .errors{background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:10px;display:none}
-    .errors pre{white-space:pre-wrap;margin:0}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css?v=96" />
+  <style>
+    .admin-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom:16px;
+    }
+    .admin-week{
+      font-size:0.9rem;
+    }
+    .admin-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .admin-count{
+      font-size:0.9rem;
+      color:#e5e7eb;
+    }
+    .admin-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+      gap:16px;
+      margin-top:8px;
+    }
+    .admin-card{
+      border-radius:14px;
+      border:1px solid rgba(148,163,184,0.45);
+      background:rgba(15,23,42,0.96);
+      padding:12px 14px;
+    }
+    .admin-card h2{
+      margin-top:0;
+      margin-bottom:6px;
+      font-size:1rem;
+    }
+    .admin-card p{
+      margin:0 0 6px;
+    }
+    .list{
+      margin:8px 0 0;
+      padding-left:18px;
+    }
+    .list .small{
+      font-size:0.85rem;
+      color:#e5e7eb;
+      margin-bottom:3px;
+    }
+    .admin-error{
+      border-color:rgba(248,113,113,0.7);
+      background:rgba(30,7,7,0.9);
+      margin-top:16px;
+    }
+    .admin-error h3{
+      margin:0 0 4px;
+      font-size:0.95rem;
+      color:#fecaca;
+    }
+    .admin-error pre{
+      margin:0;
+      font-size:0.8rem;
+      color:#fecaca;
+      white-space:pre-wrap;
+    }
+    @media (max-width:840px){
+      .admin-grid{
+        grid-template-columns:minmax(0,1fr);
+      }
+    }
   </style>
 </head>
-<body>
-<!-- Top nav -->
-<nav class="nav-links">
-<a href="index.html">Home</a>
-<a href="predict.html">Predict</a>
-<a href="leaderboard.html">Leaderboard</a>
-<a href="my-picks.html">My Picks</a>
-<a href="all-picks.html">All Picks</a>
-<a href="stats.html">Stats</a>
-<a href="wallet.html">Wallet</a>
-<a href="profile.html">Profile</a>
-<a href="admin.html">Admin</a>
-<a href="login.html">Logout</a>
-</nav>
-<main class="wrap">
-<!-- Header -->
-<section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-<div>
-<h2>Admin Dashboard</h2>
-<div class="meta">Week of <span id="weekLabel">—</span></div>
-</div>
-<div class="row-actions">
-<button class="btn" id="lockBtn">Lock Week for Everyone</button>
-</div>
-</section>
-<!-- Featured fixtures -->
-<section class="card">
-<h2>Pick This Week’s Featured Fixtures</h2>
-<p class="meta">Select <b>exactly 5</b> fixtures for players to predict. Then click <b>Save Featured</b>.</p>
-<div class="row-actions" style="margin:8px 0 10px">
-<span class="pill">Selected: <span id="selectedCount">0</span>/5</span>
-<button class="btn" disabled="" id="saveFeaturedBtn">Save Featured</button>
-<span class="meta" id="saveStatus"></span>
-</div>
-<table>
-<thead>
-<tr>
-<th>Pick</th>
-<th>Date (UTC)</th>
-<th>Fixture</th>
-<th>Status / Result</th>
-</tr>
-</thead>
-<tbody id="fixturesBody">
-<tr><td class="muted" colspan="4">Loading fixtures…</td></tr>
-</tbody>
-</table>
-</section>
-<!-- Submissions (ONLY those who picked) -->
-<section class="card">
-<h2>Who Has Submitted Picks (This Week)</h2>
-<div class="meta" id="subsMeta">Loading…</div>
-<ul class="list" id="listPicked"></ul>
-</section>
-<!-- Error box (so “loading” doesn’t hang silently) -->
-<section class="card errors" id="errorBox">
-<strong>Errors</strong>
-<pre id="errorText"></pre>
-</section>
-</main>
-<script src="supabase-config.js" type="module"></script>
-<script type="module">
+<body class="bg-hero">
+  <div class="page-shell">
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-logo">
+          <img src="assets/brand-logo.png" alt="Weekend Predictor logo" />
+        </div>
+        <div class="nav-text-group">
+          <div class="nav-title">Weekend Predictor</div>
+          <div class="nav-subtitle">Admin dashboard</div>
+        </div>
+      </div>
+      <nav class="top-nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="my-picks.html">My Picks</a>
+        <a href="all-picks.html">All Picks</a>
+        <a href="stats.html">Stats</a>
+        <a href="wallet.html">Wallet</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html" class="active">Admin</a>
+        <a href="#" id="navLogout">Logout</a>
+      </nav>
+    </header>
+
+    <main class="main-layout">
+      <section class="panel panel-main wide">
+        <div class="panel-inner">
+          <div class="admin-header">
+            <div>
+              <h1>Admin dashboard</h1>
+              <p class="muted admin-week">
+                Week window:
+                <span id="weekLabel">Loading…</span>
+              </p>
+            </div>
+            <div class="admin-actions">
+              <div class="admin-count">
+                Featured this week:
+                <strong><span id="selectedCount">0</span>/5</strong>
+              </div>
+              <button id="saveFeaturedBtn" class="btn-ghost" type="button">
+                Save featured
+              </button>
+              <button id="lockBtn" class="btn-primary" type="button">
+                Lock week
+              </button>
+              <span id="saveStatus" class="muted" style="font-size:0.8rem;"></span>
+            </div>
+          </div>
+
+          <div class="admin-grid">
+            <section class="admin-card">
+              <h2>Pick this week&apos;s fixtures</h2>
+              <p class="muted">
+                Select exactly five fixtures below to feature in this week&apos;s game.
+              </p>
+              <div class="table-wrapper" style="margin-top:10px;">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Use</th>
+                      <th>Date (UTC)</th>
+                      <th>Fixture</th>
+                      <th>Status / Result</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fixturesBody">
+                    <tr>
+                      <td colspan="4" class="muted">Loading fixtures…</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="admin-card">
+              <h2>Who has submitted picks</h2>
+              <p id="subsMeta" class="muted">Loading…</p>
+              <ul id="listPicked" class="list"></ul>
+            </section>
+          </div>
+
+          <section id="errorBox" class="admin-card admin-error" style="display:none;">
+            <h3>Errors</h3>
+            <pre id="errorText"></pre>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
     import { supabase } from './supabase-config.js';
 
     // ---------- Utilities ----------
@@ -111,13 +195,13 @@
     }
 
     function startOfWeekUTC(d=new Date()){
-      // Monday 00:00 UTC .. next Monday 00:00 UTC
       const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       const dow = dt.getUTCDay(); // 0..6, 1=Mon
       const offset = dow === 0 ? -6 : 1 - dow;
       dt.setUTCDate(dt.getUTCDate() + offset);
       return dt;
     }
+
     function isoDate(d){ return d.toISOString().slice(0,10); }
 
     let weekStart, weekEnd;
@@ -139,11 +223,24 @@
     async function secureSession(){
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) { window.location.replace('login.html'); throw new Error('No session'); }
-      document.getElementById('navLogout').onclick = async ()=>{ await supabase.auth.signOut(); window.location.replace('login.html'); };
+
+      // logout button
+      document.getElementById('navLogout').onclick = async ()=>{
+        await supabase.auth.signOut();
+        window.location.replace('login.html');
+      };
+
       // require admin
-      const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).maybeSingle();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .maybeSingle();
       if (error) throw error;
-      if (!data?.is_admin) { window.location.replace('predict.html'); throw new Error('Admins only'); }
+      if (!data?.is_admin) {
+        window.location.replace('predict.html');
+        throw new Error('Admins only');
+      }
       return session.user;
     }
 
@@ -156,47 +253,62 @@
         .lt('utc_date', isoDate(weekEnd))
         .order('utc_date', { ascending: true });
 
-      if (error) { fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>`; throw error; }
+      if (error) {
+        fixturesBody.innerHTML =
+          '<tr><td colspan="4" class="muted">Error loading fixtures.</td></tr>';
+        throw error;
+      }
       fixtures = data || [];
       if (!fixtures.length) {
-        fixturesBody.innerHTML = `<tr><td colspan="4" class="muted">No fixtures for this week (yet).</td></tr>`;
+        fixturesBody.innerHTML =
+          '<tr><td colspan="4" class="muted">No fixtures for this week (yet).</td></tr>';
         return;
       }
-      // render
+
       fixturesBody.innerHTML = '';
       for (const f of fixtures){
-        const dt = new Date(f.utc_date); // timestampz
+        const dt = new Date(f.utc_date);
         const datestr = dt.toISOString().replace('T',' ').slice(0,16) + ' UTC';
         const res = (f.home_score ?? '') !== '' && (f.away_score ?? '') !== ''
-            ? `${f.home_score}–${f.away_score}`
-            : (f.status || '—');
+          ? `${f.home_score}–${f.away_score}`
+          : (f.status || '—');
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><input type="checkbox" class="feat" data-id="${f.id}" ${f.featured ? 'checked':''} /></td>
+          <td><input type="checkbox" class="feat" data-id="${f.id}" ${f.featured ? 'checked' : ''} /></td>
           <td>${datestr}</td>
           <td>${f.home_team || '?'} vs ${f.away_team || '?'}</td>
           <td class="muted">${res}</td>
         `;
         fixturesBody.appendChild(tr);
       }
-      document.querySelectorAll('.feat').forEach(cb=>cb.addEventListener('change', updateSelectedCounter));
+      document
+        .querySelectorAll('.feat')
+        .forEach(cb => cb.addEventListener('change', updateSelectedCounter));
       updateSelectedCounter();
     }
 
     async function saveFeatured(){
       const checks = Array.from(document.querySelectorAll('.feat'));
       const picked = checks.filter(c=>c.checked).map(c=>c.dataset.id);
-      if (picked.length !== 5){ alert('Please select exactly 5 fixtures.'); return; }
-      saveBtn.disabled = true; saveStatus.textContent = 'Saving…';
+      if (picked.length !== 5){
+        alert('Please select exactly 5 fixtures.');
+        return;
+      }
+      saveBtn.disabled = true;
+      saveStatus.textContent = 'Saving…';
       try{
         const idsAll = fixtures.map(f=>f.id);
         if (idsAll.length){
-          const { error: e1 } = await supabase.from('fixtures')
-            .update({ featured: false }).in('id', idsAll);
+          const { error: e1 } = await supabase
+            .from('fixtures')
+            .update({ featured: false })
+            .in('id', idsAll);
           if (e1) throw e1;
         }
-        const { error: e2 } = await supabase.from('fixtures')
-          .update({ featured: true }).in('id', picked);
+        const { error: e2 } = await supabase
+          .from('fixtures')
+          .update({ featured: true })
+          .in('id', picked);
         if (e2) throw e2;
 
         saveStatus.textContent = 'Saved.';
@@ -216,15 +328,23 @@
       try{
         const { error } = await supabase
           .from('global_locks')
-          .upsert({ week_start: isoDate(weekStart), locked: true }, { onConflict: 'week_start' });
+          .upsert(
+            { week_start: isoDate(weekStart), locked: true },
+            { onConflict: 'week_start' }
+          );
         if (error) throw error;
         alert('Week locked for everyone.');
-      } catch(e){ showError(e); alert('Could not lock the week.'); }
-      finally { lockBtn.disabled=false; }
+      } catch(e){
+        showError(e);
+        alert('Could not lock the week.');
+      } finally {
+        lockBtn.disabled = false;
+      }
     }
 
     async function loadSubmissions(){
-      listPicked.innerHTML = ''; subsMeta.textContent = 'Loading…';
+      listPicked.innerHTML = '';
+      subsMeta.textContent = 'Loading…';
 
       const featured = fixtures.filter(f=>f.featured);
       const featuredIds = featured.map(f=>f.id);
@@ -235,39 +355,36 @@
         return;
       }
 
-      // Predictions on featured fixtures
       const { data: preds, error: prErr } = await supabase
         .from('predictions')
         .select('user_id, fixture_id')
         .in('fixture_id', featuredIds);
-      if (prErr) { subsMeta.textContent = 'Error loading predictions.'; throw prErr; }
+      if (prErr) { showError(prErr); throw prErr; }
 
-      const counts = new Map();
-      (preds||[]).forEach(p=>{
-        // count unique fixtures per user (avoid double-count if any)
-        const key = `${p.user_id}:${p.fixture_id}`;
-        if (!counts.has(key)) counts.set(key, true);
-      });
-      // reduce to user totals
       const userTotals = new Map();
-      for (const k of counts.keys()){
-        const [uid] = k.split(':');
-        userTotals.set(uid, (userTotals.get(uid)||0)+1);
+      for (const p of preds || []){
+        const prev = userTotals.get(p.user_id) || 0;
+        userTotals.set(p.user_id, prev + 1);
       }
 
       const userIds = [...userTotals.keys()];
-      if (userIds.length === 0){
-        subsMeta.textContent = `Featured fixtures: ${totalNeeded} • No submissions yet.`;
-        listPicked.innerHTML = '<li class="muted small">—</li>';
+      if (!userIds.length){
+        subsMeta.textContent = 'No predictions yet on featured fixtures.';
         return;
       }
 
-      const { data: profs, error: pe } = await supabase
-        .from('profiles').select('id,display_name').in('id', userIds);
-      if (pe) { subsMeta.textContent = 'Error loading players.'; throw pe; }
+      // 🔹 only id + display_name (no email column)
+      const { data: profs, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+      if (profErr) { showError(profErr); throw profErr; }
 
-      const byId = new Map((profs||[]).map(p=>[p.id, p.display_name || 'Anon']));
-      const items = userIds.map(id=>({ id, name: byId.get(id) || 'Anon', c: userTotals.get(id) || 0 }));
+      const items = (profs || []).map(p => ({
+        id: p.id,
+        name: p.display_name || 'Player',
+        c: userTotals.get(p.id) || 0
+      }));
       items.sort((a,b)=> (b.c===a.c ? a.name.localeCompare(b.name) : b.c-a.c));
 
       listPicked.innerHTML = '';
@@ -279,10 +396,10 @@
         listPicked.appendChild(li);
       });
 
-      subsMeta.textContent = `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
+      subsMeta.textContent =
+        `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
     }
 
-    // ---------- Init ----------
     async function init(){
       try{
         setWeekWindow();
