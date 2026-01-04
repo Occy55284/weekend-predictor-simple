@@ -91,11 +91,12 @@
           <div class="nav-subtitle">Admin dashboard</div>
         </div>
       </div>
-      <nav class="top-nav-links">
+      <nav class="nav-links">
         <a href="index.html">Home</a>
         <a href="predict.html">Predict</a>
         <a href="leaderboard.html">Leaderboard</a>
         <a href="my-picks.html">My Picks</a>
+        <a href="teams.html">Teams</a>
         <a href="all-picks.html">All Picks</a>
         <a href="stats.html">Stats</a>
         <a href="wallet.html">Wallet</a>
@@ -114,6 +115,12 @@
               <p class="muted admin-week">
                 Week window:
                 <span id="weekLabel">Loading…</span>
+                <span id="weekModeBadge" class="muted" style="margin-left:10px; font-size:0.8rem;"></span>
+                <span id="weekControls" style="margin-left:12px; display:inline-flex; gap:8px; vertical-align:middle;">
+                  <button id="prevWeekBtn" class="btn-ghost" type="button" style="padding:6px 10px; border-radius:999px;">Prev</button>
+                  <button id="thisWeekBtn" class="btn-ghost" type="button" style="padding:6px 10px; border-radius:999px;">This</button>
+                  <button id="nextWeekBtn" class="btn-ghost" type="button" style="padding:6px 10px; border-radius:999px;">Next</button>
+                </span>
               </p>
             </div>
             <div class="admin-actions">
@@ -175,7 +182,24 @@
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    // ---------- Utilities ----------
+    
+  // --- Week window helpers (Admin QoL) ---
+  const MS_DAY = 24*60*60*1000;
+  const pad = (n)=>String(n).padStart(2,'0');
+  const isoDate = (d)=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  function startOfWeekMonday(date){
+    const d=new Date(date); d.setHours(0,0,0,0);
+    const day=(d.getDay()+6)%7; // Mon=0
+    d.setDate(d.getDate()-day);
+    return d;
+  }
+  function addDays(d, days){ const x=new Date(d); x.setDate(x.getDate()+days); return x; }
+  function fmtRange(ws){
+    const we = addDays(ws, 7);
+    return `${isoDate(ws)} → ${isoDate(addDays(we,-1))}`;
+  }
+  let selectedWeekStart = startOfWeekMonday(new Date());
+// ---------- Utilities ----------
     const $ = (id)=>document.getElementById(id);
     const fixturesBody = $('fixturesBody');
     const saveBtn = $('saveFeaturedBtn');
@@ -400,9 +424,61 @@
         `Featured fixtures: ${totalNeeded} • Players with picks: ${items.length}`;
     }
 
-    async function init(){
+    
+  async function autoSelectNextFixturesWeek(){
+    // Pick the next week window that actually contains fixtures (prevents "empty Admin" confusion).
+    try{
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('fixtures')
+        .select('utc_date')
+        .gte('utc_date', nowIso)
+        .order('utc_date', { ascending: true })
+        .limit(1);
+
+      if (!error && data && data.length){
+        selectedWeekStart = startOfWeekMonday(new Date(data[0].utc_date));
+        const badge = document.getElementById('weekModeBadge');
+        if (badge) badge.textContent = 'Auto: next fixtures week';
+      } else {
+        const badge = document.getElementById('weekModeBadge');
+        if (badge) badge.textContent = 'This week (calendar)';
+      }
+    }catch(_e){
+      const badge = document.getElementById('weekModeBadge');
+      if (badge) badge.textContent = 'This week (calendar)';
+    }
+  }
+
+  function shiftWeek(delta){
+    selectedWeekStart = addDays(selectedWeekStart, delta*7);
+    const badge = document.getElementById('weekModeBadge');
+    if (badge) badge.textContent = delta===0 ? 'This week (calendar)' : 'Manual week';
+  }
+
+  function wireWeekControls(){
+    const prev = document.getElementById('prevWeekBtn');
+    const next = document.getElementById('nextWeekBtn');
+    const cur  = document.getElementById('thisWeekBtn');
+    if (prev) prev.addEventListener('click', ()=>{ shiftWeek(-1); refreshAll(); });
+    if (next) next.addEventListener('click', ()=>{ shiftWeek(1); refreshAll(); });
+    if (cur)  cur.addEventListener('click', ()=>{ selectedWeekStart = startOfWeekMonday(new Date()); const b=document.getElementById('weekModeBadge'); if(b) b.textContent='This week (calendar)'; refreshAll(); });
+  }
+
+  function setWeekWindow(){
+    const label = document.getElementById('weekLabel');
+    if (label) label.textContent = fmtRange(selectedWeekStart);
+  }
+
+  async function refreshAll(){
+    /* setWeekWindow moved to refreshAll */
+    await loadFixtures();
+    await loadSubmissionStatus();
+  }
+
+async function init(){
       try{
-        setWeekWindow();
+        /* setWeekWindow moved to refreshAll */
         await secureSession();
         saveBtn.onclick = saveFeatured;
         lockBtn.onclick = lockWeek;

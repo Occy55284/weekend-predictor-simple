@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Team Stats • Weekend Predictor</title>
+  <link rel="stylesheet" href="brand.css" />
+  <style>
+    .toolbar{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin: 6px 0 14px;}
+    .toolbar .left{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .select{
+      border-radius:14px; border:1px solid rgba(148,163,184,0.35);
+      background: rgba(2,6,23,0.35); padding:10px 12px; color:#e5e7eb;
+      font-size:0.9rem; outline:none; min-width: 240px;
+    }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      border:1px solid rgba(148,163,184,0.35);
+      border-radius:999px; padding:8px 12px;
+      background: rgba(2,6,23,0.35);
+      color:#e5e7eb;
+      font-weight:800;
+      font-size:0.85rem;
+    }
+    .grid{display:grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap:10px;}
+    @media (max-width: 1100px){ .grid{grid-template-columns: repeat(3, minmax(0, 1fr));} }
+    @media (max-width: 700px){ .grid{grid-template-columns: repeat(2, minmax(0, 1fr));} }
+    .kpi{padding:14px; border-radius:18px; border:1px solid rgba(148,163,184,0.25); background: rgba(2,6,23,0.28);}
+    .kpi .label{opacity:.75; font-weight:700; font-size:.78rem;}
+    .kpi .value{font-weight:900; font-size:1.25rem; margin-top:4px;}
+    .two-col{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px;}
+    @media (max-width: 900px){ .two-col{grid-template-columns: 1fr;} }
+    table{width:100%; border-collapse:separate; border-spacing:0 8px;}
+    th{font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; opacity:.7; text-align:left; padding:0 10px;}
+    td{padding:12px 10px; background: rgba(2,6,23,0.28); border-top:1px solid rgba(148,163,184,0.18); border-bottom:1px solid rgba(148,163,184,0.18);}
+    tr td:first-child{border-left:1px solid rgba(148,163,184,0.18); border-top-left-radius:14px; border-bottom-left-radius:14px;}
+    tr td:last-child{border-right:1px solid rgba(148,163,184,0.18); border-top-right-radius:14px; border-bottom-right-radius:14px;}
+    .muted2{opacity:.75;}
+    .form{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+    .btn{border-radius:14px; padding:10px 12px; border:1px solid rgba(148,163,184,0.35); background: rgba(96,165,250,0.18); color:#e5e7eb; font-weight:900; cursor:pointer;}
+    .btn:disabled{opacity:.5; cursor:not-allowed;}
+    .tag{display:inline-flex; min-width:28px; justify-content:center; padding:4px 8px; border-radius:999px; font-weight:900; font-size:.78rem; border:1px solid rgba(148,163,184,0.35); background: rgba(2,6,23,0.35);}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <div class="brand-title">Weekend Predictor</div>
+          <div class="brand-subtitle">Team performance (from your fixtures data)</div>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="predict.html">Predict</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="my-picks.html">My Picks</a>
+        <a href="teams.html" class="active">Teams</a>
+        <a href="all-picks.html">All Picks</a>
+        <a href="stats.html">Stats</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html" id="navAdmin" style="display:none;">Admin</a>
+        <a href="#" id="navLogout">Logout</a>
+      </nav>
+    </header>
+
+    <main class="main-layout">
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h1>Team Stats</h1>
+            <p class="muted">Calculated using the match results already stored in <code>fixtures</code>. No paid API required.</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="left form">
+            <select id="teamSelect" class="select"></select>
+            <button id="refreshBtn" class="btn" type="button">Refresh</button>
+            <span id="statusPill" class="pill">Loading…</span>
+          </div>
+          <div class="muted2" id="rangeText"></div>
+        </div>
+
+        <div class="grid" id="kpiGrid"></div>
+
+        <div class="two-col">
+          <div>
+            <h3 style="margin: 10px 0 6px;">Last 10 results</h3>
+            <div class="muted2" style="margin-bottom:8px;">Most recent completed fixtures for this team.</div>
+            <div id="recentBox"></div>
+          </div>
+          <div>
+            <h3 style="margin: 10px 0 6px;">Next 5 fixtures</h3>
+            <div class="muted2" style="margin-bottom:8px;">Upcoming fixtures (based on your synced data).</div>
+            <div id="upcomingBox"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<script type="module">
+  import { supabase } from './supabase-config.js';
+
+  const qs = new URLSearchParams(location.search);
+  const teamParam = qs.get('team');
+
+  const teamSelect = document.getElementById('teamSelect');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const statusPill = document.getElementById('statusPill');
+  const rangeText = document.getElementById('rangeText');
+  const kpiGrid = document.getElementById('kpiGrid');
+  const recentBox = document.getElementById('recentBox');
+  const upcomingBox = document.getElementById('upcomingBox');
+  const navAdmin = document.getElementById('navAdmin');
+  const navLogout = document.getElementById('navLogout');
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtDate(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+  }
+  function fmtKickoff(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    return `${fmtDate(iso)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function isFinished(fx){
+    if (fx?.status && String(fx.status).toUpperCase() === 'FINISHED') return true;
+    return fx?.home_score != null && fx?.away_score != null;
+  }
+  function resultForTeam(fx, team){
+    const isHome = fx.home_team === team;
+    const gf = isHome ? (fx.home_score ?? 0) : (fx.away_score ?? 0);
+    const ga = isHome ? (fx.away_score ?? 0) : (fx.home_score ?? 0);
+    if (gf > ga) return {res:'W', pts:3, gf, ga};
+    if (gf < ga) return {res:'L', pts:0, gf, ga};
+    return {res:'D', pts:1, gf, ga};
+  }
+  function tag(res){
+    return `<span class="tag">${res}</span>`;
+  }
+
+  async function ensureSession(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if(!session){
+      location.href = 'login.html';
+      return null;
+    }
+    // admin link visibility
+    const { data: prof } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).maybeSingle();
+    if (prof?.is_admin) navAdmin.style.display = 'inline-flex';
+    return session;
+  }
+
+  async function loadTeams(){
+    // Grab a broad slice of fixtures and derive team list.
+    // This avoids needing an external API while keeping it fast.
+    const { data, error } = await supabase
+      .from('fixtures')
+      .select('home_team, away_team')
+      .order('utc_date', { ascending: false })
+      .limit(2000);
+
+    if (error) throw error;
+
+    const set = new Set();
+    (data || []).forEach(r => { if (r.home_team) set.add(r.home_team); if (r.away_team) set.add(r.away_team); });
+    const teams = Array.from(set).sort((a,b)=>a.localeCompare(b));
+
+    teamSelect.innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (teamParam && teams.includes(teamParam)) teamSelect.value = teamParam;
+  }
+
+  async function loadTeamStats(team){
+    statusPill.textContent = 'Loading…';
+    kpiGrid.innerHTML = '';
+    recentBox.innerHTML = '';
+    upcomingBox.innerHTML = '';
+    rangeText.textContent = '';
+
+    // fetch fixtures where team is home or away
+    const { data: fx, error } = await supabase
+      .from('fixtures')
+      .select('id, utc_date, status, competition, matchday, home_team, away_team, home_score, away_score')
+      .or(`home_team.eq.${team},away_team.eq.${team}`)
+      .order('utc_date', { ascending: false })
+      .limit(300);
+
+    if (error) throw error;
+
+    const fixtures = fx || [];
+    const finished = fixtures.filter(isFinished);
+    const upcoming = fixtures.filter(f => !isFinished(f)).sort((a,b)=>new Date(a.utc_date)-new Date(b.utc_date));
+
+    // range display
+    const minDate = finished.length ? finished[finished.length-1].utc_date : null;
+    const maxDate = finished.length ? finished[0].utc_date : null;
+    rangeText.textContent = finished.length ? `Results range: ${fmtDate(minDate)} → ${fmtDate(maxDate)}` : 'No completed results found for this team (yet).';
+
+    // aggregate
+    let P=0,W=0,D=0,L=0,GF=0,GA=0,PTS=0,CS=0;
+    const form = [];
+    for (const f of finished){
+      const r = resultForTeam(f, team);
+      P++; GF += r.gf; GA += r.ga; PTS += r.pts;
+      if (r.res==='W') W++;
+      else if (r.res==='D') D++;
+      else L++;
+      if (r.ga===0) CS++;
+      if (form.length < 5) form.push(r.res);
+    }
+    const acc = P ? Math.round((W / P) * 1000)/10 : 0; // win rate %
+    const gd = GF - GA;
+
+    statusPill.textContent = `${team} • ${P} played`;
+    const kpis = [
+      ['Played', P],
+      ['Points', PTS],
+      ['W / D / L', `${W} / ${D} / ${L}`],
+      ['Goals (F/A)', `${GF} / ${GA}`],
+      ['Goal diff', gd],
+      ['Clean sheets', CS],
+    ];
+    kpiGrid.innerHTML = kpis.map(([label, value]) => `
+      <div class="kpi">
+        <div class="label">${label}</div>
+        <div class="value">${value}</div>
+      </div>
+    `).join('');
+
+    // recent results table
+    const last10 = finished.slice(0,10);
+    recentBox.innerHTML = last10.length ? `
+      <table>
+        <thead><tr><th>Date</th><th>Match</th><th>Score</th><th>Res</th><th>Pts</th></tr></thead>
+        <tbody>
+          ${last10.map(f=>{
+            const r = resultForTeam(f, team);
+            return `<tr>
+              <td>${fmtDate(f.utc_date)}</td>
+              <td><strong>${f.home_team}</strong> vs <strong>${f.away_team}</strong></td>
+              <td>${f.home_score ?? '–'} : ${f.away_score ?? '–'}</td>
+              <td>${tag(r.res)}</td>
+              <td>${r.pts}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    ` : `<div class="muted2">No completed fixtures found.</div>`;
+
+    // upcoming fixtures table
+    const next5 = upcoming.slice(0,5);
+    upcomingBox.innerHTML = next5.length ? `
+      <table>
+        <thead><tr><th>Kickoff</th><th>Match</th><th>Status</th></tr></thead>
+        <tbody>
+          ${next5.map(f=>`
+            <tr>
+              <td>${fmtKickoff(f.utc_date)}</td>
+              <td><strong>${f.home_team}</strong> vs <strong>${f.away_team}</strong></td>
+              <td class="muted2">${f.status ?? 'Scheduled'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : `<div class="muted2">No upcoming fixtures found in your database.</div>`;
+
+    // update URL
+    const url = new URL(location.href);
+    url.searchParams.set('team', team);
+    history.replaceState({}, '', url.toString());
+  }
+
+  refreshBtn.addEventListener('click', ()=> loadTeamStats(teamSelect.value));
+  teamSelect.addEventListener('change', ()=> loadTeamStats(teamSelect.value));
+  navLogout.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    await supabase.auth.signOut();
+    location.href='login.html';
+  });
+
+  (async function init(){
+    const session = await ensureSession();
+    if(!session) return;
+    await loadTeams();
+    const initial = teamSelect.value;
+    await loadTeamStats(initial);
+  })();
+</script>
+</body>
+</html>
