@@ -190,45 +190,13 @@
     }
     function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-    
-let weekStart = startOfWeek(); // Monday (local time)
-let weekEnd = addDays(weekStart, 7); // next Monday
+    let currentWeekStart = startOfWeek(); // Monday (local time)
+    let currentWeekEnd = addDays(currentWeekStart, 7); // next Monday
 
-function setWeekLabel(){
-  weekLabel.textContent = 'Week of ' + weekStart.toLocaleDateString() + ' (Mon–Sun)';
-}
-setWeekLabel();
-
-// If admin has already selected featured fixtures for an upcoming week,
-// align the player's "current week" to the week that actually contains those fixtures.
-async function alignWeekToFeaturedFixtures(){
-  try{
-    // look for the earliest featured fixture from (now - 24h) onwards
-    const since = new Date(Date.now() - 24*60*60*1000).toISOString();
-    const { data, error } = await supabase
-      .from('fixtures')
-      .select('utc_date')
-      .eq('featured', true)
-      .gte('utc_date', since)
-      .order('utc_date', { ascending: true })
-      .limit(1);
-
-    if (error) return; // silently fall back to calendar week
-    const first = data && data[0] && data[0].utc_date;
-    if (!first) return;
-
-    const fixtureDate = new Date(first);
-    const alignedStart = startOfWeek(fixtureDate);
-    // only change if different (prevents label flicker)
-    if (isoDate(alignedStart) !== isoDate(weekStart)){
-      weekStart = alignedStart;
-      weekEnd = addDays(weekStart, 7);
-      setWeekLabel();
+    function setWeekLabel(){
+      weekLabel.textContent = `Week of ${currentWeekStart.toLocaleDateString()} (Mon–Sun)`;
     }
-  }catch{
-    // ignore and fall back
-  }
-}
+    setWeekLabel();
 
     // --- Ensure profile row exists ---
     async function ensureProfileExists(user) {
@@ -274,13 +242,24 @@ async function alignWeekToFeaturedFixtures(){
       msg.textContent = '';
       lockBtn.disabled = true;
 
+      const since = new Date(Date.now() - 2*24*60*60*1000).toISOString();
+
       const { data: fixtures, error } = await supabase
         .from('fixtures')
         .select('id, utc_date, home_team, away_team')
         .eq('featured', true)
-        .gte('utc_date', new Date(weekStart).toISOString())
-        .lt('utc_date', new Date(weekEnd).toISOString())
-        .order('utc_date', { ascending: true });
+        .gte('utc_date', since)
+        .order('utc_date', { ascending: true })
+        .limit(5);
+
+      // Align the week label / week_start to the week that contains the first featured fixture
+      if (fixtures && fixtures.length > 0) {
+        const firstDate = new Date(fixtures[0].utc_date);
+        currentWeekStart = startOfWeek(firstDate);
+        currentWeekEnd = addDays(currentWeekStart, 7);
+        setWeekLabel();
+      }
+
 
       if (error) {
         emptyBox.style.display = 'block';
@@ -331,7 +310,7 @@ async function alignWeekToFeaturedFixtures(){
         .from('picks')
         .select('fixture_id, home, away')
         .eq('user_id', user.id)
-        .eq('week_start', isoDate(weekStart));
+        .eq('week_start', isoDate(currentWeekStart));
 
       if (error) { console.error(error); return; }
 
@@ -367,7 +346,7 @@ async function alignWeekToFeaturedFixtures(){
         .from('pick_locks')
         .select('locked_at, week_start')
         .eq('user_id', user.id)
-        .eq('week_start', isoDate(weekStart))
+        .eq('week_start', isoDate(currentWeekStart))
         .maybeSingle();
 
       if (error) {
@@ -411,7 +390,7 @@ async function alignWeekToFeaturedFixtures(){
           .from('pick_locks')
           .upsert({
             user_id: user.id,
-            week_start: isoDate(weekStart)
+            week_start: isoDate(currentWeekStart)
           }, { onConflict: 'user_id,week_start' });
         if (lockErr) throw lockErr;
 
@@ -544,7 +523,6 @@ async function alignWeekToFeaturedFixtures(){
     })();
 
     // --- Boot ---
-    await alignWeekToFeaturedFixtures();
     const { fixtures } = await loadFixtures();
     if (fixtures && fixtures.length) {
       await prefillPicks();
