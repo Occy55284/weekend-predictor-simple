@@ -8,16 +8,13 @@
 
   <!-- Early auth gate -->
   <script type="module">
-import { supabase } from './supabase-config.js';
-import { startOfWeekMonday, addDays, isoDate } from './app-week.js';
-
+    import { supabase } from './supabase-config.js'
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       window.location.replace('login.html')
       throw new Error('Redirecting to login')
     }
-  
-</script>
+  </script>
 
   <style>
     .page-header-title { margin-bottom: 4px; }
@@ -116,7 +113,7 @@ import { startOfWeekMonday, addDays, isoDate } from './app-week.js';
 
           <div id="empty" class="empty" style="display:none">
             <div class="muted">
-              No featured fixtures found for this week yet. Once an admin selects the games, they’ll appear here.
+              No featured fixtures are available to predict yet. If an admin has selected games, check that fixtures have been synced for the upcoming week.
             </div>
           </div>
 
@@ -193,8 +190,8 @@ import { startOfWeekMonday, addDays, isoDate } from './app-week.js';
     }
     function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-    let weekStart = startOfWeek(); // Monday (local time)
-    let weekEnd = addDays(weekStart, 7); // next Monday
+    const weekStart = startOfWeek(); // Monday (local time)
+    const weekEnd = addDays(weekStart, 7); // next Monday
     weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
 
     // --- Ensure profile row exists ---
@@ -241,27 +238,20 @@ import { startOfWeekMonday, addDays, isoDate } from './app-week.js';
       msg.textContent = '';
       lockBtn.disabled = true;
 
-      // Pull the featured fixtures directly. This avoids "week window" mismatches.
-// First try upcoming/recent featured fixtures (from now-2 days). If none, fall back to latest featured fixtures.
-const fromIso = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+      const now = new Date();
+      const from = new Date(now); from.setDate(from.getDate() - 7);
+      const to = new Date(now); to.setDate(to.getDate() + 21);
 
-let { data: fixtures, error } = await supabase
-  .from('fixtures')
-  .select('id, utc_date, home_team, away_team')
-  .eq('featured', true)
-  .gte('utc_date', fromIso)
-  .order('utc_date', { ascending: true })
-  .limit(5);
+      // Load the 5 featured fixtures directly (avoid week-window mismatches around Mon/Sun rollover)
+      const { data: fixtures, error } = await supabase
+        .from('fixtures')
+        .select('id, utc_date, home_team, away_team')
+        .eq('featured', true)
+        .gte('utc_date', from.toISOString())
+        .lt('utc_date', to.toISOString())
+        .order('utc_date', { ascending: true })
+        .limit(5);
 
-if ((!fixtures || fixtures.length === 0) && !error) {
-  ({ data: fixtures, error } = await supabase
-    .from('fixtures')
-    .select('id, utc_date, home_team, away_team')
-    .eq('featured', true)
-    .order('utc_date', { ascending: false })
-    .limit(5));
-  fixtures = (fixtures || []).slice().reverse();
-}
 
       if (error) {
         emptyBox.style.display = 'block';
@@ -345,7 +335,7 @@ if ((!fixtures || fixtures.length === 0) && !error) {
     // --- Enforce lock state if already locked this week ---
     async function enforceLockUI() {
       const { data: lockRow, error } = await supabase
-        .from('week_locks')
+        .from('pick_locks')
         .select('locked_at, week_start')
         .eq('user_id', user.id)
         .eq('week_start', isoDate(weekStart))
@@ -389,7 +379,7 @@ if ((!fixtures || fixtures.length === 0) && !error) {
         if (upErr) throw upErr;
 
         const { error: lockErr } = await supabase
-          .from('week_locks')
+          .from('pick_locks')
           .upsert({
             user_id: user.id,
             week_start: isoDate(weekStart)
