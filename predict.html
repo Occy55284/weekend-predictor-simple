@@ -190,9 +190,45 @@
     }
     function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-    const weekStart = startOfWeek(); // Monday (local time)
-    const weekEnd = addDays(weekStart, 7); // next Monday
-    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
+    
+let weekStart = startOfWeek(); // Monday (local time)
+let weekEnd = addDays(weekStart, 7); // next Monday
+
+function setWeekLabel(){
+  weekLabel.textContent = 'Week of ' + weekStart.toLocaleDateString() + ' (Mon–Sun)';
+}
+setWeekLabel();
+
+// If admin has already selected featured fixtures for an upcoming week,
+// align the player's "current week" to the week that actually contains those fixtures.
+async function alignWeekToFeaturedFixtures(){
+  try{
+    // look for the earliest featured fixture from (now - 24h) onwards
+    const since = new Date(Date.now() - 24*60*60*1000).toISOString();
+    const { data, error } = await supabase
+      .from('fixtures')
+      .select('utc_date')
+      .eq('featured', true)
+      .gte('utc_date', since)
+      .order('utc_date', { ascending: true })
+      .limit(1);
+
+    if (error) return; // silently fall back to calendar week
+    const first = data && data[0] && data[0].utc_date;
+    if (!first) return;
+
+    const fixtureDate = new Date(first);
+    const alignedStart = startOfWeek(fixtureDate);
+    // only change if different (prevents label flicker)
+    if (isoDate(alignedStart) !== isoDate(weekStart)){
+      weekStart = alignedStart;
+      weekEnd = addDays(weekStart, 7);
+      setWeekLabel();
+    }
+  }catch{
+    // ignore and fall back
+  }
+}
 
     // --- Ensure profile row exists ---
     async function ensureProfileExists(user) {
@@ -508,6 +544,7 @@
     })();
 
     // --- Boot ---
+    await alignWeekToFeaturedFixtures();
     const { fixtures } = await loadFixtures();
     if (fixtures && fixtures.length) {
       await prefillPicks();
