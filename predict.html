@@ -113,7 +113,7 @@
 
           <div id="empty" class="empty" style="display:none">
             <div class="muted">
-              No featured fixtures are available to predict yet. If an admin has selected games, check that fixtures have been synced for the upcoming week.
+              No featured fixtures found for this week yet. Once an admin selects the games, they’ll appear here.
             </div>
           </div>
 
@@ -192,7 +192,7 @@
 
     const weekStart = startOfWeek(); // Monday (local time)
     const weekEnd = addDays(weekStart, 7); // next Monday
-    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`;
+    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString('en-GB')} (Mon–Sun)`;
 
     // --- Ensure profile row exists ---
     async function ensureProfileExists(user) {
@@ -238,20 +238,13 @@
       msg.textContent = '';
       lockBtn.disabled = true;
 
-      const now = new Date();
-      const from = new Date(now); from.setDate(from.getDate() - 7);
-      const to = new Date(now); to.setDate(to.getDate() + 21);
-
-      // Load the 5 featured fixtures directly (avoid week-window mismatches around Mon/Sun rollover)
       const { data: fixtures, error } = await supabase
         .from('fixtures')
         .select('id, utc_date, home_team, away_team')
         .eq('featured', true)
-        .gte('utc_date', from.toISOString())
-        .lt('utc_date', to.toISOString())
-        .order('utc_date', { ascending: true })
-        .limit(5);
-
+        .gte('utc_date', isoDate(weekStart))
+        .lt('utc_date', isoDate(weekEnd))
+        .order('utc_date', { ascending: true });
 
       if (error) {
         emptyBox.style.display = 'block';
