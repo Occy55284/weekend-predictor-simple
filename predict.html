@@ -74,9 +74,7 @@
       border-color:#fecaca;
       color:#f97373;
     }
-    .team-link{color:inherit;text-decoration:none;}
-  .team-link:hover{text-decoration:underline;}
-</style>
+  </style>
 </head>
 <body class="bg-hero">
   <div class="page-shell">
@@ -190,9 +188,10 @@
     }
     function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-    const weekStart = startOfWeek(); // Monday (local time)
-    const weekEnd = addDays(weekStart, 7); // next Monday
-    weekLabel.textContent = `Week of ${weekStart.toLocaleDateString('en-GB')} (Mon–Sun)`;
+    let weekStart = startOfWeek(); // Monday (local time)
+    let weekEnd = addDays(weekStart, 7); // next Monday
+    const setWeekLabel = () => { weekLabel.textContent = `Week of ${weekStart.toLocaleDateString()} (Mon–Sun)`; };
+    setWeekLabel();
 
     // --- Ensure profile row exists ---
     async function ensureProfileExists(user) {
@@ -242,8 +241,8 @@
         .from('fixtures')
         .select('id, utc_date, home_team, away_team')
         .eq('featured', true)
-        .gte('utc_date', isoDate(weekStart))
-        .lt('utc_date', isoDate(weekEnd))
+        .gte('utc_date', new Date(weekStart).toISOString())
+        .lt('utc_date', new Date(weekEnd).toISOString())
         .order('utc_date', { ascending: true });
 
       if (error) {
@@ -254,6 +253,15 @@
         return { fixtures: [], error };
       }
 
+
+      // Align the displayed "week" to the week that contains the first featured fixture.
+      // This prevents Sunday/Monday rollover from hiding next week's featured games.
+      if (fixtures && fixtures.length) {
+        const firstKickoff = new Date(fixtures[0].utc_date);
+        weekStart = startOfWeek(firstKickoff);
+        weekEnd = addDays(weekStart, 7);
+        setWeekLabel();
+      }
       if (!fixtures || fixtures.length === 0) {
         emptyBox.style.display = 'block';
         table.style.display = 'none';
@@ -268,7 +276,7 @@
         const tr = document.createElement('tr');
         tr.dataset.fixtureId = String(fx.id);
         tr.innerHTML = `
-          <td><a class="team-link" href="${teamHref(fx.home_team)}"><strong>${escapeHtml(fx.home_team)}</strong></a> vs <a class="team-link" href="${teamHref(fx.away_team)}"><strong>${escapeHtml(fx.away_team)}</strong></a></td>
+          <td><strong>${escapeHtml(fx.home_team)}</strong> vs <strong>${escapeHtml(fx.away_team)}</strong></td>
           <td>
             <div class="form-wrap">
               <input type="number" min="0" max="20" step="1" inputmode="numeric" pattern="[0-9]*" data-k="home">
@@ -399,7 +407,6 @@
           case "'": return '&#39;';
           default: return ch;
         }
-    function teamHref(name){ return 'teams.html?team=' + encodeURIComponent(name); }
       });
     }
 
